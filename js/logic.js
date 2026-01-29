@@ -1,27 +1,74 @@
 // js/logic.js - Core calculation logic
+// Fixed: Precision rounding for First Installment & Remaining Balance
 
-const MAX_MONTHS = 600; // Hard limit: 50 years
+const MAX_MONTHS = 600;
 
-// Convert formatted strings to numbers
-function toNum(v) { 
-    const clean = String(v).replace(/,/g, '');
-    const n = parseFloat(clean); 
-    return isNaN(n) ? 0 : n; 
+// --- Integer Math Constants ---
+// Work in piastres (1/100 currency) internally to avoid floating-point errors
+const PIASTRES = 100;
+
+// --- Utilities ---
+
+/**
+ * Round to 2 decimal places (Standard Rounding: 0.5 goes up)
+ * @param {number} num 
+ * @returns {number}
+ */
+function round2(num) {
+    return Math.round((num + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Convert currency amount to piastres (integer)
+ * @param {number} amount - Currency amount (e.g., 1000.50)
+ * @returns {number} Integer piastres (e.g., 100050)
+ */
+function toPiastres(amount) {
+    return Math.round(amount * PIASTRES);
+}
+
+/**
+ * Convert piastres back to currency amount
+ * @param {number} piastres - Integer piastres (e.g., 100050)
+ * @returns {number} Currency amount (e.g., 1000.50)
+ */
+function toCurrency(piastres) {
+    return piastres / PIASTRES;
+}
+
+/**
+ * Round to nearest integer (for piastres calculations)
+ * @param {number} value 
+ * @returns {number}
+ */
+function roundInt(value) {
+    return Math.round(value);
+}
+
+/**
+ * Convert formatted strings to numbers, falling back to 0
+ * @param {string|number} v 
+ * @returns {number}
+ */
+function toNum(v) {
+    const n = safeParseFloat(v);
+    return isNaN(n) ? 0 : n;
 }
 
 // Format numbers for display
-function fmt(n) { 
-    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
+function fmt(n) {
+    if (!isFinite(n)) return '0.00';
+    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Safe float parsing
-function safeParseFloat(v) { 
+function safeParseFloat(v) {
     const clean = String(v).replace(/,/g, '');
-    const n = parseFloat(clean); 
-    return isNaN(n) ? NaN : n; 
+    const n = parseFloat(clean);
+    return isNaN(n) ? NaN : n;
 }
 
-// Days360 calculation for banking logic
+// Days360 calculation (US/NASD method 30/360)
 function days360(d1, d2) {
     let d1y = d1.getFullYear();
     let d1m = d1.getMonth();
@@ -29,10 +76,10 @@ function days360(d1, d2) {
     let d2y = d2.getFullYear();
     let d2m = d2.getMonth();
     let d2d = d2.getDate();
-    
+
     if (d1d === 31) d1d = 30;
     if (d2d === 31 && d1d === 30) d2d = 30;
-    
+
     return (d2y - d1y) * 360 + (d2m - d1m) * 30 + (d2d - d1d);
 }
 
@@ -45,24 +92,59 @@ function getFormattedDate(dateObj) {
     return `${d}/${m}/${y}`;
 }
 
+// Get the quarter key for a date (e.g., "2026-Q1")
+function getQuarterKey(date) {
+    const m = date.getMonth(); // 0-indexed
+    const y = date.getFullYear();
+    if (m <= 2) return `${y}-Q1`;
+    if (m <= 5) return `${y}-Q2`;
+    if (m <= 8) return `${y}-Q3`;
+    return `${y}-Q4`;
+}
+
+// Get the quarter-end date for the quarter containing a given date
+function getQuarterEndDate(date) {
+    const m = date.getMonth(); // 0-indexed
+    const y = date.getFullYear();
+    // Q1: March 31, Q2: June 30, Q3: September 30, Q4: December 31
+    if (m <= 2) return new Date(y, 2, 31);  // March 31
+    if (m <= 5) return new Date(y, 5, 30);  // June 30
+    if (m <= 8) return new Date(y, 8, 30);  // September 30
+    return new Date(y, 11, 31);              // December 31
+}
+
+// Check if a quarter-end falls within a date range (exclusive start, inclusive end)
+function quarterEndInRange(startDate, endDate) {
+    const quarterEnd = getQuarterEndDate(endDate);
+    // Quarter-end is in range if it's after startDate and on or before endDate
+    return quarterEnd > startDate && quarterEnd <= endDate;
+}
+
 /**
  * Fallback solver using Bisection Method
- * Used when Newton-Raphson diverges
  */
 function solveRateBisection(P, N, M) {
-    let low = 0.00001; // Approx 0.01%
-    let high = 1.0;    // Approx 1200% interest
-    let epsilon = 0.0000001; // Precision
+    let low = 0.00001;
+    let high = 1.0;
+    let epsilon = 0.0000001;
     let i = 0;
-    
+
+    for (let check = 0; check < 10; check++) {
+        let calcP_High = (M / high) * (1 - Math.pow(1 + high, -N));
+        if (calcP_High < P) break;
+        high *= 2;
+    }
+
     for (let k = 0; k < 100; k++) {
         i = (low + high) / 2;
+        if (i <= 0.0000001) i = 0.0000001;
+
         let calcP = (M / i) * (1 - Math.pow(1 + i, -N));
-        
+
         if (Math.abs(calcP - P) < epsilon) {
             return i * 1200;
         }
-        
+
         if (calcP > P) {
             low = i;
         } else {
@@ -73,151 +155,364 @@ function solveRateBisection(P, N, M) {
 }
 
 /**
- * Core Loan Calculation
+ * Core loan calculation - solves for one unknown variable
+ * @param {Object} inputs - Input values {amount, rate, period, installment}
+ * @param {string} activeKey - Which field to calculate ('amount'|'rate'|'period'|'installment')
+ * @returns {Object} Result with {valid, P, R, N, M}
  */
 function calculateLoan(inputs, activeKey) {
     const P = safeParseFloat(inputs.amount);
     const R = safeParseFloat(inputs.rate);
     let N = parseInt(inputs.period);
     const M = safeParseFloat(inputs.installment);
-    
-    let resP=P, resR=R, resN=N, resM=M, valid=false;
-    
+
+    let resP = P, resR = R, resN = N, resM = M, valid = false;
+
     try {
-        // Enforce 600 months limit on input
         if (activeKey !== 'period' && (isNaN(N) || N > MAX_MONTHS)) {
-             return { valid: false };
+            return { valid: false };
         }
 
-        if (activeKey === 'installment') { 
-            if(P>0 && R>=0 && N>0) { 
-                const i = R/1200; 
-                resM = i===0 ? P/N : P * i * Math.pow(1+i,N) / (Math.pow(1+i,N)-1); 
-                valid=true; 
-            } 
+        if (activeKey === 'installment') {
+            if (P > 0 && R >= 0 && N > 0) {
+                const i = R / 1200;
+                resM = i === 0 ? P / N : P * i * Math.pow(1 + i, N) / (Math.pow(1 + i, N) - 1);
+                valid = true;
+            }
         }
-        else if (activeKey === 'amount') { 
-            if(M>0 && R>=0 && N>0) { 
-                const i = R/1200; 
-                resP = i===0 ? M*N : M * (Math.pow(1+i,N)-1) / (i * Math.pow(1+i,N)); 
-                valid=true; 
-            } 
+        else if (activeKey === 'amount') {
+            if (M > 0 && R >= 0 && N > 0) {
+                const i = R / 1200;
+                resP = i === 0 ? M * N : M * (Math.pow(1 + i, N) - 1) / (i * Math.pow(1 + i, N));
+                valid = true;
+            }
         }
-        else if (activeKey === 'period') { 
-            if(P>0 && M>0 && R>=0) { 
-                const i = R/1200; 
-                if(M > P*i) { 
-                    resN = Math.ceil(Math.log(M/(M-P*i)) / Math.log(1+i)); 
-                    // Validate calculated period against limit
-                    if (resN <= MAX_MONTHS) {
-                        valid=true; 
-                    } else {
-                        console.warn("Calculated period exceeds limit.");
-                        valid = false;
-                    }
-                } 
-            } 
+        else if (activeKey === 'period') {
+            if (P > 0 && M > 0 && R >= 0) {
+                const i = R / 1200;
+                if (M > P * i) {
+                    resN = Math.ceil(Math.log(M / (M - P * i)) / Math.log(1 + i));
+                    if (resN <= MAX_MONTHS) valid = true;
+                    else valid = false;
+                }
+            }
         }
-        else if (activeKey === 'rate') { 
-            if(P>0 && M>0 && N>0 && M*N > P) { 
-                // Try Newton-Raphson first
-                let i=0.01; 
+        else if (activeKey === 'rate') {
+            if (P > 0 && M > 0 && N > 0 && M * N > P) {
+                let i = 0.01;
                 let converged = false;
-                for(let j=0;j<20;j++) { 
-                    let f = M*(1-Math.pow(1+i,-N))/i - P; 
-                    let df = (M/i)*(N*Math.pow(1+i,-N-1)/(1+i) - (1-Math.pow(1+i,-N))/i); 
-                    let newI = i - f/df;
+                for (let j = 0; j < 20; j++) {
+                    if (i <= 0.0000001) i = 0.0000001;
+                    let f = M * (1 - Math.pow(1 + i, -N)) / i - P;
+                    let df = (M / i) * (N * Math.pow(1 + i, -N - 1) / (1 + i) - (1 - Math.pow(1 + i, -N)) / i);
+                    if (!isFinite(f) || !isFinite(df) || df === 0) break;
+                    let newI = i - f / df;
                     if (Math.abs(newI - i) < 0.0000001) {
                         i = newI;
                         converged = true;
                         break;
                     }
                     i = newI;
-                } 
-                resR = i*1200; 
-
-                // Robustness Check: If Newton failed (NaN/Infinity/Negative), use Bisection
+                }
+                resR = i * 1200;
                 if (!converged || !isFinite(resR) || resR <= 0) {
                     resR = solveRateBisection(P, N, M);
                 }
-                
+
+                // Re-derive installment from the calculated rate for schedule consistency
+                // This ensures the schedule uses values that are mathematically consistent
+                // with the derived rate, eliminating rounding discrepancies
+                const derivedI = resR / 1200;
+                if (derivedI > 0) {
+                    resM = round2(P * derivedI * Math.pow(1 + derivedI, N) / (Math.pow(1 + derivedI, N) - 1));
+                }
+
                 valid = true;
-            } 
+            }
         }
-    } catch(e) {
+    } catch (e) {
         console.error("Calculation Error", e);
     }
 
-    // Double check sanity of results before returning valid
-    if (isNaN(resP) || isNaN(resR) || isNaN(resN) || isNaN(resM) || resN > MAX_MONTHS) valid = false;
+    if (!isFinite(resP) || !isFinite(resR) || !isFinite(resN) || !isFinite(resM) || resN > MAX_MONTHS) valid = false;
 
     return { valid, P: resP, R: resR, N: resN, M: resM };
 }
 
-// Schedule Generation Logic
-function generateSchedule(loanData, dates) {
+/**
+ * Generates amortization schedule with optional stamp duty calculation
+ * Uses INTEGER MATH internally (piastres) for precision
+ * @param {Object} loanData - Loan parameters {P, R, N, M}
+ * @param {Object} dates - Date configuration {bookingDate, m1_Date, isAdvanced}
+ * @param {number} [stampRate=0] - Quarterly stamp rate percentage
+ * @returns {Object} Schedule data with {schedule[], totalActualInterest, m1_Payment, totalStamp}
+ */
+function generateSchedule(loanData, dates, stampRate = 0) {
     let { P, R, N, M } = loanData;
     let { bookingDate, m1_Date, isAdvanced } = dates;
-    
-    let schedule = [];
-    let bal = P;
-    let cumInt = 0;
-    let iRate = R/1200; 
-    
-    let standardPrincipal = 0;
-    let standardMonthlyInterest = P * iRate;
-    standardPrincipal = M - standardMonthlyInterest;
 
-    let m1_Interest = 0;
-    let m1_Payment = 0;
+    let schedule = [];
+    let iRate = R / 1200;  // Monthly rate (stays as float for calculations)
+
+    // === CONVERT TO INTEGER (PIASTRES) ===
+    // All monetary values work in piastres (1/100 currency) to avoid float errors
+    let balInt = toPiastres(P);
+    let MInt = toPiastres(round2(M));  // Force 2 decimals first, then to piastres
+
+    // Standard interest and principal in piastres
+    let standardMonthlyInterestInt = roundInt(balInt * iRate);
+    let standardPrincipalInt = MInt - standardMonthlyInterestInt;
+
+    // First month calculations
+    let m1_InterestInt = 0;
+    let m1_PaymentInt = 0;
 
     if (isAdvanced) {
         const daysDiff = days360(bookingDate, m1_Date);
-        m1_Interest = P * (R / 100) * (daysDiff / 360);
-        m1_Payment = standardPrincipal + m1_Interest;
+        // First month interest: P * (R/100) * (days/360) - all in piastres
+        m1_InterestInt = roundInt(balInt * (R / 100) * (daysDiff / 360));
+        m1_PaymentInt = standardPrincipalInt + m1_InterestInt;
     } else {
-        m1_Interest = standardMonthlyInterest;
-        m1_Payment = M;
+        m1_InterestInt = standardMonthlyInterestInt;
+        m1_PaymentInt = MInt;
     }
 
-    let totalActualInterest = 0;
-    
-    for(let m=1; m<=N; m++) {
-        let inte, prin, currentDate;
+    let totalActualInterestInt = 0;
+    let totalStampInt = 0;
+
+    // Track highest principal per quarter for stamp calculation (in piastres)
+    let quarterHighestPrincipalInt = {};
+    let processedQuarters = new Set();
+
+    for (let m = 1; m <= N; m++) {
+        let inteInt, prinInt, currentDate;
+        let openingBalInt = balInt;
 
         if (m === 1) {
-            inte = m1_Interest;
-            prin = standardPrincipal; 
-            if (bal < prin) prin = bal;
+            inteInt = m1_InterestInt;
+            prinInt = standardPrincipalInt;
+            if (openingBalInt < prinInt) prinInt = openingBalInt;
             currentDate = m1_Date;
         } else {
-            inte = bal * iRate;
-            prin = M - inte;
-            if (bal < prin) prin = bal;
-            
+            // Monthly interest in piastres
+            inteInt = roundInt(openingBalInt * iRate);
+
+            // Monthly principal in piastres
+            prinInt = MInt - inteInt;
+
+            if (openingBalInt < prinInt || m === N) {
+                prinInt = openingBalInt;
+            }
+
             let d = new Date(m1_Date);
             d.setMonth(m1_Date.getMonth() + (m - 1));
-            // Fix date overflow (e.g. Feb 30 -> Feb 28/29)
-            // NOTE: setDate(0) sets it to the LAST day of previous month
-            if(d.getDate() !== m1_Date.getDate()) { d.setDate(0); }
+            if (d.getDate() !== m1_Date.getDate()) { d.setDate(0); }
             currentDate = d;
         }
 
-        bal -= prin; 
-        cumInt += inte;
-        totalActualInterest += inte;
+        // Update balance (integer subtraction - no float errors!)
+        balInt = balInt - prinInt;
 
-        schedule.push({ 
-            m, 
-            rawDate: currentDate, 
-            bal: bal < 0.01 ? 0 : bal, 
-            int: inte, 
-            prin: prin, 
-            rem: bal < 0.01 ? 0 : bal 
+        totalActualInterestInt += inteInt;
+
+        // --- Stamp Calculation Logic (in piastres) ---
+        let stampChargeInt = 0;
+        let hasStamp = false;
+
+        if (stampRate > 0) {
+            const currentQuarter = getQuarterKey(currentDate);
+
+            // Track highest principal for current quarter
+            if (!quarterHighestPrincipalInt[currentQuarter] || openingBalInt > quarterHighestPrincipalInt[currentQuarter]) {
+                quarterHighestPrincipalInt[currentQuarter] = openingBalInt;
+            }
+
+            // Determine previous date (booking date for m=1, previous installment date otherwise)
+            const prevDate = m === 1 ? bookingDate : schedule[m - 2].rawDate;
+
+            // Check if a quarter-end falls within this installment period
+            const prevQuarter = getQuarterKey(prevDate);
+            const quarterEnd = getQuarterEndDate(prevDate);
+
+            // If the previous period's quarter-end is on or before current date, and we haven't processed it
+            if (!processedQuarters.has(prevQuarter) && quarterEnd <= currentDate) {
+                // Calculate stamp based on highest principal in that quarter
+                const highestPrincipalInt = quarterHighestPrincipalInt[prevQuarter] || openingBalInt;
+                stampChargeInt = roundInt(highestPrincipalInt * (stampRate / 100) / 4);
+                totalStampInt += stampChargeInt;
+                hasStamp = true;
+                processedQuarters.add(prevQuarter);
+            }
+        }
+
+        // === CONVERT BACK TO CURRENCY FOR OUTPUT ===
+        schedule.push({
+            m,
+            rawDate: currentDate,
+            bal: toCurrency(openingBalInt),
+            int: toCurrency(inteInt),
+            prin: toCurrency(prinInt),
+            rem: toCurrency(balInt),
+            stamp: toCurrency(stampChargeInt),
+            hasStamp: hasStamp
         });
-        
-        if(bal < 0.01) break;
+
+        if (balInt <= 0) break;
     }
 
-    return { schedule, totalActualInterest, m1_Payment };
+    return {
+        schedule,
+        totalActualInterest: toCurrency(totalActualInterestInt),
+        m1_Payment: toCurrency(m1_PaymentInt),
+        totalStamp: toCurrency(totalStampInt)
+    };
+}
+
+/**
+ * Calculates early settlement amounts including fees and accrued interest
+ * Uses INTEGER MATH internally (piastres) for precision
+ * @param {Array} schedule - Amortization schedule array
+ * @param {Date} settlementDate - Date of early settlement
+ * @param {number} feePercentage - Early settlement fee percentage
+ * @param {number} annualRate - Annual interest rate
+ * @param {number} [stampRate=0] - Quarterly stamp rate percentage
+ * @returns {Object} Settlement breakdown with totals
+ */
+function calculateEarlySettlement(schedule, settlementDate, feePercentage, annualRate, stampRate = 0) {
+    if (!schedule || schedule.length === 0 || !settlementDate) {
+        return { valid: false };
+    }
+
+    const toDateNum = (d) => {
+        return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    };
+
+    const settlementNum = toDateNum(settlementDate);
+    let lastPaidIndex = -1;
+
+    for (let i = 0; i < schedule.length; i++) {
+        if (toDateNum(schedule[i].rawDate) <= settlementNum) {
+            lastPaidIndex = i;
+        } else {
+            break;
+        }
+    }
+
+    let principalBalance, lastPaidDate, nextInstallmentDate, nextInstallmentInterest;
+
+    if (lastPaidIndex === -1) {
+        principalBalance = schedule[0].bal;
+        lastPaidDate = null;
+        nextInstallmentDate = schedule[0].rawDate;
+        nextInstallmentInterest = schedule[0].int;
+    } else if (lastPaidIndex === schedule.length - 1) {
+        return { valid: true, principalBalance: 0, fee: 0, accruedInterest: 0, settlementStamp: 0, totalSettlement: 0, daysElapsed: 0, lastPaidInstallment: lastPaidIndex + 1, message: 'Loan fully paid' };
+    } else {
+        principalBalance = schedule[lastPaidIndex].rem;
+        lastPaidDate = schedule[lastPaidIndex].rawDate;
+        nextInstallmentDate = schedule[lastPaidIndex + 1].rawDate;
+        nextInstallmentInterest = schedule[lastPaidIndex + 1].int;
+    }
+
+    // === CONVERT TO INTEGER (PIASTRES) ===
+    let principalBalanceInt = toPiastres(principalBalance);
+    let nextInstallmentInterestInt = toPiastres(nextInstallmentInterest);
+
+    // Fee calculation in piastres
+    let feeInt = roundInt(principalBalanceInt * (feePercentage / 100));
+    let accruedInterestInt = 0;
+    let daysElapsed = 0;
+
+    if (lastPaidDate) {
+        daysElapsed = days360(lastPaidDate, settlementDate);
+        const daysInPeriod = days360(lastPaidDate, nextInstallmentDate);
+        if (daysInPeriod > 0 && daysElapsed > 0) {
+            accruedInterestInt = roundInt((nextInstallmentInterestInt / daysInPeriod) * daysElapsed);
+        }
+    } else {
+        const dailyRate = annualRate / 100 / 360;
+        daysElapsed = days360(new Date(settlementDate.getFullYear(), settlementDate.getMonth(), 1), settlementDate);
+        accruedInterestInt = roundInt(principalBalanceInt * dailyRate * Math.max(0, daysElapsed));
+    }
+
+    // Calculate settlement stamp (quarter's stamp based on HIGHEST principal in the quarter)
+    let settlementStampInt = 0;
+    if (stampRate > 0 && principalBalanceInt > 0) {
+        // Determine the quarter of the settlement date
+        const settlementQuarter = getQuarterKey(settlementDate);
+
+        // Find the highest principal balance in that quarter from the schedule (in piastres)
+        let highestPrincipalInQuarterInt = principalBalanceInt; // Default to current
+
+        for (let i = 0; i < schedule.length; i++) {
+            const entryQuarter = getQuarterKey(schedule[i].rawDate);
+            if (entryQuarter === settlementQuarter) {
+                const entryBalInt = toPiastres(schedule[i].bal);
+                if (entryBalInt > highestPrincipalInQuarterInt) {
+                    highestPrincipalInQuarterInt = entryBalInt;
+                }
+            }
+        }
+
+        // Also include the opening balance of the loan if it's in the same quarter
+        if (schedule.length > 0 && getQuarterKey(schedule[0].rawDate) === settlementQuarter) {
+            const firstBalInt = toPiastres(schedule[0].bal);
+            if (firstBalInt > highestPrincipalInQuarterInt) {
+                highestPrincipalInQuarterInt = firstBalInt;
+            }
+        }
+
+        settlementStampInt = roundInt(highestPrincipalInQuarterInt * (stampRate / 100) / 4);
+    }
+
+    // Total settlement in piastres (integer addition - no float errors!)
+    const totalSettlementInt = principalBalanceInt + feeInt + accruedInterestInt + settlementStampInt;
+
+    // === CONVERT BACK TO CURRENCY FOR OUTPUT ===
+    return {
+        valid: true,
+        principalBalance: toCurrency(principalBalanceInt),
+        fee: toCurrency(feeInt),
+        accruedInterest: toCurrency(accruedInterestInt),
+        settlementStamp: toCurrency(settlementStampInt),
+        totalSettlement: toCurrency(totalSettlementInt),
+        daysElapsed: daysElapsed,
+        lastPaidInstallment: lastPaidIndex + 1,
+        lastPaidDate: lastPaidDate,
+        nextInstallmentDate: nextInstallmentDate,
+        remainingInstallments: schedule.length - (lastPaidIndex + 1)
+    };
+}
+
+/**
+ * Generates a deterministic Calculation Fingerprint (short hash)
+ * Used for auditability - same inputs always produce same fingerprint
+ * @param {Object} inputs - {amount, rate, period, startDate (DD/MM/YYYY string)}
+ * @param {string} appVersion - Current app version (e.g., "1.9.0")
+ * @returns {string} Fingerprint in format "v1.9-XXXXXX"
+ */
+function generateFingerprint(inputs, appVersion = "1.9.0") {
+    // Create canonical input string (order matters for determinism)
+    const canonical = [
+        String(inputs.amount || 0),
+        String(inputs.rate || 0),
+        String(inputs.period || 0),
+        String(inputs.startDate || ''),
+        appVersion
+    ].join('|');
+
+    // DJB2 hash algorithm (fast, non-cryptographic, deterministic)
+    let hash = 5381;
+    for (let i = 0; i < canonical.length; i++) {
+        hash = ((hash << 5) + hash) + canonical.charCodeAt(i);
+        hash = hash & 0xFFFFFFFF; // Convert to 32-bit integer
+    }
+
+    // Convert to positive number and then to Base36 (alphanumeric)
+    const hashPositive = Math.abs(hash) >>> 0;
+    const hashStr = hashPositive.toString(36).toUpperCase().padStart(6, '0').slice(-6);
+
+    // Format: v{majorVersion}-{HASH}
+    const versionPrefix = 'v' + appVersion.split('.')[0] + '.' + appVersion.split('.')[1];
+    return `${versionPrefix}-${hashStr}`;
 }
