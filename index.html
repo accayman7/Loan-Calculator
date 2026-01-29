@@ -1,21 +1,36 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr" class="scroll-smooth">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description"
+        content="Professional Loan Calculator PWA for accurate financial planning. Calculate installments, interest, and generate amortization schedules.">
     <title>Loan Calculator Pro</title>
-    
+
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/png" href="./icon.png">
     <link rel="apple-touch-icon" href="./icon.png">
-    
+
     <meta name="theme-color" content="#f9fafb" id="meta-theme-color">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="LoanCalc">
 
+    <script src="./xlsx.mini.min.js" defer></script>
+    <!-- Chart.js is loaded lazily on first calculation for faster initial load -->
+    <script src="./tailwind.js"></script>
+
+    <!-- App scripts with defer - executes in order after DOM parsing -->
+    <script src="./js/logic.js" defer></script>
+    <script src="./js/ui.js" defer></script>
+    <script src="./js/datepicker.js" defer></script>
+    <script src="./js/app.js" defer></script>
+
     <script>
-        (function() {
+        // Inline script to prevent flash of wrong theme
+        (function () {
             const savedTheme = localStorage.getItem('theme') || 'system';
             const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             document.documentElement.setAttribute('data-theme', savedTheme);
@@ -29,115 +44,542 @@
             }
             const savedLang = localStorage.getItem('language') || (navigator.language.startsWith('ar') ? 'ar' : 'en');
             document.documentElement.lang = savedLang;
-            if (savedLang === 'ar') document.documentElement.dir = 'rtl';
-            else document.documentElement.dir = 'ltr';
+            document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
         })();
     </script>
 
-    <script src="./chart.js"></script>
-    <script src="./tailwind.js"></script>
-    
     <script>
-      tailwind.config = {
-        darkMode: 'class', 
-        theme: {
-          extend: {
-            fontFamily: { 
-                sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'], 
-            },
-            colors: {
-                gray: { 850: '#1f2937', 900: '#111827', 950: '#020617' }
-            },
-            boxShadow: {
-                'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    },
+                    colors: {
+                        gray: { 850: '#1f2937', 900: '#111827', 950: '#020617' }
+                    },
+                    boxShadow: {
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
+                    }
+                }
             }
-          }
         }
-      }
     </script>
-    
+
     <style>
-        html { 
-            min-height: 100%; 
-            background-color: #f9fafb; 
-            scroll-behavior: smooth; 
-            overscroll-behavior-y: none; 
+        html {
+            min-height: 100%;
+            background-color: #f9fafb;
+            scroll-behavior: smooth;
+            overscroll-behavior: none;
         }
-        
-        html.dark { background-color: #020617; }
-        
-        body { 
-            min-height: 100vh; font-family: system-ui, sans-serif; 
-            -webkit-font-smoothing: antialiased; 
+
+        html.dark {
+            background-color: #020617;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
             padding-bottom: env(safe-area-inset-bottom);
-            overscroll-behavior-y: none;
-            @apply bg-gray-50 text-gray-900;
+            overscroll-behavior: none;
+            background-color: #f9fafb;
+            color: #111827;
         }
-        
-        .dark body { background-color: #020617 !important; color: #f3f4f6 !important; }
-        body.scroll-lock { overflow: hidden !important; height: 100vh; }
-        
-        input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
+
+        button,
+        input,
+        select,
+        textarea,
+        a {
+            touch-action: manipulation;
+        }
+
+        .dark body {
+            background-color: #020617 !important;
+            color: #f3f4f6 !important;
+        }
+
+        body.scroll-lock {
+            overflow: hidden !important;
+        }
+
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
             -webkit-text-fill-color: #111827 !important;
             transition: background-color 5000s ease-in-out 0s;
         }
-        .dark input:-webkit-autofill, .dark input:-webkit-autofill:hover, .dark input:-webkit-autofill:focus, .dark input:-webkit-autofill:active {
+
+        .dark input:-webkit-autofill,
+        .dark input:-webkit-autofill:hover,
+        .dark input:-webkit-autofill:focus,
+        .dark input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px #1f2937 inset !important;
             -webkit-text-fill-color: #ffffff !important;
         }
 
-        nav { padding-top: env(safe-area-inset-top); }
+        /* Date input segment highlighting */
+        #start-date-display::selection,
+        #first-inst-date-display::selection,
+        #settlement-date-display::selection {
+            background-color: #cfe8ff;
+        }
+
+        .dark #start-date-display::selection,
+        .dark #first-inst-date-display::selection,
+        .dark #settlement-date-display::selection {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+
+        /* Nav is positioned relative for snow effect overlay */
+        nav {
+            padding-top: env(safe-area-inset-top);
+        }
+
+        nav>div {
+            position: relative;
+            z-index: 2;
+        }
 
         .input-group {
-            display: flex; align-items: center; padding: 0.25rem; gap: 0.25rem;
-            border-width: 1px; border-radius: 0.5rem; transition: all 200ms;
-            background-color: #ffffff; border-color: #d1d5db;
+            display: flex;
+            align-items: center;
+            padding: 0.25rem;
+            gap: 0.25rem;
+            border-width: 1px;
+            border-radius: 0.5rem;
+            transition: all 200ms;
+            background-color: #ffffff;
+            border-color: #d1d5db;
         }
-        .dark .input-group { background-color: #1f2937 !important; border-color: #374151 !important; }
-        .input-group.error-state { border-color: #ef4444 !important; box-shadow: 0 0 0 1px #ef4444; }
-        .input-group.active-target { border-color: #6366f1; background-color: #eef2ff; box-shadow: 0 0 0 1px #6366f1; }
-        .input-group.active-target input { font-weight: 700 !important; }
-        .dark .input-group.active-target { background-color: rgba(99, 102, 241, 0.15) !important; border-color: #6366f1 !important; }
 
-        .table-container { 
-            max-height: 500px; overflow-y: auto; overflow-x: hidden; 
-            border: 1px solid #e2e8f0; @apply dark:border-gray-800; 
+        .dark .input-group {
+            background-color: #1f2937 !important;
+            border-color: #374151 !important;
         }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        th { 
-            position: sticky; top: 0; z-index: 10; background-color: #ffffff; 
-            color: #374151; border-bottom: 2px solid #e5e7eb; font-weight: 700; 
-            text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+
+        .input-group.error-state {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 1px #ef4444;
         }
+
+        .info-icon {
+            cursor: help;
+            opacity: 0.8;
+            transition: all 0.2s;
+            font-size: 0.65rem;
+            font-style: normal;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1rem;
+            height: 1rem;
+            min-width: 1rem;
+            min-height: 1rem;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        .info-icon:hover {
+            opacity: 1;
+            background-color: rgba(255, 255, 255, 0.35);
+        }
+
+        /* Custom CSS Tooltip */
+        .info-icon {
+            position: relative;
+        }
+
+        .info-icon::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #1f2937;
+            color: #fff;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 400;
+            text-transform: none;
+            white-space: normal;
+            width: max-content;
+            max-width: 220px;
+            line-height: 1.4;
+            text-align: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s ease, visibility 0.15s ease;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Tooltip arrow */
+        .info-icon::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #1f2937;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s ease, visibility 0.15s ease;
+            pointer-events: none;
+        }
+
+        .info-icon:hover::after,
+        .info-icon:hover::before {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Right-aligned tooltips - anchor from right edge */
+        .text-end .info-icon::after {
+            left: auto;
+            right: 0;
+            transform: translateX(0);
+        }
+
+        .text-end .info-icon::before {
+            left: auto;
+            right: 8px;
+            transform: translateX(0);
+        }
+
+        /* Left-aligned tooltips - shift right */
+        .summary-grid>div:first-child .info-icon::after {
+            left: 0;
+            transform: translateX(0);
+        }
+
+        .summary-grid>div:first-child .info-icon::before {
+            left: 8px;
+            transform: translateX(0);
+        }
+
+        /* RTL support for tooltips */
+        [dir="rtl"] .info-icon::after {
+            text-align: right;
+        }
+
+        [dir="rtl"] .text-end .info-icon::after {
+            left: 0;
+            right: auto;
+            transform: translateX(0);
+        }
+
+        [dir="rtl"] .text-end .info-icon::before {
+            left: 8px;
+            right: auto;
+            transform: translateX(0);
+        }
+
+        [dir="rtl"] .summary-grid>div:first-child .info-icon::after {
+            left: auto;
+            right: 0;
+            transform: translateX(0);
+        }
+
+        [dir="rtl"] .summary-grid>div:first-child .info-icon::before {
+            left: auto;
+            right: 8px;
+            transform: translateX(0);
+        }
+
+        /* Ensure parent containers don't clip tooltips */
+        .summary-grid,
+        .flex.items-center.gap-1,
+        #std-installments-view,
+        #adv-installments-view,
+        #summary-section,
+        #summary-section>div {
+            overflow: visible !important;
+        }
+
+        .input-group.active-target {
+            border-color: #6366f1;
+            background-color: #eef2ff;
+            box-shadow: 0 0 0 1px #6366f1;
+        }
+
+        .input-group.active-target input[type="text"] {
+            font-weight: 700 !important;
+        }
+
+        .dark .input-group.active-target {
+            background-color: rgba(99, 102, 241, 0.15) !important;
+            border-color: #6366f1 !important;
+        }
+
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .dark .table-container {
+            border-color: #1f2937;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #ffffff;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+            font-weight: 700;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
         .dark th {
-            background-color: #111827 !important; color: #e5e7eb !important; 
-            border-bottom: 2px solid #374151 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            background-color: #111827 !important;
+            color: #e5e7eb !important;
+            border-bottom: 2px solid #374151 !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
-        html[dir="ltr"] td { text-align: right; }
-        html[dir="rtl"] td { text-align: left; }
-        td:first-child { text-align: center !important; }
-        button:disabled { @apply opacity-50 cursor-not-allowed; }
-        
-        .input-group.relative input { padding-right: 2.5rem !important; }
-        html[dir="rtl"] .input-group.relative input { padding-right: 0.5rem !important; padding-left: 2.5rem !important; }
-        html[dir="rtl"] .input-group.relative .absolute { right: auto !important; left: 0 !important; border-radius: 0.375rem 0 0 0.375rem !important; }
 
-        @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .spin-icon { animation: spin-once 1s ease-in-out; }
+        html[dir="ltr"] td {
+            text-align: right;
+        }
 
-        body, body * {
+        html[dir="rtl"] td {
+            text-align: left;
+        }
+
+        td:first-child {
+            text-align: center !important;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ============================================= */
+        /* COMPONENT CLASSES - Reusable UI patterns     */
+        /* ============================================= */
+
+        /* Text Input - transparent input for input-group */
+        .text-input {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            padding: 0.5rem;
+            color: #111827;
+        }
+
+        .text-input:focus {
+            outline: none;
+            box-shadow: none;
+        }
+
+        .text-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .dark .text-input {
+            color: #ffffff;
+        }
+
+        /* Radio Cell - container for radio button in input-group */
+        .radio-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.625rem;
+        }
+
+        .radio-cell input[type="radio"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+        }
+
+        /* Field Label - label with icon */
+        .field-label {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+
+        .dark .field-label {
+            color: #9ca3af;
+        }
+
+        /* Error Text - validation error message */
+        .error-text {
+            font-size: 0.75rem;
+            color: #ef4444;
+            margin-top: 0.25rem;
+        }
+
+        /* Dropdown Option - menu item for dropdowns */
+        .dropdown-option {
+            width: 100%;
+            text-align: start;
+            padding: 0.625rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: background-color 0.15s;
+        }
+
+        .dropdown-option:hover {
+            background-color: #f3f4f6;
+        }
+
+        .dark .dropdown-option {
+            color: #e5e7eb;
+        }
+
+        .dark .dropdown-option:hover {
+            background-color: #1f2937;
+        }
+
+        /* Card - content container */
+        .card {
+            background-color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f3f4f6;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .dark .card {
+            background-color: #111827;
+            border-color: #1f2937;
+        }
+
+        /* Icon Button - nav toolbar button */
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            color: #6b7280;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .btn-icon:hover {
+            background-color: #f3f4f6;
+        }
+
+        .dark .btn-icon {
+            color: #9ca3af;
+        }
+
+        .dark .btn-icon:hover {
+            background-color: #1f2937;
+        }
+
+
+        .input-group.relative input {
+            padding-right: 2.5rem !important;
+        }
+
+        html[dir="rtl"] .input-group.relative input {
+            padding-right: 0.5rem !important;
+            padding-left: 2.5rem !important;
+        }
+
+        html[dir="rtl"] .input-group.relative .absolute {
+            right: auto !important;
+            left: 0.25rem !important;
+            border-radius: 0.375rem !important;
+        }
+
+        @keyframes spin-once {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin-icon {
+            animation: spin-once 1s ease-in-out;
+        }
+
+        body,
+        body * {
             transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
             transition-duration: 300ms;
             transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .preload, .preload * { transition: none !important; }
 
-        .theme-icon { display: none; }
-        html[data-theme="light"] #icon-sun { display: block; }
-        html[data-theme="dark"] #icon-moon { display: block; }
-        html[data-theme="system"] #icon-system { display: block; }
+        /* Exclude toast from global transitions - it manages its own animation */
+        #message-box {
+            transition-property: opacity, transform;
+            transition-duration: 300ms;
+            transition-timing-function: ease-out;
+        }
+
+        /* Exclude sticky elements from transitions to prevent scroll lag */
+        .sticky-optimized,
+        .sticky-optimized * {
+            transition-property: background-color, border-color, color, fill, stroke, opacity;
+            transition-duration: 300ms;
+        }
+
+        /* GPU acceleration for sticky positioning */
+        .sticky-optimized {
+            will-change: scroll-position;
+            contain: layout style;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+        }
+
+        .preload,
+        .preload * {
+            transition: none !important;
+        }
+
+        .theme-icon {
+            display: none;
+        }
+
+        html[data-theme="light"] #icon-sun {
+            display: block;
+        }
+
+        html[data-theme="dark"] #icon-moon {
+            display: block;
+        }
+
+        html[data-theme="system"] #icon-system {
+            display: block;
+        }
 
         html[lang="en"] #lang-en,
         html[lang="ar"] #lang-ar {
@@ -153,26 +595,29 @@
             color: transparent !important;
             fill: transparent !important;
         }
-        
+
         .summary-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
             align-items: start;
         }
+
         .summary-divider {
             grid-column: span 2;
             height: 1px;
             background-color: rgba(255, 255, 255, 0.2);
             margin: 0.5rem 0;
         }
-        
+
         .hover-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: none;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
+
         .dark .hover-card:hover {
-             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+            border-color: rgba(99, 102, 241, 0.3);
         }
 
         /* --- Telegram-style Theme Transition --- */
@@ -182,251 +627,1491 @@
             mix-blend-mode: normal;
             display: block;
         }
-        
-        /* DEFAULT: Light -> Dark (Expand) */
-        /* The New view (Dark) sits on top and expands */
-        ::view-transition-new(root) { z-index: 9999; }
-        ::view-transition-old(root) { z-index: 1; }
-        
-        /* REVERSE: Dark -> Light (Collapse) */
-        /* The Old view (Dark) stays on top and shrinks */
-        .reverse-transition::view-transition-old(root) { z-index: 9999; }
-        .reverse-transition::view-transition-new(root) { z-index: 1; }
+
+        ::view-transition-new(root) {
+            z-index: 9999;
+        }
+
+        ::view-transition-old(root) {
+            z-index: 1;
+        }
+
+        .reverse-transition::view-transition-old(root) {
+            z-index: 9999;
+        }
+
+        .reverse-transition::view-transition-new(root) {
+            z-index: 1;
+        }
 
         .theme-icon {
             view-transition-name: theme-icon;
         }
-        
-        /* UPDATED: RTL Dropdown Override - Removed 'right: auto' to allow centering */
+
+        #theme-menu {
+            transition-property: transform, opacity, visibility;
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            transform-style: preserve-3d;
+            -webkit-font-smoothing: subpixel-antialiased;
+        }
+
+        #lang-menu {
+            transition-property: transform, opacity, visibility;
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            transform-style: preserve-3d;
+            -webkit-font-smoothing: subpixel-antialiased;
+        }
+
         html[dir="rtl"] .check-icon {
             margin-left: 0 !important;
             margin-right: auto !important;
         }
+
+        /* --- SEASONAL: Christmas Theme (Enable in December) ---
+        .snow-container-nav,
+        .snow-container-about {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 100%);
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 100%);
+            animation: nav-container-fade 1s ease-out forwards;
+        }
+
+        .snow-container-about {
+            z-index: 0;
+            mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0) 100%);
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0) 100%);
+        }
+
+        .modal-content {
+            position: relative;
+            z-index: 10;
+        }
+
+        .snow-container-nav {
+            z-index: 1;
+        }
+
+        @keyframes nav-container-fade {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .snowflake {
+            position: absolute;
+            top: -20px;
+            color: #0ea5e9;
+            user-select: none;
+            animation-name: snow-fall, snow-shake;
+            animation-timing-function: linear, ease-in-out;
+            animation-iteration-count: infinite, infinite;
+        }
+
+        .dark .snowflake {
+            color: #e0f2fe;
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+        }
+
+        @keyframes snow-fall {
+            0% { top: -10%; opacity: 0; }
+            15% { opacity: var(--target-opacity, 0.7); }
+            85% { opacity: var(--target-opacity, 0.7); }
+            100% { top: 120%; opacity: 0; }
+        }
+
+        @keyframes snow-shake {
+            0% { transform: translateX(0px); }
+            50% { transform: translateX(15px); }
+            100% { transform: translateX(0px); }
+        }
+        --- END SEASONAL Theme --- */
+
+        /* Hide scrollbar but keep scroll functionality */
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+            /* Chrome, Safari, Opera */
+        }
+
+        /* Visual Micro-Animations (haptic feedback alternative) */
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translateX(-6px);
+            }
+
+            40%,
+            80% {
+                transform: translateX(6px);
+            }
+        }
+
+        @keyframes bounce-in {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.8;
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes success-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        @keyframes button-press {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(0.95);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes toggle-bounce {
+            0% {
+                transform: scale(1);
+            }
+
+            40% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        .animate-bounce-in {
+            animation: bounce-in 0.3s ease-out;
+        }
+
+        .animate-success-pulse {
+            animation: success-pulse 0.6s ease-out;
+        }
+
+        .animate-button-press {
+            animation: button-press 0.15s ease-out;
+        }
+
+        .animate-toggle-bounce {
+            animation: toggle-bounce 0.25s ease-out;
+        }
+
+        /* Calculation success animations */
+        @keyframes button-success-pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+            }
+
+            30% {
+                transform: scale(1.02);
+                box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.3);
+            }
+
+            60% {
+                transform: scale(1);
+                box-shadow: 0 0 0 12px rgba(34, 197, 94, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        @keyframes result-glow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.5);
+            }
+
+            40% {
+                box-shadow: 0 0 8px 4px rgba(124, 58, 237, 0.4);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(124, 58, 237, 0);
+            }
+        }
+
+        .animate-button-success {
+            animation: button-success-pulse 0.5s ease-out;
+        }
+
+        .animate-result-glow {
+            animation: result-glow 0.8s ease-out;
+        }
+
+        /* Input Groups - enhanced focus without scale to prevent cut-off */
+        .input-group {
+            transition: border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                background-color 0.2s ease;
+        }
+
+        /* Bouncy Buttons - spring effect on press */
+        button {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background-color 0.2s ease,
+                box-shadow 0.2s ease,
+                opacity 0.2s ease;
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        /* Cards - spring transition */
+        .hover-card {
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s ease;
+        }
+
+        /* Bouncy Summary Section numbers */
+        #summary-principal,
+        #total-sum,
+        #summary-first-inst,
+        #summary-regular-inst,
+        #summary-std-inst {
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Bouncy dropdown menu items */
+        .theme-option:active,
+        .lang-option:active {
+            transform: scale(0.97);
+        }
+
+        /* Custom Radio Button Animations */
+        input[type="radio"][name="calc-target"] {
+            appearance: none;
+            -webkit-appearance: none;
+            position: relative;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            background-color: transparent;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        input[type="radio"][name="calc-target"]::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        input[type="radio"][name="calc-target"]::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+            transition: box-shadow 0.3s ease-out;
+        }
+
+        input[type="radio"][name="calc-target"]:hover {
+            border-color: #6366f1;
+            transform: scale(1.1);
+        }
+
+        input[type="radio"][name="calc-target"]:checked {
+            border-color: #6366f1;
+            animation: radio-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        input[type="radio"][name="calc-target"]:checked::before {
+            width: 10px;
+            height: 10px;
+        }
+
+        input[type="radio"][name="calc-target"]:checked::after {
+            animation: radio-ring-pulse 0.4s ease-out;
+        }
+
+        @keyframes radio-pop {
+            0% {
+                transform: scale(1);
+            }
+
+            40% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes radio-ring-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5);
+            }
+
+            100% {
+                box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+            }
+        }
+
+        .dark input[type="radio"][name="calc-target"] {
+            border-color: #4b5563;
+        }
+
+        .dark input[type="radio"][name="calc-target"]:hover {
+            border-color: #818cf8;
+        }
+
+        .dark input[type="radio"][name="calc-target"]:checked {
+            border-color: #818cf8;
+        }
+
+        .dark input[type="radio"][name="calc-target"]:checked::before {
+            background: linear-gradient(135deg, #818cf8 0%, #a5b4fc 100%);
+        }
+
+        /* Enhanced button active states for tactile feel */
+        .btn-tactile {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        .btn-tactile:active {
+            transform: scale(0.96);
+        }
+
+        /* Mobile Touch Feedback - Using :active states instead of tap highlight to respect border-radius */
+        button,
+        input,
+        select,
+        textarea,
+        a,
+        label[for] {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Active state feedback for rounded elements */
+        button:active {
+            opacity: 0.8;
+        }
+
+        .input-group:active {
+            opacity: 0.9;
+        }
+
+        /* First-time Tutorial Tooltip */
+        .tutorial-tooltip {
+            position: absolute;
+            z-index: 9999;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            min-width: 220px;
+            max-width: 280px;
+            font-size: 13px;
+            line-height: 1.5;
+            animation: tooltip-appear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .tutorial-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 20px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid #6366f1;
+        }
+
+        /* Arrow points left when tooltip is next to radio button */
+        .tutorial-tooltip.from-radio::before {
+            top: 50%;
+            left: -8px;
+            transform: translateY(-50%);
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-right: 8px solid #6366f1;
+            border-left: none;
+        }
+
+        html[dir="rtl"] .tutorial-tooltip::before {
+            left: auto;
+            right: 20px;
+        }
+
+        /* RTL from-radio: arrow on RIGHT side pointing RIGHT toward radio button */
+        html[dir="rtl"] .tutorial-tooltip.from-radio.rtl-arrow::before {
+            top: 50%;
+            left: auto !important;
+            right: -8px !important;
+            transform: translateY(-50%);
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-left: 8px solid #4f46e5 !important;
+            border-right: none !important;
+        }
+
+        .tutorial-tooltip-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tutorial-tooltip-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        @keyframes tooltip-appear {
+            0% {
+                opacity: 0;
+                transform: translateY(-10px) scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes tooltip-pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+
+            50% {
+                box-shadow: 0 10px 30px -5px rgba(99, 102, 241, 0.6), 0 8px 15px -6px rgba(99, 102, 241, 0.3);
+            }
+        }
+
+        .tutorial-tooltip.pulse {
+            animation: tooltip-appear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), tooltip-pulse 2s ease-in-out infinite 0.4s;
+        }
+
+        /* From-radio: horizontal slide-in animation */
+        @keyframes tooltip-appear-horizontal {
+            0% {
+                opacity: 0;
+                transform: translateY(-50%) translateX(-15px) scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(-50%) translateX(0) scale(1);
+            }
+        }
+
+        html[dir="rtl"] .tutorial-tooltip.from-radio.pulse {
+            animation: tooltip-appear-horizontal-rtl 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), tooltip-pulse 2s ease-in-out infinite 0.4s;
+        }
+
+        @keyframes tooltip-appear-horizontal-rtl {
+            0% {
+                opacity: 0;
+                transform: translateY(-50%) translateX(15px) scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(-50%) translateX(0) scale(1);
+            }
+        }
+
+        .tutorial-tooltip.from-radio.pulse {
+            animation: tooltip-appear-horizontal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), tooltip-pulse 2s ease-in-out infinite 0.4s;
+        }
+
+        /* ============================================= */
+        /* CUSTOM DATE PICKER - Scroll Wheel Style      */
+        /* ============================================= */
+
+        .date-picker-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background-color: rgba(0, 0, 0, 0);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            pointer-events: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .date-picker-backdrop.visible {
+            background-color: rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+        }
+
+        .date-picker-modal {
+            width: 100%;
+            max-width: 420px;
+            background-color: #ffffff;
+            border-radius: 1.5rem 1.5rem 0 0;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.34, 1.25, 0.64, 1);
+            overflow: hidden;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .dark .date-picker-modal {
+            background-color: #1f2937;
+        }
+
+        .date-picker-backdrop.visible .date-picker-modal {
+            transform: translateY(0);
+        }
+
+        .date-picker-drag-handle {
+            padding: 0.75rem 0 0.25rem;
+            cursor: grab;
+            touch-action: pan-y;
+        }
+
+        .date-picker-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .date-picker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dark .date-picker-header {
+            border-bottom-color: #374151;
+        }
+
+        .date-picker-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .dark .date-picker-title {
+            color: #e5e7eb;
+        }
+
+        .date-picker-btn {
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.15s;
+        }
+
+        .date-picker-btn.cancel {
+            color: #6b7280;
+        }
+
+        .date-picker-btn.cancel:hover {
+            background-color: #f3f4f6;
+        }
+
+        .dark .date-picker-btn.cancel {
+            color: #9ca3af;
+        }
+
+        .dark .date-picker-btn.cancel:hover {
+            background-color: #374151;
+        }
+
+        .date-picker-btn.confirm {
+            color: #4f46e5;
+        }
+
+        .date-picker-btn.confirm:hover {
+            background-color: #eef2ff;
+        }
+
+        .dark .date-picker-btn.confirm {
+            color: #818cf8;
+        }
+
+        .dark .date-picker-btn.confirm:hover {
+            background-color: rgba(99, 102, 241, 0.15);
+        }
+
+        .date-picker-btn.today {
+            color: #059669;
+            background-color: #ecfdf5;
+            border-radius: 1rem;
+        }
+
+        .date-picker-btn.today:hover {
+            background-color: #d1fae5;
+        }
+
+        .dark .date-picker-btn.today {
+            color: #34d399;
+            background-color: rgba(52, 211, 153, 0.15);
+        }
+
+        .dark .date-picker-btn.today:hover {
+            background-color: rgba(52, 211, 153, 0.25);
+        }
+
+        .date-picker-title-bar {
+            text-align: center;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dark .date-picker-title-bar {
+            border-bottom-color: #374151;
+        }
+
+        .date-picker-body {
+            position: relative;
+            height: 220px;
+            overflow: hidden;
+        }
+
+        .date-picker-highlight {
+            position: absolute;
+            top: 50%;
+            left: 1rem;
+            right: 1rem;
+            transform: translateY(-50%);
+            height: 44px;
+            background-color: #f3f4f6;
+            border-radius: 0.75rem;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .dark .date-picker-highlight {
+            background-color: #374151;
+        }
+
+        .date-picker-columns {
+            display: flex;
+            height: 100%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .date-picker-columns.rtl {
+            flex-direction: row-reverse;
+        }
+
+        .date-picker-column {
+            flex: 1;
+            height: 100%;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .date-picker-column::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Day name column is narrower */
+        .date-picker-column[data-type="dayname"] {
+            flex: 0.8;
+        }
+
+        /* Month column is wider */
+        .date-picker-column[data-type="month"] {
+            flex: 1.3;
+        }
+
+        .date-picker-scroll {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .date-picker-item {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #9ca3af;
+            scroll-snap-align: center;
+            transition: color 0.15s, transform 0.15s;
+            user-select: none;
+            white-space: nowrap;
+            width: 100%;
+        }
+
+        .date-picker-item.padding {
+            color: transparent;
+        }
+
+        .date-picker-item.selected-static {
+            color: #111827;
+            font-weight: 600;
+        }
+
+        .dark .date-picker-item {
+            color: #6b7280;
+        }
+
+        .dark .date-picker-item.selected-static {
+            color: #f3f4f6;
+        }
+
+        /* Fade effect for items away from center */
+        /* Fade effect for items away from center */
+        .date-picker-column {
+            cursor: grab;
+            touch-action: pan-y;
+            outline: none;
+            position: relative;
+            mask-image: linear-gradient(to bottom,
+                    transparent 0%,
+                    rgba(0, 0, 0, 0.4) 20%,
+                    black 40%,
+                    black 60%,
+                    rgba(0, 0, 0, 0.4) 80%,
+                    transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom,
+                    transparent 0%,
+                    rgba(0, 0, 0, 0.4) 20%,
+                    black 40%,
+                    black 60%,
+                    rgba(0, 0, 0, 0.4) 80%,
+                    transparent 100%);
+        }
+
+        .date-picker-column:active {
+            cursor: grabbing;
+        }
+
+        .date-picker-column:focus-visible {
+            box-shadow: inset 0 0 0 2px #6366f1;
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        /* Day name column - wider for Arabic names */
+        .date-picker-column[data-type="dayname"] {
+            flex: 1.1;
+            min-width: 70px;
+        }
+
+        .date-picker-column[data-type="dayname"] .date-picker-item {
+            font-size: 0.9rem;
+            padding: 0 4px;
+        }
+
+        /* ============================================= */
+        /* BOUNCY MODAL ANIMATION (mobile only)         */
+        /* ============================================= */
+
+        @media (max-width: 767px) {
+            .modal-container {
+                /* Soft Bounce: Milder overshoot (1.25) vs previous (1.56) */
+                transition: transform 0.4s cubic-bezier(0.34, 1.25, 0.64, 1) !important;
+            }
+        }
     </style>
 </head>
+
 <body class="flex flex-col min-h-screen preload select-none">
 
-    <button id="install-button" class="hidden fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-xl font-bold flex items-center gap-2 hover:bg-indigo-700 hover:scale-105 transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <button id="install-button"
+        class="hidden fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-xl font-bold flex items-center gap-2 hover:bg-indigo-700 hover:scale-105 transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
         <span data-lang-key="installApp">Install App</span>
     </button>
 
-    <div id="ios-install-message" class="hidden fixed bottom-0 left-0 right-0 bg-gray-900/90 backdrop-blur-md text-white p-4 z-50 text-center border-t border-gray-700">
+    <div id="ios-install-message"
+        class="hidden fixed bottom-0 left-0 right-0 bg-gray-900/90 backdrop-blur-md text-white p-4 z-50 text-center border-t border-gray-700">
         <div class="max-w-md mx-auto flex flex-col items-center gap-2">
             <p class="text-sm font-medium" data-lang-key="iosInstallHead">Install this app on your iPhone:</p>
             <p class="text-xs text-gray-300 flex items-center justify-center gap-1" data-lang-key="iosMsg">
-                Tap 
-                <svg class="w-5 h-5 inline text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                Tap
+                <svg class="w-5 h-5 inline text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
                 then select <strong>"Add to Home Screen"</strong>
             </p>
-            <button id="close-ios-msg" class="mt-2 text-xs text-gray-400 underline" data-lang-key="closeBtn">Close</button>
+            <button id="close-ios-msg" class="mt-2 text-xs text-gray-400 underline"
+                data-lang-key="closeBtn">Close</button>
         </div>
     </div>
 
-    <nav class="bg-white dark:bg-gray-900 shadow-md border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40 transition-colors" dir="ltr">
+    <div id="nav-placeholder" class="h-16 flex-shrink-0" style="height: calc(4rem + env(safe-area-inset-top));"></div>
+    <nav class="bg-white dark:bg-gray-900 shadow-md border-b border-gray-200 dark:border-gray-800 fixed top-0 left-0 right-0 z-40 transition-colors"
+        dir="ltr">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between min-h-16 h-16 items-center">
-                <div class="flex items-center gap-3">
-                    <img src="./icon.png" alt="Logo" class="w-8 h-8 rounded-lg shadow-sm">
-                    <span class="font-bold text-xl text-gray-900 dark:text-white" data-lang-key="appTitle">Loan Calculator</span>
+                <div class="flex items-center gap-3 min-w-0">
+                    <img src="./icon.png" alt="Logo" class="w-8 h-8 rounded-lg shadow-sm flex-shrink-0">
+                    <span class="font-bold text-gray-900 dark:text-white whitespace-nowrap truncate text-lg md:text-2xl"
+                        data-lang-key="appTitle">Loan
+                        Calculator</span>
+                    <!-- Offline Status Badge -->
+                    <span id="offline-badge"
+                        class="hidden px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded text-xs font-medium flex-shrink-0"
+                        data-lang-key="offlineMode">Offline</span>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <button id="about-btn" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors" title="About App" data-lang-title="aboutBtn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <div class="flex items-center space-x-2 flex-shrink-0">
+
+                    <button id="about-btn" class="btn-icon" title="About App" data-lang-title="aboutBtn"
+                        aria-label="About App">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="16" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                        </svg>
                     </button>
-                    
+
                     <div class="relative" id="theme-menu-wrapper">
-                        <button id="theme-toggle" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors relative z-20" title="Change Theme" data-lang-title="themeBtn">
-                            <svg id="icon-sun" class="w-5 h-5 theme-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                            <svg id="icon-moon" class="w-5 h-5 theme-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                            <svg id="icon-system" class="w-5 h-5 theme-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        <button id="theme-toggle" class="btn-icon relative z-20" title="Change Theme"
+                            data-lang-title="themeBtn" aria-label="Change Theme" aria-haspopup="true">
+                            <svg id="icon-sun" class="w-5 h-5 theme-icon" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                            <svg id="icon-moon" class="w-5 h-5 theme-icon" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24" stroke-width="2">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+                            <svg id="icon-system" class="w-5 h-5 theme-icon" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24" stroke-width="2">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none"></path>
+                            </svg>
                         </button>
-                        
-                        <div id="theme-menu" class="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 z-50 transform origin-top transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] opacity-0 invisible scale-95 -translate-y-2 pointer-events-none p-1 flex flex-col">
-                            <button data-theme-value="light" class="theme-option w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3 transition-colors">
-                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+
+                        <div id="theme-menu" role="menu" aria-labelledby="theme-toggle"
+                            class="absolute top-full end-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 z-50 transform origin-top duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] opacity-0 invisible scale-95 -translate-y-2 pointer-events-none p-1 flex flex-col">
+                            <button data-theme-value="light" class="theme-option dropdown-option" role="menuitem">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24" stroke-width="2">
+                                    <circle cx="12" cy="12" r="5"></circle>
+                                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                                </svg>
                                 <span data-lang-key="themeLight">Light Mode</span>
-                                <svg class="check-icon w-4 h-4 ml-auto text-indigo-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="check-icon w-4 h-4 ml-auto text-indigo-600 hidden" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
                             </button>
-                            <button data-theme-value="dark" class="theme-option w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3 transition-colors">
-                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                            <button data-theme-value="dark" class="theme-option dropdown-option" role="menuitem">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24" stroke-width="2">
+                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                                </svg>
                                 <span data-lang-key="themeDark">Dark Mode</span>
-                                <svg class="check-icon w-4 h-4 ml-auto text-indigo-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="check-icon w-4 h-4 ml-auto text-indigo-600 hidden" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
                             </button>
-                            <button data-theme-value="system" class="theme-option w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3 transition-colors">
-                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                            <button data-theme-value="system" class="theme-option dropdown-option" role="menuitem">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    stroke-width="2">
+                                    <circle cx="12" cy="12" r="9"></circle>
+                                    <path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none"></path>
+                                </svg>
                                 <span data-lang-key="themeSystem">System Default</span>
-                                <svg class="check-icon w-4 h-4 ml-auto text-indigo-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="check-icon w-4 h-4 ml-auto text-indigo-600 hidden" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
                             </button>
                         </div>
                     </div>
 
-                    <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1.5 gap-1">
-                        <button id="lang-en" class="w-10 h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">EN</button>
-                        <button id="lang-ar" class="w-10 h-9 rounded-lg text-sm font-bold transition-all flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">ع</button>
+                    <div class="relative" id="lang-menu-wrapper">
+                        <button id="lang-toggle" class="btn-icon relative z-20" title="Language"
+                            data-lang-title="langBtn" aria-label="Language" aria-haspopup="true">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path
+                                    d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                                </path>
+                            </svg>
+                        </button>
+
+                        <div id="lang-menu" role="menu" aria-labelledby="lang-toggle"
+                            class="absolute top-full end-0 mt-2 w-40 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 z-50 transform origin-top duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] opacity-0 invisible scale-95 -translate-y-2 pointer-events-none p-1 flex flex-col">
+                            <button data-lang-value="en" class="lang-option dropdown-option" role="menuitem">
+                                <span
+                                    class="text-xs font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded">EN</span>
+                                <span>English</span>
+                                <svg class="check-icon w-4 h-4 ml-auto text-indigo-600 hidden" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </button>
+                            <button data-lang-value="ar" class="lang-option dropdown-option" role="menuitem">
+                                <span
+                                    class="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded">AR</span>
+                                <span>العربية</span>
+                                <svg class="check-icon w-4 h-4 ml-auto text-indigo-600 hidden" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </nav>
-    
-    <div id="message-box" role="status" aria-live="polite" class="fixed top-24 inset-x-0 mx-auto w-fit max-w-[90vw] z-[100] px-4 py-3 rounded-lg text-white font-medium shadow-2xl text-sm hidden animate-bounce text-center"></div>
+
+    <div id="message-box" role="status" aria-live="polite"
+        class="fixed top-24 left-0 right-0 mx-auto w-fit max-w-[90vw] z-[100] px-6 py-3 rounded-lg text-white font-medium shadow-2xl text-sm text-center transition-all duration-300 ease-out transform hidden opacity-0 -translate-y-3">
+    </div>
 
     <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full pb-24">
         <form id="loan-form" onsubmit="return false;" class="lg:grid lg:grid-cols-12 lg:gap-8 items-start">
             <div id="input-section" class="lg:col-span-5 space-y-6">
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors">
-                    <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-800 pb-2" data-lang-key="inputSectionTitle">Loan Details</h2>
-                    
+                <div
+                    class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-800 pb-2"
+                        data-lang-key="inputSectionTitle">Loan Details</h2>
+
                     <div class="space-y-4">
+                        <!-- Radio Button Hint -->
+                        <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 -mb-1">
+                            <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                            </svg>
+                            <span data-lang-key="radioHint">Select which value to calculate</span>
+                        </p>
+
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1" data-lang-key="loanAmountLabel">Loan Amount</label>
+                            <label class="field-label">
+                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span data-lang-key="loanAmountLabel">Loan Amount</span>
+                            </label>
                             <div class="input-group" id="group-amount">
-                                <button type="button" tabindex="-1" class="lock-btn p-2.5 text-gray-400 hover:text-indigo-600 transition-colors focus:outline-none" data-target="amount" title="Calculate this field" data-lang-title="calcField">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 icon-unlocked" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 icon-locked hidden" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
-                                </button>
-                                <input type="text" inputmode="decimal" id="loan-amount" data-key="amount" class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text">
+                                <div class="radio-cell">
+                                    <input type="radio" name="calc-target" value="amount" title="Calculate this field"
+                                        aria-label="Calculate Loan Amount">
+                                </div>
+                                <input type="text" inputmode="decimal" id="loan-amount" data-key="amount"
+                                    class="text-input select-text">
                             </div>
-                            <p class="text-xs text-red-500 mt-1 hidden" id="error-amount">Please enter a valid amount.</p>
+                            <p class="error-text hidden" id="error-amount">Please enter a valid amount.</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1" data-lang-key="interestRateLabel">Interest Rate (%)</label>
+                            <label class="field-label">
+                                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                </svg>
+                                <span data-lang-key="interestRateLabel">Interest Rate (%)</span>
+                            </label>
                             <div class="input-group" id="group-rate">
-                                <button type="button" tabindex="-1" class="lock-btn p-2.5 text-gray-400 hover:text-indigo-600 transition-colors focus:outline-none" data-target="rate" title="Calculate this field" data-lang-title="calcField">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 icon-unlocked" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 icon-locked hidden" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
-                                </button>
-                                <input type="text" inputmode="decimal" id="interest-rate" data-key="rate" class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text">
+                                <div class="radio-cell">
+                                    <input type="radio" name="calc-target" value="rate" title="Calculate this field"
+                                        aria-label="Calculate Interest Rate">
+                                </div>
+                                <input type="text" inputmode="decimal" id="interest-rate" data-key="rate"
+                                    class="text-input select-text">
                             </div>
-                            <p class="text-xs text-red-500 mt-1 hidden" id="error-rate">Please enter a valid rate.</p>
+                            <p class="error-text hidden" id="error-rate">Please enter a valid rate.</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1" data-lang-key="loanPeriodLabel">Period (months)</label>
+                            <label class="field-label">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span data-lang-key="loanPeriodLabel">Period (months)</span>
+                            </label>
                             <div class="input-group" id="group-period">
-                                <button type="button" tabindex="-1" class="lock-btn p-2.5 text-gray-400 hover:text-indigo-600 transition-colors focus:outline-none" data-target="period" title="Calculate this field" data-lang-title="calcField">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 icon-unlocked" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 icon-locked hidden" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
-                                </button>
-                                <input type="text" inputmode="numeric" pattern="[0-9]*" id="loan-period" data-key="period" class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text">
+                                <div class="radio-cell">
+                                    <input type="radio" name="calc-target" value="period" title="Calculate this field"
+                                        aria-label="Calculate Period">
+                                </div>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*" id="loan-period"
+                                    data-key="period" class="text-input select-text">
                             </div>
-                            <p class="text-xs text-red-500 mt-1 hidden" id="error-period">Please enter a valid period.</p>
+                            <p class="error-text hidden" id="error-period">Please enter a valid period.</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1" data-lang-key="monthlyInstallmentLabel">Monthly Installment</label>
+                            <label class="field-label">
+                                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <span data-lang-key="monthlyInstallmentLabel">Monthly Installment</span>
+                            </label>
                             <div class="input-group active-target" id="group-installment">
-                                <button type="button" tabindex="-1" class="lock-btn p-2.5 text-indigo-600 transition-colors focus:outline-none" data-target="installment" title="Calculate this field" data-lang-title="calcField">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 icon-unlocked hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 icon-locked" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
-                                </button>
-                                <input type="text" inputmode="decimal" id="monthly-installment" data-key="installment" class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text" readonly>
+                                <div class="radio-cell">
+                                    <input type="radio" name="calc-target" value="installment" checked
+                                        title="Calculate this field" aria-label="Calculate Monthly Installment">
+                                </div>
+                                <input type="text" inputmode="decimal" id="monthly-installment" data-key="installment"
+                                    class="text-input select-text" readonly>
                             </div>
-                            <p class="text-xs text-red-500 mt-1 hidden" id="error-installment">Invalid value.</p>
+                            <p class="error-text hidden" id="error-installment">Invalid value.</p>
                         </div>
 
                         <div class="pt-2">
-                            <label for="advanced-toggle" class="flex items-center cursor-pointer gap-2">
+                            <label for="advanced-toggle"
+                                class="flex items-center cursor-pointer justify-between w-full">
+                                <span
+                                    class="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                        </path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+                                        </path>
+                                    </svg>
+                                    <span data-lang-key="advancedToggle">Advanced Options</span>
+                                </span>
                                 <div class="relative">
                                     <input type="checkbox" id="advanced-toggle" class="sr-only peer">
-                                    <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                    <div
+                                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600">
+                                    </div>
                                 </div>
-                                <span class="text-xs font-semibold text-gray-600 dark:text-gray-400" data-lang-key="advancedToggle">Advanced Options</span>
                             </label>
                         </div>
 
-                        <div id="advanced-section" class="space-y-4 overflow-hidden transition-all duration-300 max-h-0 opacity-0 origin-top">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1" id="date-label" data-lang-key="startDateLabel">Start Date</label>
-                                <div class="input-group relative">
-                                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="start-date-display" class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text z-10" placeholder="DD/MM/YYYY" maxlength="10">
-                                    <div class="absolute right-0 top-0 h-full w-10 flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-r-md z-20" onclick="document.getElementById('start-date-native').showPicker()">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        <input type="date" id="start-date-native" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer -z-10">
+                        <div id="advanced-section"
+                            class="overflow-x-visible overflow-y-hidden transition-all duration-300 max-h-0 opacity-0 origin-top">
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1"
+                                        id="date-label" for="start-date-display" data-lang-key="startDateLabel">Start
+                                        Date</label>
+                                    <div class="input-group relative">
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="start-date-display"
+                                            class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
+                                            autocomplete="off">
+                                        <button type="button" id="start-date-picker-btn"
+                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
+                                            aria-label="Open date picker">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor"
+                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <input type="date" id="start-date-native"
+                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
+                                                tabindex="-1" aria-hidden="true">
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-purple-600 mt-1 hidden" id="first-payment-hint"></p>
+                                </div>
+
+                                <div id="first-payment-container">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1"
+                                        for="first-inst-date-display" data-lang-key="firstInstLabel">First Payment
+                                        Date</label>
+                                    <div class="input-group relative">
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                            id="first-inst-date-display" class="text-input select-text z-10"
+                                            placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                                        <button type="button" id="first-inst-date-picker-btn"
+                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
+                                            aria-label="Open date picker">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor"
+                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <input type="date" id="first-inst-date-native"
+                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
+                                                tabindex="-1" aria-hidden="true">
+                                        </button>
                                     </div>
                                 </div>
-                                <p class="text-xs text-purple-600 mt-1 hidden" id="first-payment-hint"></p>
                             </div>
 
-                            <div id="first-payment-container">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1" data-lang-key="firstInstLabel">First Payment Date</label>
-                                <div class="input-group relative">
-                                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="first-inst-date-display" class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text z-10" placeholder="DD/MM/YYYY" maxlength="10">
-                                    <div class="absolute right-0 top-0 h-full w-10 flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-r-md z-20" onclick="document.getElementById('first-inst-date-native').showPicker()">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        <input type="date" id="first-inst-date-native" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer -z-10">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="admin-fees-container">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1" data-lang-key="adminFeesLabel">Admin Fees (%)</label>
+                            <div id="admin-fees-container" class="mb-4">
+                                <label class="field-label">
+                                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" />
+                                    </svg>
+                                    <span data-lang-key="adminFeesLabel">Admin Fees (%)</span>
+                                </label>
                                 <div class="input-group">
-                                    <input type="text" inputmode="decimal" id="admin-fees" class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text">
+                                    <input type="text" inputmode="decimal" id="admin-fees"
+                                        class="text-input select-text" data-placeholder-key="inputPlaceholder">
                                 </div>
+                            </div>
+
+                            <div id="stamp-rate-container" class="mb-4">
+                                <label class="field-label">
+                                    <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span data-lang-key="stampRateLabel">Proportional Stamp (%)</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" inputmode="decimal" id="stamp-rate" value="0.2"
+                                        class="text-input select-text" data-placeholder-key="inputPlaceholder">
+                                </div>
+
                             </div>
                         </div>
                     </div>
 
                     <div id="action-buttons-container" class="flex gap-2 mt-6">
-                        <button type="button" id="calculate-button" class="flex-1 flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-95">
+                        <button type="button" id="calculate-button"
+                            class="flex-1 flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-95">
                             <span data-lang-key="computeButton">CALCULATE</span>
                         </button>
-                        
-                        <button type="button" id="save-button" class="w-14 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95 disabled:opacity-50" disabled title="Save to History" data-lang-title="saveBtn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+
+                        <button type="button" id="save-button"
+                            class="w-14 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95 disabled:opacity-50"
+                            disabled title="Save to History" data-lang-title="saveBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
                         </button>
 
-                        <button type="button" id="history-btn" class="w-14 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95" title="View History" data-lang-title="historyBtn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <button type="button" id="history-btn"
+                            class="w-14 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95"
+                            title="View History" data-lang-title="historyBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
                         </button>
                     </div>
-                    
-                     <div class="mt-4">
-                        <button type="button" id="reset-button" class="w-full py-2.5 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all active:scale-95 text-sm flex items-center justify-center gap-2 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                            <span data-lang-key="resetButton" class="min-w-[5rem] text-center inline-block">Reset Form</span>
+
+                    <div class="mt-4">
+                        <button type="button" id="reset-button"
+                            class="w-full py-2.5 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all active:scale-95 text-sm flex items-center justify-center gap-2 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                <path d="M3 3v5h5" />
+                            </svg>
+                            <span data-lang-key="resetButton" class="min-w-[5rem] text-center inline-block">Reset
+                                Form</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors">
-                     <label for="self-sufficient-toggle" class="flex items-center cursor-pointer justify-between w-full">
+                <div
+                    class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors mb-6">
+                    <label for="early-settlement-toggle"
+                        class="flex items-center cursor-pointer justify-between w-full">
                         <span class="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-                             <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                             <span data-lang-key="selfSufficientMode">Self-Sufficient Mode</span>
+                            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z">
+                                </path>
+                            </svg>
+                            <span data-lang-key="earlySettlementToggle">Early Settlement Calculator</span>
+                        </span>
+                        <div class="relative overflow-visible">
+                            <input type="checkbox" id="early-settlement-toggle" class="sr-only peer">
+                            <div
+                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500">
+                            </div>
+                        </div>
+                    </label>
+
+                    <div id="early-settlement-section"
+                        class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1"
+                                        for="settlement-date-display" data-lang-key="settlementDateLabel">Settlement
+                                        Date</label>
+                                    <div class="input-group relative">
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                            id="settlement-date-display"
+                                            class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text z-10"
+                                            placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                                        <button type="button" id="settlement-date-picker-btn"
+                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
+                                            aria-label="Open date picker">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor"
+                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <input type="date" id="settlement-date-native"
+                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
+                                                tabindex="-1" aria-hidden="true">
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1"
+                                        data-lang-key="earlySettlementFeeLabel">Early Settlement Fee (%)</label>
+                                    <div class="input-group">
+                                        <input type="text" inputmode="decimal" id="early-settlement-fee"
+                                            class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text"
+                                            placeholder="Enter value">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex justify-end p-1">
+                                <button type="button" id="early-settlement-calc-btn"
+                                    class="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all active:scale-95"
+                                    data-lang-key="calculateBtn">
+                                    Calculate
+                                </button>
+                            </div>
+                            <p class="text-xs text-red-500 mt-2 hidden" id="error-early-settlement"
+                                data-lang-key="errorCheckInputs">Please check input fields.</p>
+
+                            <div id="settlement-results"
+                                class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
+                                <div
+                                    class="mt-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                                    <h4 class="text-sm font-bold text-amber-800 dark:text-amber-300 mb-3"
+                                        data-lang-key="settlementSummaryTitle">Settlement Summary</h4>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                        <div class="flex justify-between sm:flex-col">
+                                            <span class="text-gray-600 dark:text-gray-400"
+                                                data-lang-key="lastPaidInstLabel">Last Paid Installment:</span>
+                                            <span id="settlement-last-paid"
+                                                class="font-medium text-gray-900 dark:text-gray-100">-</span>
+                                        </div>
+                                        <div class="flex justify-between sm:flex-col">
+                                            <span class="text-gray-600 dark:text-gray-400"
+                                                data-lang-key="principalBalanceLabel">Principal Balance:</span>
+                                            <span id="settlement-principal"
+                                                class="font-medium text-gray-900 dark:text-gray-100">-</span>
+                                        </div>
+                                        <div class="flex justify-between sm:flex-col">
+                                            <span class="text-gray-600 dark:text-gray-400"
+                                                data-lang-key="settlementFeeLabel">Early Settlement Fee:</span>
+                                            <span id="settlement-fee"
+                                                class="font-medium text-gray-900 dark:text-gray-100">-</span>
+                                        </div>
+                                        <div class="flex justify-between sm:flex-col">
+                                            <span class="text-gray-600 dark:text-gray-400">
+                                                <span data-lang-key="accruedInterestLabel">Accrued Interest</span>
+                                                <span id="settlement-days" class="text-xs text-gray-400">(0
+                                                    days)</span>:
+                                            </span>
+                                            <span id="settlement-interest"
+                                                class="font-medium text-gray-900 dark:text-gray-100">-</span>
+                                        </div>
+                                        <div id="settlement-stamp-row" class="flex justify-between sm:flex-col hidden">
+                                            <span class="text-gray-600 dark:text-gray-400"
+                                                data-lang-key="settlementStampLabel">Quarter Stamp:</span>
+                                            <span id="settlement-stamp"
+                                                class="font-medium text-gray-900 dark:text-gray-100">-</span>
+                                        </div>
+
+                                        <div
+                                            class="col-span-1 sm:col-span-2 border-t border-amber-200 dark:border-amber-700 pt-2 mt-2">
+                                            <div class="flex justify-between">
+                                                <span class="font-bold text-amber-800 dark:text-amber-300"
+                                                    data-lang-key="totalSettlementLabel">Total Settlement:</span>
+                                                <span id="settlement-total"
+                                                    class="font-bold text-amber-800 dark:text-amber-300 text-lg">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors">
+                    <label for="self-sufficient-toggle" class="flex items-center cursor-pointer justify-between w-full">
+                        <span class="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                </path>
+                            </svg>
+                            <span data-lang-key="selfSufficientMode">Self-Sufficient Mode</span>
                         </span>
                         <div class="relative">
                             <input type="checkbox" id="self-sufficient-toggle" class="sr-only peer">
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            <div
+                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600">
+                            </div>
                         </div>
                     </label>
-                    
-                    <div id="self-sufficient-section" class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
-                         <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                             <p class="text-xs text-gray-500 dark:text-gray-400 mb-3" data-lang-key="ssDesc">Calculate required Term Deposit to cover installments.</p>
-                             <div class="grid grid-cols-2 gap-4">
+
+                    <div id="self-sufficient-section"
+                        class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3" data-lang-key="ssDesc">Calculate
+                                required Term Deposit to cover installments.</p>
+                            <div class="grid grid-cols-2 gap-4 p-1">
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="tdRateLabel">TD Rate (%):</label>
-                                    <input type="text" inputmode="decimal" id="td-rate" class="w-full text-sm border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white p-2 border select-text">
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="tdRateLabel">TD Rate (%):</label>
+                                    <div class="input-group" id="group-td-rate">
+                                        <input type="text" inputmode="decimal" id="td-rate" placeholder="Enter value"
+                                            class="text-input select-text">
+                                    </div>
+                                    <p class="error-text hidden" id="error-td-rate">Max rate is 100%</p>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="tdAmountLabel">Your TD:</label>
-                                    <input type="text" inputmode="decimal" id="td-amount" class="w-full text-sm border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white p-2 border select-text">
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="tdAmountLabel">Your TD:</label>
+                                    <div class="input-group" id="group-td-amount">
+                                        <input type="text" inputmode="decimal" id="td-amount" placeholder="Enter value"
+                                            class="text-input select-text">
+                                    </div>
                                 </div>
-                             </div>
-                              <div class="mt-3 bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border border-green-100 dark:border-green-800">
-                                <div class="flex justify-between items-center mb-1">
-                                    <span class="text-xs text-green-800 dark:text-green-300" data-lang-key="reqTdLabel">Required TD:</span>
-                                    <span id="req-td-display" class="font-bold text-green-900 dark:text-white select-text">-</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-xs text-green-800 dark:text-green-300" data-lang-key="netFlowLabel">Net Flow:</span>
-                                    <span id="net-flow-display" class="font-bold text-green-900 dark:text-white select-text">-</span>
+                            </div>
+                            <div class="mt-4 flex justify-end p-1">
+                                <button type="button" id="self-sufficient-calc-btn"
+                                    class="w-full sm:w-auto px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all active:scale-95"
+                                    data-lang-key="calculateBtn">
+                                    Calculate
+                                </button>
+                            </div>
+                            <p class="text-xs text-red-500 mt-2 hidden" id="error-self-sufficient"
+                                data-lang-key="errorCheckInputs">Please check input fields.</p>
+                            <div id="self-sufficient-results"
+                                class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
+                                <div
+                                    class="mt-3 bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border border-green-100 dark:border-green-800">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs text-green-800 dark:text-green-300"
+                                            data-lang-key="reqTdLabel">Required TD:</span>
+                                        <span id="req-td-display"
+                                            class="font-bold text-green-900 dark:text-white select-text">-</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs text-green-800 dark:text-green-300"
+                                            data-lang-key="netFlowLabel">Net Flow:</span>
+                                        <span id="net-flow-display"
+                                            class="font-bold text-green-900 dark:text-white select-text">-</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -434,21 +2119,42 @@
                 </div>
             </div>
 
-            <div class="lg:col-span-7 space-y-6 mt-6 lg:mt-0">
-                <div id="summary-section" class="hover-card bg-gradient-to-br from-indigo-600 to-indigo-700 dark:from-indigo-900 dark:to-gray-900 rounded-xl shadow-2xl p-6 text-white relative overflow-hidden transition-transform">
-                    <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl"></div>
-                    <div class="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-white opacity-5 rounded-full blur-2xl"></div>
-                    
-                    <h3 class="text-indigo-100 text-sm font-bold uppercase tracking-wider mb-4 border-b border-indigo-400/30 pb-2 text-center" data-lang-key="summaryTitle">Loan Summary</h3>
-                    
+            <div class="lg:col-span-7 space-y-6 mt-6 lg:mt-0 lg:sticky lg:top-6 lg:h-fit sticky-optimized">
+                <div id="summary-section"
+                    class="hover-card bg-gradient-to-br from-indigo-600 to-indigo-700 dark:from-indigo-900 dark:to-gray-900 rounded-xl shadow-2xl px-6 pt-6 pb-2 text-white relative overflow-hidden transition-transform">
+                    <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl">
+                    </div>
+                    <div
+                        class="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-white opacity-5 rounded-full blur-2xl">
+                    </div>
+
+                    <div class="relative border-b border-indigo-400/30 mb-4 pb-2">
+                        <h3 class="text-2xl font-bold uppercase tracking-wider text-center w-full"
+                            data-lang-key="summaryTitle">Loan Summary</h3>
+                        <button type="button" id="copy-summary-btn"
+                            class="absolute top-1 ltr:right-0 rtl:left-0 rtl:right-auto text-indigo-200 hover:text-white transition-colors p-1 rounded-md hover:bg-white/10"
+                            title="Copy Summary" data-lang-title="copySummaryBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
+
                     <div class="summary-grid mb-2">
                         <div>
-                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="chartLabelPrincipal">Principal</p>
-                            <p class="text-xl font-bold tracking-tight text-white drop-shadow-sm break-all select-text" id="summary-principal">-</p>
+                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                data-lang-key="chartLabelPrincipal">Principal</p>
+                            <p class="text-xl font-bold tracking-tight text-white drop-shadow-sm break-all select-text"
+                                id="summary-principal">-</p>
                         </div>
                         <div class="text-end">
-                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="totalSumLabel">Total Payment</p>
-                            <p class="text-2xl font-extrabold tracking-tight text-white drop-shadow-sm break-all select-text" id="total-sum">-</p>
+                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                data-lang-key="loanPeriodLabel">Period</p>
+                            <p class="text-xl font-bold tracking-tight text-white drop-shadow-sm break-all select-text"
+                                id="summary-period">-</p>
                         </div>
                     </div>
 
@@ -456,51 +2162,81 @@
 
                     <div class="summary-grid mb-2">
                         <div>
-                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="interestRateLabel">Rate</p>
+                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                data-lang-key="interestRateLabel">Rate</p>
                             <p class="text-lg font-bold text-white select-text" id="summary-rate">-</p>
                         </div>
                         <div class="text-end">
-                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="totalInterestLabel">Total Interest</p>
+                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                data-lang-key="totalInterestLabel">Total Interest</p>
                             <p class="text-lg font-bold text-white select-text" id="total-interest">-</p>
                         </div>
                     </div>
 
+                    <div class="summary-grid mb-2">
+                        <div class="col-span-2 bg-white/10 rounded-lg p-2 text-center mt-1">
+                            <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                data-lang-key="totalSumLabel">Total Payment</p>
+                            <p class="text-2xl font-extrabold tracking-tight text-white drop-shadow-sm break-all select-text"
+                                id="total-sum">-</p>
+                        </div>
+                    </div>
+
                     <div class="summary-divider"></div>
 
-                    <div id="std-installments-view" class="transition-all duration-500 ease-in-out overflow-hidden max-h-24 opacity-100">
+                    <div id="std-installments-view"
+                        class="transition-all duration-500 ease-in-out overflow-hidden max-h-24 opacity-100">
                         <div class="summary-grid items-center pt-1">
                             <div>
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="monthlyInstallmentLabel">Monthly Installment</p>
-                                <span class="text-xl font-extrabold text-white select-text" id="summary-std-inst">-</span>
+                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                    data-lang-key="monthlyInstallmentLabel">Monthly Installment</p>
+                                <span class="text-xl font-extrabold text-white select-text"
+                                    id="summary-std-inst">-</span>
                             </div>
                             <div class="text-end">
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="flatRateLabel">Effective Flat Rate</p>
+                                <div class="flex items-center gap-1 mb-1 justify-end">
+                                    <span class="info-icon" data-lang-tooltip="flatRateExplain"
+                                        data-tooltip="Simple interest equivalent: (Total Interest ÷ Principal) ÷ Years × 100">ℹ</span>
+                                    <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
+                                        data-lang-key="flatRateLabel">Effective Flat Rate</span>
+                                </div>
                                 <span class="text-lg font-bold text-white select-text flat-rate-display">-</span>
                             </div>
                         </div>
                     </div>
 
-                    <div id="adv-installments-view" class="space-y-4 pt-1 transition-all duration-500 ease-in-out overflow-hidden max-h-0 opacity-0">
+                    <div id="adv-installments-view"
+                        class="space-y-4 pt-1 transition-all duration-500 ease-in-out overflow-hidden max-h-0 opacity-0">
                         <div class="summary-grid items-center">
                             <div>
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="firstInstAmountLabel">First Installment</p>
+                                <div class="flex items-center gap-1 mb-1">
+                                    <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
+                                        data-lang-key="firstInstAmountLabel">First Installment</span>
+                                    <span class="info-icon" data-lang-tooltip="firstInstExplain"
+                                        data-tooltip="Interest calculated on actual days from booking to first payment date">ℹ</span>
+                                </div>
                                 <span class="text-lg font-bold text-white select-text" id="summary-first-inst">-</span>
+                                <p class="text-indigo-200 text-xs font-medium mt-0.5" id="summary-first-date"></p>
                             </div>
                             <div class="text-end">
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="regularInstLabel">Regular Installment</p>
-                                <span class="text-lg font-bold text-white select-text" id="summary-regular-inst">-</span>
+                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                    data-lang-key="regularInstLabel">Regular Installment</p>
+                                <span class="text-lg font-bold text-white select-text"
+                                    id="summary-regular-inst">-</span>
                             </div>
                         </div>
-                        
+
                         <div class="summary-divider"></div>
 
                         <div class="summary-grid items-center">
                             <div>
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="adminFeesLabel">Admin Fees</p>
+                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                    id="summary-admin-fees-label" data-lang-key="adminFeesLabel">Admin Fees</p>
                                 <span class="text-lg font-bold text-white select-text" id="summary-admin-fees">-</span>
                             </div>
                             <div class="text-end">
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="netLoanLabel">Net Loan Amount</p>
+                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                    data-lang-key="netLoanLabel">Net Loan Amount</p>
                                 <span class="text-lg font-bold text-white select-text" id="summary-net-loan">-</span>
                             </div>
                         </div>
@@ -508,140 +2244,303 @@
                         <div class="summary-divider"></div>
 
                         <div class="summary-grid items-center">
-                            <div></div>
+                            <div>
+                                <div class="flex items-center gap-1 mb-1">
+                                    <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
+                                        data-lang-key="totalStampLabel">Total Stamp</span>
+                                    <span class="info-icon" data-lang-tooltip="totalStampExplain"
+                                        data-tooltip="Quarterly stamp calculated on highest principal balance in each quarter">ℹ</span>
+                                </div>
+                                <span class="text-lg font-bold text-white select-text" id="summary-total-stamp">-</span>
+                            </div>
                             <div class="text-end">
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80" data-lang-key="flatRateLabel">Effective Flat Rate</p>
+                                <div class="flex items-center gap-1 mb-1 justify-end">
+                                    <span class="info-icon" data-lang-tooltip="flatRateExplain"
+                                        data-tooltip="Simple interest equivalent: (Total Interest ÷ Principal) ÷ Years × 100">ℹ</span>
+                                    <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
+                                        data-lang-key="flatRateLabel">Effective Flat Rate</span>
+                                </div>
                                 <span class="text-lg font-bold text-white select-text flat-rate-display">-</span>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Calculation Fingerprint -->
+                    <div id="calculation-fingerprint"
+                        class="hidden mt-1 pt-2 border-t border-indigo-400/30 flex items-center justify-center gap-1">
+                        <span class="text-indigo-200 text-[10px] opacity-60"
+                            data-lang-key="calculationIdLabel">Calculation ID:</span>
+                        <span id="fingerprint-value"
+                            class="text-indigo-100 text-[10px] font-mono select-all tracking-wide opacity-80">-</span>
+                    </div>
                 </div>
 
-                <div id="visuals-section" class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors relative">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4" data-lang-key="chartTitle">Distribution</h3>
-                    
+                <div id="visuals-section"
+                    class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors relative">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4" data-lang-key="chartTitle">
+                        Distribution</h3>
+
                     <div class="h-64 w-full relative">
                         <canvas id="loan-chart"></canvas>
-                        <div id="chart-empty-state" class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-10">
+                        <div id="chart-empty-state"
+                            class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-10">
                             <span class="text-gray-400 font-medium text-sm">Enter details to see chart</span>
                         </div>
                     </div>
-                    
+
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
-                        <button type="button" id="schedule-button" dir="ltr" class="flex items-center justify-center px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <button type="button" id="schedule-button" dir="ltr"
+                            class="flex items-center justify-center px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                                </path>
+                            </svg>
                             <span data-lang-key="scheduleButton">Schedule</span>
                         </button>
-                        <button type="button" id="export-pdf-button" dir="ltr" class="flex items-center justify-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                             <span data-lang-key="exportPdfButton">PDF/Print</span>
+                        <button type="button" id="export-pdf-button" dir="ltr"
+                            class="flex items-center justify-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                                </path>
+                            </svg>
+                            <span data-lang-key="exportPdfButton">PDF/Print</span>
                         </button>
-                        <button type="button" id="export-xlsx-button" dir="ltr" class="flex items-center justify-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <button type="button" id="export-xlsx-button" dir="ltr"
+                            class="flex items-center justify-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
+                            </svg>
                             <span data-lang-key="exportXlsxButton">Excel</span>
                         </button>
                     </div>
                 </div>
-            </div>
 
-            <div id="schedule-container" class="lg:col-span-12 mt-8 hidden bg-white dark:bg-gray-900 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 overflow-hidden transition-all duration-500 ease-in-out max-h-0 opacity-0 scroll-mt-24">
-                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800 relative flex items-center justify-center">
-                    <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 text-center w-full" data-lang-key="scheduleTitle">Amortization Schedule</h2>
-                    <button type="button" id="close-schedule-btn" class="absolute right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 p-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                 </div>
-                 
-                 <div class="table-container border-0 rounded-none">
-                     <table class="w-full">
-                         <thead>
-                             <tr>
-                                 <th scope="col" data-lang-key="colMonth" class="px-1 py-3 text-center text-xs font-bold uppercase tracking-wider w-8">No.</th>
-                                 <th scope="col" data-lang-key="colDate" class="px-2 py-3 text-end text-xs font-bold uppercase tracking-wider">Date</th>
-                                 <th scope="col" data-lang-key="colBalance" class="hidden sm:table-cell px-2 py-3 text-end text-xs font-bold uppercase tracking-wider">Balance</th>
-                                 <th scope="col" data-lang-key="colInterest" class="px-1 py-3 text-end text-xs font-bold uppercase tracking-wider">Interest</th>
-                                 <th scope="col" data-lang-key="colPrincipal" class="px-1 py-3 text-end text-xs font-bold uppercase tracking-wider">Principal</th>
-                                 <th scope="col" data-lang-key="colRemaining" class="px-2 py-3 text-end text-xs font-bold uppercase tracking-wider">Remaining</th>
-                             </tr>
-                         </thead>
-                         <tbody id="schedule-body" class="bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-gray-200 divide-y divide-gray-200 dark:border-gray-800 font-medium"></tbody>
-                     </table>
-                 </div>
+                <!-- Assumptions Panel -->
+                <div id="assumptions-panel"
+                    class="mt-4 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5"
+                        data-lang-key="assumptionsTitle">
+                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Calculation Assumptions
+                    </h4>
+                    <div
+                        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+                        <span data-lang-key="assumptionInterestMethod">• Interest Method: Reducing Balance
+                            (Annuity)</span>
+                        <span data-lang-key="assumptionDayCount">• Day Count: 30/360 (US/NASD)</span>
+                        <span data-lang-key="assumptionRounding">• Rounding: 2 decimal places per installment</span>
+                        <span data-lang-key="assumptionStampLogic">• Stamp: Quarterly on highest principal
+                            balance</span>
+                        <span data-lang-key="assumptionFeesLogic" class="sm:col-span-2">• Fees: Deducted upfront, not
+                            amortized</span>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 text-center leading-relaxed"
+                        data-lang-key="assumptionsDisclaimer">
+                        This calculator provides estimates only. Results should not be considered final loan approval.
+                        Actual terms may vary.
+                    </p>
+                </div>
             </div>
         </form>
+
+        <!-- Schedule container moved OUTSIDE the grid for independent layout flow -->
+        <div id="schedule-container"
+            class="mt-8 hidden bg-white dark:bg-gray-900 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 overflow-hidden transition-all duration-500 ease-in-out max-h-0 opacity-0 scroll-mt-24">
+            <div
+                class="px-6 py-4 border-b border-gray-200 dark:border-gray-800 relative flex items-center justify-center">
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 text-center w-full"
+                    data-lang-key="scheduleTitle">Amortization Schedule</h2>
+                <button type="button" id="close-schedule-btn"
+                    class="absolute right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="table-container border-0 rounded-none overflow-x-auto">
+                <table class="w-full text-xs sm:text-sm">
+                    <thead>
+                        <tr>
+                            <th scope="col" data-lang-key="colMonth"
+                                class="px-0.5 sm:px-1 py-2 sm:py-3 text-center text-xs font-bold uppercase tracking-wider">
+                                No.
+                            </th>
+                            <th scope="col" data-lang-key="colDate"
+                                class="px-0.5 sm:px-1 py-2 sm:py-3 text-end text-xs font-bold uppercase tracking-wider">
+                                Date
+                            </th>
+                            <th scope="col" data-lang-key="colBalance"
+                                class="hidden sm:table-cell px-1 py-3 text-end text-xs font-bold uppercase tracking-wider">
+                                Balance</th>
+                            <th scope="col" data-lang-key="colInterest"
+                                class="px-0.5 sm:px-1 py-2 sm:py-3 text-end text-xs font-bold uppercase tracking-wider">
+                                Interest</th>
+                            <th scope="col" data-lang-key="colPrincipal"
+                                class="px-0.5 sm:px-1 py-2 sm:py-3 text-end text-xs font-bold uppercase tracking-wider">
+                                Principal</th>
+                            <th scope="col" data-lang-key="colRemaining"
+                                class="px-0.5 sm:px-1 py-2 sm:py-3 text-end text-xs font-bold uppercase tracking-wider">
+                                Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-body"
+                        class="bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-gray-200 divide-y divide-gray-200 dark:border-gray-800 font-medium">
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </main>
-    
-    <div id="about-modal" class="modal pointer-events-none fixed w-full h-full top-0 left-0 flex items-end justify-center md:items-center z-50">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out"></div>
-        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe" style="padding-bottom: env(safe-area-inset-bottom);">
+
+    <div id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-modal-title"
+        class="modal pointer-events-none fixed w-full h-full top-0 left-0 flex items-end justify-center md:items-center z-50">
+        <div
+            class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
+        </div>
+        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
+            style="padding-bottom: env(safe-area-inset-bottom);">
             <div class="modal-content py-6 text-left px-6">
                 <div class="relative flex items-center justify-center pb-3 mb-2">
                     <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full absolute -top-2 md:hidden"></div>
-                    <p class="text-2xl font-bold text-gray-800 dark:text-gray-100 text-center w-full" data-lang-key="aboutTitle">About</p>
-                    <div class="absolute right-0 top-1 modal-close cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full" id="close-about">
-                        <svg class="fill-current text-gray-800 dark:text-gray-100" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
-                    </div>
+                    <p id="about-modal-title"
+                        class="text-2xl font-bold text-gray-800 dark:text-gray-100 text-center w-full"
+                        data-lang-key="aboutTitle">About</p>
+                    <button type="button" aria-label="Close"
+                        class="absolute right-0 top-1 modal-close cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                        id="close-about">
+                        <svg class="fill-current text-gray-800 dark:text-gray-100" xmlns="http://www.w3.org/2000/svg"
+                            width="18" height="18" viewBox="0 0 18 18">
+                            <path
+                                d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z">
+                            </path>
+                        </svg>
+                    </button>
                 </div>
+            </div>
 
-                <div class="flex flex-col items-center justify-center my-4">
-                    <img src="./icon.png" alt="App Icon" class="w-20 h-20 rounded-2xl shadow-lg mb-4">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white" data-lang-key="appTitle">Loan Calculator</h3>
-                    <p class="text-center text-gray-500 dark:text-gray-400 text-sm mt-2 px-4" data-lang-key="aboutDesc">
-                        A professional loan calculator PWA designed for accurate financial planning.
+            <div class="flex flex-col items-center justify-center my-4">
+                <img src="./icon.png" alt="App Icon" class="w-20 h-20 rounded-2xl shadow-lg mb-4">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white" data-lang-key="appTitle">Loan Calculator
+                </h3>
+                <p class="text-xs text-gray-400 mt-1">Version 1.10.17</p>
+                <p class="text-center text-gray-500 dark:text-gray-400 text-sm mt-2 px-4" data-lang-key="aboutDesc">
+                    A professional loan calculator PWA designed for accurate financial planning.
+                </p>
+                <!-- Compliance Disclaimer -->
+                <div
+                    class="flex items-center gap-2 mt-4 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <svg class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                    <p class="text-xs text-green-700 dark:text-green-300" data-lang-key="localOnlyDisclaimer">
+                        All calculations run locally. No data is transmitted.
                     </p>
                 </div>
-                
-                <div class="space-y-3 mt-6 mb-6">
-                    <button id="share-btn" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-500/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                        <span data-lang-key="shareBtnLabel">Share App</span>
-                    </button>
+            </div>
 
-                    <button id="force-update-btn" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium transition-all active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        <span data-lang-key="checkUpdates">Check for Updates</span>
-                    </button>
-                    
-                    <button id="close-about-btn" class="w-full flex items-center justify-center px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl font-medium transition-all active:scale-95" data-lang-key="closeBtn">
-                        Close
-                    </button>
+            <div class="space-y-3 mt-6 mb-6">
+                <button id="share-btn"
+                    class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                    <span data-lang-key="shareBtnLabel">Share App</span>
+                </button>
+
+                <button id="force-update-btn"
+                    class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium transition-all active:scale-95">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                    <span data-lang-key="checkUpdates">Check for Updates</span>
+                </button>
+
+                <button id="close-about-btn"
+                    class="w-full flex items-center justify-center px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl font-medium transition-all active:scale-95"
+                    data-lang-key="closeBtn">
+                    Close
+                </button>
+            </div>
+
+            <div class="border-t border-gray-100 dark:border-gray-800 pt-6 flex flex-col items-center pb-8 md:pb-0">
+                <p class="text-xs font-semibold uppercase text-gray-400 mb-4 tracking-wider" data-lang-key="devContact">
+                    Developer Contact</p>
+
+                <div class="flex items-center gap-4 mb-4">
+                    <a href="mailto:ayman.alsebaey7@gmail.com"
+                        class="bg-gray-100 dark:bg-gray-800 p-3 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="5" width="18" height="14" rx="2" stroke-width="2"></rect>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 6 9-6">
+                            </path>
+                        </svg>
+                    </a>
+
+                    <a href="https://t.me/accayman7" target="_blank"
+                        class="bg-gray-100 dark:bg-gray-800 p-3 rounded-full text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </a>
                 </div>
 
-                <div class="border-t border-gray-100 dark:border-gray-800 pt-6 flex flex-col items-center pb-8 md:pb-0">
-                    <p class="text-xs font-semibold uppercase text-gray-400 mb-4 tracking-wider" data-lang-key="devContact">Developer Contact</p>
-                    
-                    <div class="flex items-center gap-4 mb-4">
-                        <a href="mailto:ayman.alsebaey7@gmail.com" class="bg-gray-100 dark:bg-gray-800 p-3 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                        </a>
-                        
-                        <a href="https://t.me/accayman7" target="_blank" class="bg-gray-100 dark:bg-gray-800 p-3 rounded-full text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                        </a>
-                    </div>
-                    
-                    <div class="text-center">
-                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Ayman Alsebaey</p>
-                         <p class="text-xs text-gray-400 mt-1">Version 3.9.23</p>
-                    </div>
+                <div class="text-center">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Ayman Alsebaey</p>
                 </div>
             </div>
         </div>
     </div>
+    </div>
 
-    <div id="history-modal" class="modal pointer-events-none fixed w-full h-full top-0 left-0 flex items-end justify-center md:items-center z-50">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out"></div>
-        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe" style="max-height: 80vh; padding-bottom: env(safe-area-inset-bottom);">
+    <div id="history-modal" role="dialog" aria-modal="true" aria-labelledby="history-modal-title"
+        class="modal pointer-events-none fixed w-full h-full top-0 left-0 flex items-end justify-center md:items-center z-50">
+        <div
+            class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
+        </div>
+        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto scrollbar-hide transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
+            style="max-height: 80vh; padding-bottom: env(safe-area-inset-bottom);">
             <div class="modal-content py-6 text-left px-6">
-                <div class="relative flex items-center justify-center pb-3 mb-2 border-b border-gray-100 dark:border-gray-800">
+                <div
+                    class="relative flex items-center justify-center pb-3 mb-2 border-b border-gray-100 dark:border-gray-800">
                     <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full absolute -top-2 md:hidden"></div>
-                    <p class="text-xl font-bold text-gray-800 dark:text-gray-100" data-lang-key="historyTitle">Calculation History</p>
-                    <div class="absolute right-0 top-1 modal-close cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full" id="close-history">
-                        <svg class="fill-current text-gray-800 dark:text-gray-100" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
-                    </div>
+                    <p id="history-modal-title" class="text-xl font-bold text-gray-800 dark:text-gray-100"
+                        data-lang-key="historyTitle">
+                        Calculation History</p>
+                    <button type="button" aria-label="Close"
+                        class="absolute right-0 top-1 modal-close cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                        id="close-history">
+                        <svg class="fill-current text-gray-800 dark:text-gray-100" xmlns="http://www.w3.org/2000/svg"
+                            width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                            <path
+                                d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z">
+                            </path>
+                        </svg>
+                    </button>
                 </div>
                 <div id="history-list" class="space-y-3 mt-4 pb-8 md:pb-0">
-                    <p class="text-center text-gray-500 py-8 text-sm">No history saved yet.</p>
+                    <p class="text-center text-gray-500 py-8 text-sm" data-lang-key="noHistorySaved">No history saved
+                        yet.</p>
                 </div>
             </div>
         </div>
@@ -649,8 +2548,41 @@
 
     <iframe id="print-frame" style="position:absolute; width:0; height:0; border:0; visibility:hidden;"></iframe>
 
-    <script src="./js/logic.js"></script>
-    <script src="./js/ui.js"></script>
-    <script src="./js/app.js"></script>
+
+    <!-- TEMP: Christmas Snow Effect (DISABLED)
+    <script>
+            (function () {
+                function addSnow(selector, className, flakeCount, minDuration, maxDuration) {
+                    const target = document.querySelector(selector);
+                    if (!target) return;
+                    if (target.querySelector(`.${className}`)) return;
+                    const container = document.createElement('div');
+                    container.className = className;
+                    container.setAttribute('aria-hidden', 'true');
+                    target.insertBefore(container, target.firstChild);
+                    const chars = ['❄', '❅', '❆', '•'];
+                    for (let i = 0; i < flakeCount; i++) {
+                        const el = document.createElement('div');
+                        el.className = 'snowflake';
+                        el.textContent = chars[Math.floor(Math.random() * chars.length)];
+                        const left = Math.random() * 100;
+                        const animDuration = minDuration + Math.random() * (maxDuration - minDuration);
+                        const delay = Math.random() * -10;
+                        const size = 0.4 + Math.random() * 1.2;
+                        const targetOpacity = 0.3 + Math.random() * 0.7;
+                        el.style.setProperty('--target-opacity', targetOpacity);
+                        el.style.left = left + '%';
+                        el.style.animationDuration = animDuration + 's, ' + (2 + Math.random() * 4) + 's';
+                        el.style.animationDelay = delay + 's, ' + delay + 's';
+                        el.style.fontSize = size + 'rem';
+                        container.appendChild(el);
+                    }
+                }
+                addSnow('nav', 'snow-container-nav', 25, 5, 12);
+                addSnow('#about-modal .modal-container', 'snow-container-about', 30, 15, 30);
+            })();
+    </script>
+    --- END TEMP Script --- -->
 </body>
+
 </html>

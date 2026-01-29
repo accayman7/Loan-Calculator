@@ -1,6 +1,6 @@
 {
   "name": "Loan Calculator Pro",
-  "short_name": "LoanCalc",
+  "short_name": "LoanCalculator",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#4f46e5",

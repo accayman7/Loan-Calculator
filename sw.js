@@ -1,5 +1,7 @@
-// UPDATED: Incremented cache version to v3.9.23
-const CACHE_NAME = 'loan-calc-v3.9.23';
+// sw.js - Service Worker (Local-Only Mode)
+// Version: 1.10.18 - Accessibility improvements
+
+const CACHE_NAME = 'loan-calc-v1.10.18';
 
 // Resources to cache immediately on install
 const PRE_CACHE = [
@@ -11,7 +13,9 @@ const PRE_CACHE = [
   './tailwind.js',
   './js/logic.js',
   './js/ui.js',
-  './js/app.js'
+  './js/datepicker.js',
+  './js/app.js',
+  './xlsx.mini.min.js'
 ];
 
 // Install Event: Cache core files
@@ -31,7 +35,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keyList.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('Removing old cache:', key);
+            console.log('[SW] Removing old cache:', key);
             return caches.delete(key);
           }
         })
@@ -41,31 +45,67 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Fetch Event: Network First, falling back to Cache
-// This ensures that if the server is reachable, the user gets the latest code (fixing "refresh" behavior).
-// If offline, it falls back to the cached version.
+// Fetch Event: Local-Only Enforcement + Cache-First for performance
 self.addEventListener('fetch', (event) => {
-  // Only handle HTTP/HTTPS requests
+  // 1. Ignore non-GET requests (POST, etc.) to prevent cache poisoning
+  if (event.request.method !== 'GET') return;
+
+  // 2. Ignore non-http schemes (like chrome-extension://)
   if (!event.request.url.startsWith('http')) return;
 
+  // 3. LOCAL-ONLY ENFORCEMENT: Block all external domain requests
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) {
+    console.warn('[SW] Blocked external request:', requestUrl.href);
+    event.respondWith(
+      new Response('External requests are blocked for compliance.', {
+        status: 403,
+        statusText: 'Forbidden - Local Only Mode'
+      })
+    );
+    return;
+  }
+
+  // 4. Cache-First for same-origin (snappy after install)
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        // If network fetch is successful, cache the new version and return it
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors') {
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Return cached version immediately, then update cache in background
+        event.waitUntil(
+          fetch(event.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, networkResponse.clone());
+              });
+            }
+          }).catch(() => {
+            // Network failed, that's fine - we have cache
+          })
+        );
+        return cachedResponse;
+      }
+
+      // Not in cache - fetch from network
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+            return networkResponse;
+          }
+
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+
           return networkResponse;
-        }
-        
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+        })
+        .catch(() => {
+          // Offline fallback for navigation
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+          return null;
         });
-        
-        return networkResponse;
-      })
-      .catch(() => {
-        // If network fails (Offline), return cached version
-        return caches.match(event.request);
-      })
+    })
   );
 });
