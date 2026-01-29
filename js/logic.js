@@ -190,7 +190,11 @@ function calculateLoan(inputs, activeKey) {
         else if (activeKey === 'period') {
             if (P > 0 && M > 0 && R >= 0) {
                 const i = R / 1200;
-                if (M > P * i) {
+                // Handle 0% rate case: simple division instead of log formula
+                if (i === 0) {
+                    resN = Math.ceil(P / M);
+                    if (resN <= MAX_MONTHS) valid = true;
+                } else if (M > P * i) {
                     resN = Math.ceil(Math.log(M / (M - P * i)) / Math.log(1 + i));
                     if (resN <= MAX_MONTHS) valid = true;
                     else valid = false;
@@ -198,36 +202,44 @@ function calculateLoan(inputs, activeKey) {
             }
         }
         else if (activeKey === 'rate') {
-            if (P > 0 && M > 0 && N > 0 && M * N > P) {
-                let i = 0.01;
-                let converged = false;
-                for (let j = 0; j < 20; j++) {
-                    if (i <= 0.0000001) i = 0.0000001;
-                    let f = M * (1 - Math.pow(1 + i, -N)) / i - P;
-                    let df = (M / i) * (N * Math.pow(1 + i, -N - 1) / (1 + i) - (1 - Math.pow(1 + i, -N)) / i);
-                    if (!isFinite(f) || !isFinite(df) || df === 0) break;
-                    let newI = i - f / df;
-                    if (Math.abs(newI - i) < 0.0000001) {
+            if (P > 0 && M > 0 && N > 0 && M * N >= P) {
+                // Handle 0% rate case: total payments exactly equals principal
+                if (M * N === P) {
+                    resR = 0;
+                    resM = M; // Installment stays as entered
+                    valid = true;
+                } else {
+                    // M * N > P: use Newton-Raphson solver
+                    let i = 0.01;
+                    let converged = false;
+                    for (let j = 0; j < 20; j++) {
+                        if (i <= 0.0000001) i = 0.0000001;
+                        let f = M * (1 - Math.pow(1 + i, -N)) / i - P;
+                        let df = (M / i) * (N * Math.pow(1 + i, -N - 1) / (1 + i) - (1 - Math.pow(1 + i, -N)) / i);
+                        if (!isFinite(f) || !isFinite(df) || df === 0) break;
+                        let newI = i - f / df;
+                        if (Math.abs(newI - i) < 0.0000001) {
+                            i = newI;
+                            converged = true;
+                            break;
+                        }
                         i = newI;
-                        converged = true;
-                        break;
                     }
-                    i = newI;
-                }
-                resR = i * 1200;
-                if (!converged || !isFinite(resR) || resR <= 0) {
-                    resR = solveRateBisection(P, N, M);
-                }
+                    resR = i * 1200;
+                    if (!converged || !isFinite(resR) || resR <= 0) {
+                        resR = solveRateBisection(P, N, M);
+                    }
 
-                // Re-derive installment from the calculated rate for schedule consistency
-                // This ensures the schedule uses values that are mathematically consistent
-                // with the derived rate, eliminating rounding discrepancies
-                const derivedI = resR / 1200;
-                if (derivedI > 0) {
-                    resM = round2(P * derivedI * Math.pow(1 + derivedI, N) / (Math.pow(1 + derivedI, N) - 1));
-                }
+                    // Re-derive installment from the calculated rate for schedule consistency
+                    // This ensures the schedule uses values that are mathematically consistent
+                    // with the derived rate, eliminating rounding discrepancies
+                    const derivedI = resR / 1200;
+                    if (derivedI > 0) {
+                        resM = round2(P * derivedI * Math.pow(1 + derivedI, N) / (Math.pow(1 + derivedI, N) - 1));
+                    }
 
-                valid = true;
+                    valid = true;
+                }
             }
         }
     } catch (e) {
@@ -487,17 +499,27 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
 /**
  * Generates a deterministic Calculation Fingerprint (short hash)
  * Used for auditability - same inputs always produce same fingerprint
- * @param {Object} inputs - {amount, rate, period, startDate (DD/MM/YYYY string)}
- * @param {string} appVersion - Current app version (e.g., "1.9.0")
- * @returns {string} Fingerprint in format "v1.9-XXXXXX"
+ * @param {Object} inputs - Comprehensive input set for audit:
+ *   - amount, rate, period
+ *   - startDate (ISO YYYY-MM-DD)
+ *   - adminFees, stampRate
+ *   - firstInstDate (ISO YYYY-MM-DD, optional)
+ * @param {string} appVersion - Current app version
+ * @returns {string} Fingerprint in format "v1.12-XXXXXX"
  */
-function generateFingerprint(inputs, appVersion = "1.9.0") {
+function generateFingerprint(inputs, appVersion) {
     // Create canonical input string (order matters for determinism)
+    // We include hardcoded conventions (30/360) to ensure future changes break the hash
     const canonical = [
         String(inputs.amount || 0),
         String(inputs.rate || 0),
         String(inputs.period || 0),
-        String(inputs.startDate || ''),
+        String(inputs.startDate || ''), // Expecting ISO date
+        String(inputs.adminFees || 0),
+        String(inputs.stampRate || 0),
+        String(inputs.firstInstDate || ''), // Expecting ISO date
+        '30/360', // Hardcoded convention
+        'installment', // Calculation target
         appVersion
     ].join('|');
 

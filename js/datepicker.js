@@ -322,6 +322,7 @@
                 if (next && next.getAttribute('tabindex') === '0') next.focus();
             } else if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation(); // Prevent bubbling to global Enter handler
                 closePicker(true);
             }
         });

@@ -5,7 +5,11 @@
 
 (function () { // Wrap in IIFE to prevent global variable collisions
 
+
     // --- Constants ---
+    // APP_VERSION is now loaded from version.js (global scope)
+
+
     const Z_INDEX = {
         OVERLAY: 99999,
         MODAL: 9999,
@@ -85,6 +89,17 @@
         if (typeof initOfflineIndicator === 'function') initOfflineIndicator();
         if (typeof BackHandler !== 'undefined' && BackHandler.init) BackHandler.init();
 
+        // 2.3 Prevent pinch-to-zoom (even if browser ignores viewport meta)
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+        document.addEventListener('gesturestart', (e) => e.preventDefault());
+        document.addEventListener('gesturechange', (e) => e.preventDefault());
+
+        // 2.5 Set About modal version from centralized constant
+        const versionDisplay = document.getElementById('app-version-display');
+        if (versionDisplay) versionDisplay.textContent = 'Version ' + APP_VERSION;
+
         setTimeout(() => { document.body.classList.remove('preload'); }, 150);
 
         // 3. Load Preferences
@@ -152,13 +167,13 @@
 
         if (isAdvanced) {
             std.classList.remove('max-h-24', 'opacity-100');
-            std.classList.add('max-h-0', 'opacity-0');
-            adv.classList.remove('max-h-0', 'opacity-0');
+            std.classList.add('max-h-0', 'opacity-0', 'pointer-events-none');
+            adv.classList.remove('max-h-0', 'opacity-0', 'pointer-events-none');
             adv.classList.add('max-h-96', 'opacity-100');
         } else {
             std.classList.add('max-h-24', 'opacity-100');
-            std.classList.remove('max-h-0', 'opacity-0');
-            adv.classList.add('max-h-0', 'opacity-0');
+            std.classList.remove('max-h-0', 'opacity-0', 'pointer-events-none');
+            adv.classList.add('max-h-0', 'opacity-0', 'pointer-events-none');
             adv.classList.remove('max-h-96', 'opacity-100');
         }
     }
@@ -1112,9 +1127,14 @@
                     amount: P,
                     rate: R,
                     period: N,
-                    startDate: dateInputs.startDisplay?.value || ''
+                    // Use native ISO dates for stable canonicalization (avoid locale/format issues)
+                    startDate: dateInputs.startNative?.value || '',
+                    // Include other cost factors for audit
+                    adminFees: parseFloat(document.getElementById('admin-fees').value) || 0,
+                    stampRate: parseFloat(document.getElementById('stamp-rate').value) || 0,
+                    firstInstDate: dateInputs.firstNative?.value || ''
                 };
-                const fingerprint = generateFingerprint(fingerprintInputs, '1.9.0');
+                const fingerprint = generateFingerprint(fingerprintInputs, APP_VERSION);
                 const fingerprintEl = document.getElementById('fingerprint-value');
                 const fingerprintContainer = document.getElementById('calculation-fingerprint');
                 if (fingerprintEl) fingerprintEl.textContent = fingerprint;
@@ -1619,7 +1639,7 @@
         if (aboutModal) {
             document.getElementById('about-btn').addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal); });
             document.getElementById('close-about').addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal); });
-            document.getElementById('close-about-btn').addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal); });
+
             aboutModal.addEventListener('click', (e) => {
                 if (e.target === aboutModal || e.target.classList.contains('modal-overlay')) { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal); }
             });
@@ -1856,8 +1876,21 @@
                 return rowData;
             });
 
-            // 3. Combine All Data
-            const ws_data = [...summaryData, scheduleTitleRow, headers, ...scheduleRows];
+            // 3a. Prepare Assumptions Data for Audit Trail
+            const assumptionsData = [
+                [],
+                [t(l, 'assumptionsTitle')],
+                [l === 'ar' ? '• طريقة الفائدة: رصيد متناقص (قسطي)' : '• Interest Method: Reducing Balance (Annuity)'],
+                [l === 'ar' ? '• حساب الأيام: 30/360 (US/NASD)' : '• Day Count: 30/360 (US/NASD)'],
+                [l === 'ar' ? '• التقريب: منزلتان عشريتان لكل قسط' : '• Rounding: 2 decimal places per installment'],
+                [l === 'ar' ? '• الدمغة: ربع سنوية على أعلى رصيد مستحق' : '• Stamp: Quarterly on highest principal balance'],
+                [l === 'ar' ? '• الرسوم: تُخصم مقدماً، لا يتم إطفاؤها' : '• Fees: Deducted upfront, not amortized'],
+                [],
+                [l === 'ar' ? 'هذه الحاسبة توفر تقديرات فقط. النتائج ليست موافقة نهائية على القرض.' : 'This calculator provides estimates only. Results are not final loan approval.']
+            ];
+
+            // 3b. Combine All Data
+            const ws_data = [...summaryData, scheduleTitleRow, headers, ...scheduleRows, ...assumptionsData];
             const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
             // 4. MERGES

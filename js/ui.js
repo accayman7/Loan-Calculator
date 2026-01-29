@@ -273,7 +273,7 @@ const txt = {
         assumptionRounding: "• التقريب: 2 خانة عشرية لكل قسط",
         assumptionStampLogic: "• الدمغة: ربع سنوية على أعلى رصيد أصل",
         assumptionFeesLogic: "• الرسوم: تخصم مقدماً، لا يتم توزيعها على الأقساط",
-        calculationIdLabel: "رمز الحساب:",
+        calculationIdLabel: "رمز العملية:",
 
         // Info Tooltips
         flatRateExplain: "معادل الفائدة البسيطة: (إجمالي الفائدة ÷ أصل القرض) ÷ السنوات × 100",
@@ -435,12 +435,84 @@ const BackHandler = (() => {
     };
 })();
 
+// Flag to prevent double reloads
+let isReloading = false;
+
 function initPWA() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js')
-            .then(reg => { if (DEBUG_MODE) console.log('SW registered'); })
+            .then(reg => {
+                if (DEBUG_MODE) console.log('SW registered');
+
+                // Listen for new service worker updates
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    if (newWorker) {
+                        newWorker.addEventListener('statechange', () => {
+                            // When new SW is installed and waiting, show update prompt
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateBanner();
+                            }
+                        });
+                    }
+                });
+            })
             .catch(err => { if (DEBUG_MODE) console.warn('SW registration failed:', err); });
+
+        // Also listen for controller changes (new SW took over)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            // A new service worker has taken control, reload for clean state
+            if (!isReloading) {
+                isReloading = true;
+                window.location.reload();
+            }
+        });
     }
+}
+
+// Show "New version available" banner
+function showUpdateBanner() {
+    // Don't show if already visible
+    if (document.getElementById('update-banner')) return;
+
+    const lang = document.documentElement.lang || 'en';
+    const message = lang === 'ar' ? 'يتوفر إصدار جديد' : 'New version available';
+    const btnText = lang === 'ar' ? 'تحديث' : 'Refresh';
+
+    const banner = document.createElement('div');
+    banner.id = 'update-banner';
+    banner.className = 'fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-indigo-600 text-white px-4 py-3 rounded-lg shadow-xl z-50 flex items-center justify-between gap-3 animate-slide-up';
+    banner.innerHTML = `
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span class="text-sm font-medium">${message}</span>
+        </div>
+        <button id="update-refresh-btn" class="px-3 py-1 bg-white text-indigo-600 text-sm font-bold rounded hover:bg-indigo-50 transition-colors flex-shrink-0">
+            ${btnText}
+        </button>
+    `;
+    document.body.appendChild(banner);
+
+    document.getElementById('update-refresh-btn').addEventListener('click', () => {
+        // Skip waiting on new SW and reload
+        if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(reg => {
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+            });
+        }
+        // Reload after short delay to allow message to be processed
+        // (Fallback if controllerchange doesn't fire fast enough)
+        setTimeout(() => {
+            if (!isReloading) {
+                isReloading = true;
+                window.location.reload();
+            }
+        }, 500);
+    });
 }
 
 function initOfflineIndicator() {
@@ -749,6 +821,9 @@ function toggleModal(modal) {
             document.body.style.paddingRight = pad;
             const nav = document.querySelector('nav');
             if (nav) nav.style.paddingRight = pad;
+            // Compensate fixed elements for scrollbar width
+            const updateBanner = document.getElementById('update-banner');
+            if (updateBanner) updateBanner.style.paddingRight = pad;
         }
         document.body.classList.add('scroll-lock');
 
@@ -762,6 +837,9 @@ function toggleModal(modal) {
             document.body.style.paddingRight = '';
             const nav = document.querySelector('nav');
             if (nav) nav.style.paddingRight = '';
+            // Reset fixed elements
+            const updateBanner = document.getElementById('update-banner');
+            if (updateBanner) updateBanner.style.paddingRight = '';
         }, 300);
 
         // Unregister from BackHandler
@@ -1266,7 +1344,9 @@ function initDateInput(displayInput, nativeInput) {
     displayInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            e.stopPropagation(); // Prevent bubbling to global Enter handler
             validateDateInputAndSync(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
+            displayInput.blur(); // Also blur to dismiss keyboard on mobile
             return;
         }
 
