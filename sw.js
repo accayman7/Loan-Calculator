@@ -1,7 +1,8 @@
 // sw.js - Service Worker (Local-Only Mode)
-// Version: 1.10.18 - Accessibility improvements
+// Consumes shared version from js/version.js
+importScripts('./js/version.js');
 
-const CACHE_NAME = 'loan-calc-v1.10.18';
+const CACHE_NAME = 'loan-calc-v' + self.APP_VERSION;
 
 // Resources to cache immediately on install
 const PRE_CACHE = [
@@ -18,12 +19,23 @@ const PRE_CACHE = [
   './xlsx.mini.min.js'
 ];
 
-// Install Event: Cache core files
+// Install Event: Cache core files (best-effort - missing files won't break install)
+// NOTE: We intentionally do NOT call skipWaiting() here - let the new SW wait
+// until user clicks the "Refresh" button, which sends SKIP_WAITING message
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Activate worker immediately
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRE_CACHE);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Best-effort caching: cache what exists, log what doesn't
+      const results = await Promise.allSettled(
+        PRE_CACHE.map(url =>
+          cache.add(url).catch(err => {
+            console.warn('[SW] Failed to cache:', url, err.message);
+            return null; // Don't fail the entire install
+          })
+        )
+      );
+      const cached = results.filter(r => r.status === 'fulfilled').length;
+      console.log(`[SW] Cached ${cached}/${PRE_CACHE.length} resources`);
     })
   );
 });
@@ -104,8 +116,20 @@ self.addEventListener('fetch', (event) => {
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }
-          return null;
+          // Return simple 503 instead of null to match review recommendation
+          return new Response('Offline: Service Unavailable', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({ 'Content-Type': 'text/plain' })
+          });
         });
     })
   );
+});
+
+// Message handler: allow page to trigger immediate activation
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

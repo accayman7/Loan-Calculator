@@ -22,11 +22,13 @@
     <!-- Chart.js is loaded lazily on first calculation for faster initial load -->
     <script src="./tailwind.js"></script>
 
-    <!-- App scripts with defer - executes in order after DOM parsing -->
-    <script src="./js/logic.js" defer></script>
-    <script src="./js/ui.js" defer></script>
-    <script src="./js/datepicker.js" defer></script>
-    <script src="./js/app.js" defer></script>
+    <!-- App scripts - executes in order -->
+    <!-- Core Scripts -->
+    <script src="./js/version.js"></script>
+    <script src="./js/logic.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/datepicker.js"></script>
+    <script src="./js/app.js"></script>
 
     <script>
         // Inline script to prevent flash of wrong theme
@@ -78,6 +80,23 @@
 
         html.dark {
             background-color: #020617;
+        }
+
+        /* Update banner animation */
+        @keyframes slide-up {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-slide-up {
+            animation: slide-up 0.3s ease-out forwards;
         }
 
         body {
@@ -2206,7 +2225,7 @@
                     </div>
 
                     <div id="adv-installments-view"
-                        class="space-y-4 pt-1 transition-all duration-500 ease-in-out overflow-hidden max-h-0 opacity-0">
+                        class="space-y-4 pt-1 transition-all duration-500 ease-in-out overflow-hidden max-h-0 opacity-0 pointer-events-none">
                         <div class="summary-grid items-center">
                             <div>
                                 <div class="flex items-center gap-1 mb-1">
@@ -2433,7 +2452,7 @@
                 <img src="./icon.png" alt="App Icon" class="w-20 h-20 rounded-2xl shadow-lg mb-4">
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white" data-lang-key="appTitle">Loan Calculator
                 </h3>
-                <p class="text-xs text-gray-400 mt-1">Version 1.10.17</p>
+                <p id="app-version-display" class="text-xs text-gray-400 mt-1">&nbsp;</p>
                 <p class="text-center text-gray-500 dark:text-gray-400 text-sm mt-2 px-4" data-lang-key="aboutDesc">
                     A professional loan calculator PWA designed for accurate financial planning.
                 </p>
@@ -2451,7 +2470,7 @@
                 </div>
             </div>
 
-            <div class="space-y-3 mt-6 mb-6">
+            <div class="space-y-3 mt-6 mb-6 px-6">
                 <button id="share-btn"
                     class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -2475,14 +2494,11 @@
                     <span data-lang-key="checkUpdates">Check for Updates</span>
                 </button>
 
-                <button id="close-about-btn"
-                    class="w-full flex items-center justify-center px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl font-medium transition-all active:scale-95"
-                    data-lang-key="closeBtn">
-                    Close
-                </button>
+
             </div>
 
-            <div class="border-t border-gray-100 dark:border-gray-800 pt-6 flex flex-col items-center pb-8 md:pb-0">
+            <div
+                class="border-t border-gray-100 dark:border-gray-800 pt-6 flex flex-col items-center pb-12 md:pb-2 px-6">
                 <p class="text-xs font-semibold uppercase text-gray-400 mb-4 tracking-wider" data-lang-key="devContact">
                     Developer Contact</p>
 
@@ -2506,7 +2522,7 @@
                 </div>
 
                 <div class="text-center">
-                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Ayman Alsebaey</p>
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ayman Alsebaey</p>
                 </div>
             </div>
         </div>

@@ -261,4 +261,4 @@ The current implementation enforces states implicitly via:
 
 ---
 
-*Last updated: Version 1.10.5*
+*Last updated: Version 1.12.2*
