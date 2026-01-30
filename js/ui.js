@@ -960,7 +960,19 @@ function formatCurrencyInput(input) {
     if (raw !== "") {
         const integerPart = parts[0];
         const decimalPart = parts.length > 1 ? "." + parts[1] : "";
-        newVal = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + decimalPart;
+
+        let formattedInt = "";
+        if (integerPart) {
+            // Use Intl.NumberFormat to avoid ReDoS vulnerability (CWE-1333)
+            // BigInt handles arbitrary precision for large loan amounts
+            try {
+                formattedInt = new Intl.NumberFormat('en-US').format(BigInt(integerPart));
+            } catch (e) {
+                formattedInt = integerPart; // Fallback
+            }
+        }
+
+        newVal = formattedInt + decimalPart;
     }
     input.value = newVal;
 
