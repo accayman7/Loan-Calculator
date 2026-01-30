@@ -129,10 +129,20 @@ self.addEventListener('fetch', (event) => {
 
 // Message handler: allow page to trigger immediate activation
 self.addEventListener('message', (event) => {
-  // Security: Validate the message source is a legitimate client
-  // In service workers, event.source is a WindowClient for valid same-origin requests
+  // Security: Validate the message source is a legitimate same-origin client
   if (!event.source || !(event.source instanceof Client)) {
     return; // Ignore messages without a valid client source
+  }
+
+  // Verify the client URL matches this service worker's origin
+  try {
+    const clientOrigin = new URL(event.source.url).origin;
+    const swOrigin = self.location.origin;
+    if (clientOrigin !== swOrigin) {
+      return; // Ignore cross-origin messages
+    }
+  } catch (e) {
+    return; // Invalid URL, ignore
   }
 
   if (event.data && event.data.type === 'SKIP_WAITING') {
