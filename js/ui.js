@@ -968,6 +968,7 @@ function formatCurrencyInput(input) {
             try {
                 formattedInt = new Intl.NumberFormat('en-US').format(BigInt(integerPart));
             } catch (e) {
+                console.warn('Currency formatting error:', e);
                 formattedInt = integerPart; // Fallback
             }
         }
@@ -975,7 +976,13 @@ function formatCurrencyInput(input) {
         newVal = formattedInt + decimalPart;
     }
     input.value = newVal;
+    restoreCursorPosition(input, oldVal, newVal, selectionStart);
+}
 
+/**
+ * Helper to restore cursor position after formatting
+ */
+function restoreCursorPosition(input, oldVal, newVal, selectionStart) {
     let oldCommas = (oldVal.slice(0, selectionStart).match(/,/g) || []).length;
     let newCommas = (newVal.slice(0, selectionStart).match(/,/g) || []).length;
 
