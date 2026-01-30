@@ -151,10 +151,24 @@
                     const summary = runAllTests();
                     displayResults(summary);
                 } catch (error) {
-                    resultsDiv.innerHTML = `<div class="result-fail result-item">
-                        <strong>Error running tests:</strong> ${error.message}
-                        <div class="result-details">${error.stack}</div>
-                    </div>`;
+                    // Safe DOM construction to prevent XSS
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'result-fail result-item';
+                    
+                    const strongEl = document.createElement('strong');
+                    strongEl.textContent = 'Error running tests: ';
+                    errorDiv.appendChild(strongEl);
+                    
+                    const msgText = document.createTextNode(error.message || 'Unknown error');
+                    errorDiv.appendChild(msgText);
+                    
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.className = 'result-details';
+                    detailsDiv.textContent = error.stack || '';
+                    errorDiv.appendChild(detailsDiv);
+                    
+                    resultsDiv.innerHTML = '';
+                    resultsDiv.appendChild(errorDiv);
                 }
                 loading.style.display = 'none';
             }, 100);

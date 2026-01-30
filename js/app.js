@@ -198,15 +198,27 @@
             // Create tooltip element
             const tooltip = document.createElement('div');
             tooltip.className = 'tutorial-tooltip pulse from-radio';
-            tooltip.innerHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 8px;">
-                    <svg class="flex-shrink-0" style="width: 18px; height: 18px; margin-top: 2px;" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                    </svg>
-                    <span>${t(lang, 'tutorialTooltip')}</span>
-                </div>
-                <button type="button" class="tutorial-tooltip-btn" id="dismiss-tutorial">${t(lang, 'gotIt')}</button>
-            `;
+            // Safe DOM creation to prevent XSS (replacing innerHTML)
+            const contentDiv = document.createElement('div');
+            contentDiv.style.cssText = 'display: flex; align-items: flex-start; gap: 8px;';
+
+            // SVG is static and safe
+            const successIcon = document.createElement('div');
+            successIcon.innerHTML = `<svg class="flex-shrink-0" style="width: 18px; height: 18px; margin-top: 2px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+            contentDiv.appendChild(successIcon.firstElementChild);
+
+            const textSpan = document.createElement('span');
+            textSpan.textContent = t(AppState.lang, 'tutorialTooltip'); // Safe text insertion
+            contentDiv.appendChild(textSpan);
+
+            const dismissBtn = document.createElement('button');
+            dismissBtn.type = 'button';
+            dismissBtn.className = 'tutorial-tooltip-btn';
+            dismissBtn.id = 'dismiss-tutorial';
+            dismissBtn.textContent = t(AppState.lang, 'gotIt'); // Safe text insertion
+
+            tooltip.appendChild(contentDiv);
+            tooltip.appendChild(dismissBtn);
 
             // Position it next to the radio button
             const isRTL = document.documentElement.dir === 'rtl';
@@ -229,7 +241,6 @@
             radioContainer.appendChild(tooltip);
 
             // Dismiss handler
-            const dismissBtn = document.getElementById('dismiss-tutorial');
             const dismissTooltip = () => {
                 tooltip.style.opacity = '0';
                 // Reverse the horizontal slide-in: collapse back toward the radio button
@@ -1719,77 +1730,136 @@
                 tableContainer.style.border = 'none';
             }
 
-            let styles = '';
-            document.querySelectorAll('style').forEach(style => styles += style.outerHTML);
-            let links = '';
-            document.querySelectorAll('link[rel="stylesheet"]').forEach(link => links += link.outerHTML);
-
-            const scheduleTitle = t(AppState.lang, 'scheduleTitle');
-
+            // Safe DOM Construction for Print (Avoids doc.write XSS sink)
             doc.open();
-            doc.write(`
-                <!DOCTYPE html>
-                <html lang="${AppState.lang}" dir="${AppState.lang === 'ar' ? 'rtl' : 'ltr'}" class="light">
-                <head><meta charset="UTF-8"><title>Loan Report</title>${links}${styles}
-                <script src="./tailwind.js"></script>
-                <style>
-                    body { background-color: white !important; color: black !important; padding: 2rem; font-family: system-ui; }
-                    .print-container { max-width: 800px; margin: 0 auto; display: block; }
-                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                    #summary-section { background: white !important; border: 2px solid #000; border-radius: 12px; color: black !important; box-shadow: none !important; margin-bottom: 2rem; }
-                    #summary-section * { color: black !important; text-shadow: none !important; }
-                    #summary-section .absolute { display: none !important; }
-                    
-                    /* Added Disclaimer Styling */
-                    #assumptions-panel { 
-                        border: 1px solid #e5e7eb !important; 
-                        background-color: #f9fafb !important; 
-                        margin-bottom: 2rem !important; 
-                        page-break-inside: avoid;
-                        color: #6b7280 !important;
-                        font-size: 0.75rem !important;
-                    }
-
-                    .summary-divider { background-color: #ccc !important; height: 1px !important; margin: 8px 0 !important; }
-                    .table-container { border: none !important; }
-                    table { border-collapse: collapse; width: 100%; font-size: 10pt; }
-                    thead, tbody, tr, th, td { position: static !important; overflow: visible !important; }
-                    thead { display: table-header-group !important; }
-                    tbody { display: table-row-group !important; }
-                    tr { display: table-row !important; break-inside: avoid; page-break-inside: avoid; }
-                    th, td { display: table-cell !important; }
-                    thead th { 
-                        background-color: #f3f4f6 !important; 
-                        color: #000 !important; 
-                        border-bottom: 2px solid #000 !important;
-                        font-weight: bold !important;
-                        text-align: right !important;
-                        padding: 8px !important;
-                        box-shadow: none !important;
-                        z-index: auto !important;
-                        position: relative !important;
-                        visibility: visible !important;
-                    }
-                    thead th:first-child { text-align: center !important; }
-                    tbody tr { border-bottom: 1px solid #e5e7eb !important; }
-                    tbody td { padding: 6px 8px !important; text-align: right !important; }
-                    tbody td:first-child { text-align: center !important; }
-                    .hidden { display: table-cell !important; }
-                    #close-schedule-btn, #copy-summary-btn { display: none !important; }
-                    /* Stamp column styling for print */
-                    [data-stamp-col] { color: #7c3aed !important; text-align: right !important; }
-                    .bg-purple-50, .bg-purple-100\\/50 { background-color: #faf5ff !important; }
-                    .text-purple-600, .text-purple-700, .text-purple-400 { color: #7c3aed !important; }
-                </style></head><body class="lang-ready">
-                <div class="print-container">
-                    ${summaryClone.outerHTML}
-                    ${disclaimerClone.outerHTML}
-                    <h2 class="text-xl font-bold mb-4 mt-8" style="text-align: center; break-before: page; page-break-before: always;">${scheduleTitle}</h2>
-                    <div class="w-full">${scheduleClone.innerHTML}</div>
-                </div>
-                <script>window.onload = function() { setTimeout(() => { window.print(); }, 500); };</script></body></html>
-            `);
+            doc.write('<!DOCTYPE html><html><head></head><body></body></html>');
             doc.close();
+
+            const html = doc.documentElement;
+            // Strict sanitization
+            const safeLang = AppState.lang === 'ar' ? 'ar' : 'en';
+            html.lang = safeLang;
+            html.dir = safeLang === 'ar' ? 'rtl' : 'ltr';
+            html.className = 'light';
+
+            const head = doc.head;
+            const meta = doc.createElement('meta');
+            meta.charset = 'UTF-8';
+            head.appendChild(meta);
+
+            const title = doc.createElement('title');
+            title.textContent = 'Loan Report';
+            head.appendChild(title);
+
+            // Clone styles
+            document.querySelectorAll('link[rel="stylesheet"]').forEach(link => head.appendChild(link.cloneNode(true)));
+            document.querySelectorAll('style').forEach(style => head.appendChild(style.cloneNode(true)));
+
+            const twScript = doc.createElement('script');
+            twScript.src = './tailwind.js';
+            head.appendChild(twScript);
+
+            const printStyles = doc.createElement('style');
+            printStyles.textContent = `
+                body { background-color: white !important; color: black !important; padding: 2rem; font-family: system-ui; }
+                .print-container { max-width: 800px; margin: 0 auto; display: block; }
+                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                #summary-section { background: white !important; border: 2px solid #000; border-radius: 12px; color: black !important; box-shadow: none !important; margin-bottom: 2rem; }
+                #summary-section * { color: black !important; text-shadow: none !important; }
+                #summary-section .absolute { display: none !important; }
+                
+                /* Added Disclaimer Styling */
+                #assumptions-panel { 
+                    border: 1px solid #e5e7eb !important; 
+                    background-color: #f9fafb !important; 
+                    margin-bottom: 2rem !important; 
+                    page-break-inside: avoid;
+                    color: #6b7280 !important;
+                    font-size: 0.75rem !important;
+                }
+
+                .summary-divider { background-color: #ccc !important; height: 1px !important; margin: 8px 0 !important; }
+                
+                /* Reset Tailwind CSS shadow variables */
+                * {
+                    --tw-shadow: 0 0 #0000 !important;
+                    --tw-ring-shadow: 0 0 #0000 !important;
+                    --tw-ring-offset-shadow: 0 0 #0000 !important;
+                }
+                
+                /* Reset ONLY container DIVs - NOT table/tr/td/th */
+                #schedule-container,
+                #schedule-container > div,
+                #schedule-container > div > div,
+                .table-container { 
+                    border: none !important; 
+                    box-shadow: none !important; 
+                    overflow: visible !important; 
+                    max-height: none !important;
+                }
+                
+                /* Remove divide-y effect (border-top on rows) */
+                tbody tr { border-top: none !important; }
+                table { border-collapse: collapse; width: 100%; border: none !important; font-size: 10pt; }
+                thead, tbody, tr, th, td { position: static !important; overflow: visible !important; }
+                thead { display: table-header-group !important; }
+                tbody { display: table-row-group !important; }
+                tr { display: table-row !important; break-inside: avoid; page-break-inside: avoid; }
+                th, td { display: table-cell !important; }
+                thead th { 
+                    background-color: #f3f4f6 !important; 
+                    color: #000 !important; 
+                    border-bottom: 2px solid #000 !important; 
+                    font-weight: bold !important; 
+                    text-align: center !important; 
+                }
+                tbody td { border-bottom: 1px solid #e5e7eb !important; padding: 6px 8px !important; text-align: center !important; }
+                .hidden { display: table-cell !important; }
+                #close-schedule-btn, #copy-summary-btn { display: none !important; }
+                [data-stamp-col] { color: #7c3aed !important; }
+                .bg-purple-50, .bg-purple-100\\/50 { background-color: #faf5ff !important; }
+                .text-purple-600, .text-purple-700, .text-purple-400 { color: #7c3aed !important; }
+                @page { size: A4; margin: 1cm; }
+                .no-print { display: none !important; }
+            `;
+            head.appendChild(printStyles);
+
+            const body = doc.body;
+            body.className = 'lang-ready';
+
+            const container = doc.createElement('div');
+            container.className = 'print-container';
+
+            // Add Header
+            const h2 = doc.createElement('h2');
+            h2.className = 'text-xl font-bold mb-4 mt-8';
+            h2.style.cssText = 'text-align: center; break-before: page; page-break-before: always;';
+            h2.textContent = t(AppState.lang, 'scheduleTitle');
+
+            container.appendChild(summaryClone);
+            container.appendChild(disclaimerClone);
+            container.appendChild(h2);
+
+            const tableWrapper = doc.createElement('div');
+            tableWrapper.className = 'w-full';
+            // We can append scheduleClone directly if it's a node, or clone its content
+            // scheduleClone is a node (cloneNode(true) earlier), so we just append it
+            tableWrapper.appendChild(scheduleClone);
+            container.appendChild(tableWrapper);
+
+            // Footer
+            const footer = doc.createElement('div');
+            footer.style.cssText = 'margin-top: 2rem; text-align: center; font-size: 0.75rem; color: #666; border-top: 1px solid #ccc; pt-4';
+            footer.textContent = `Generated by Loan Calculator Pro • ${new Date().toLocaleDateString(safeLang === 'ar' ? 'ar-EG' : 'en-GB')}`;
+            container.appendChild(footer);
+
+            body.appendChild(container);
+
+            // Print Trigger
+            const script = doc.createElement('script');
+            // Execute directly - document is already ready. Focus is needed for some browsers.
+            script.textContent = 'setTimeout(() => { window.focus(); window.print(); }, 500);';
+            body.appendChild(script);
         } catch (e) { console.error(e); showToast("Print failed", "error"); }
     }
 
@@ -1860,7 +1930,7 @@
                     const d = r.rawDate.getDate().toString().padStart(2, '0');
                     const m = (r.rawDate.getMonth() + 1).toString().padStart(2, '0');
                     const y = r.rawDate.getFullYear();
-                    dateStr = `${d}/${m}/${y}`;
+                    dateStr = `${d} /${m}/${y} `;
                 } else {
                     dateStr = r.rawDate.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
                 }
