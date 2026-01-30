@@ -129,6 +129,12 @@ self.addEventListener('fetch', (event) => {
 
 // Message handler: allow page to trigger immediate activation
 self.addEventListener('message', (event) => {
+  // Security: Validate the message source is a legitimate client
+  // In service workers, event.source is a WindowClient for valid same-origin requests
+  if (!event.source || !(event.source instanceof Client)) {
+    return; // Ignore messages without a valid client source
+  }
+
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
