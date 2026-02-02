@@ -157,6 +157,14 @@
             color: #ffffff;
         }
 
+        /* Force LTR direction on date inputs (even in RTL layouts) */
+        #start-date-display,
+        #first-inst-date-display,
+        #settlement-date-display {
+            direction: ltr !important;
+            text-align: left !important;
+        }
+
         /* Nav is positioned relative for snow effect overlay */
         nav {
             padding-top: env(safe-area-inset-top);
@@ -1393,6 +1401,7 @@
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
             -ms-overflow-style: none;
+            overscroll-behavior: contain;
         }
 
         .date-picker-column::-webkit-scrollbar {
@@ -1814,7 +1823,7 @@
                                         id="date-label" for="start-date-display" data-lang-key="startDateLabel">Start
                                         Date</label>
                                     <div class="input-group relative">
-                                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="start-date-display"
+                                        <input type="text" inputmode="numeric" id="start-date-display"
                                             class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
                                             autocomplete="off">
                                         <button type="button" id="start-date-picker-btn"
@@ -1839,9 +1848,9 @@
                                         for="first-inst-date-display" data-lang-key="firstInstLabel">First Payment
                                         Date</label>
                                     <div class="input-group relative">
-                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
-                                            id="first-inst-date-display" class="text-input select-text z-10"
-                                            placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                                        <input type="text" inputmode="numeric" id="first-inst-date-display"
+                                            class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
+                                            autocomplete="off">
                                         <button type="button" id="first-inst-date-picker-btn"
                                             class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
                                             aria-label="Open date picker">
@@ -1965,8 +1974,7 @@
                                         for="settlement-date-display" data-lang-key="settlementDateLabel">Settlement
                                         Date</label>
                                     <div class="input-group relative">
-                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
-                                            id="settlement-date-display"
+                                        <input type="text" inputmode="numeric" id="settlement-date-display"
                                             class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text z-10"
                                             placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
                                         <button type="button" id="settlement-date-picker-btn"
