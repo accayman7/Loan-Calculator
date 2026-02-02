@@ -295,6 +295,14 @@
             }
         });
 
+        // Wheel event handler to prevent overscrolling
+        const maxScroll = (items.length - 1) * ITEM_HEIGHT;
+        columnEl.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const newScrollTop = Math.max(0, Math.min(columnEl.scrollTop + e.deltaY, maxScroll));
+            columnEl.scrollTop = newScrollTop;
+        }, { passive: false });
+
         // Keyboard Support
         columnEl.addEventListener('keydown', (e) => {
             const currentST = columnEl.scrollTop;

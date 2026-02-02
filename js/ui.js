@@ -144,7 +144,11 @@ const txt = {
         dayNamesShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
         confirmDate: "Confirm",
         cancelDate: "Cancel",
-        todayDate: "Today"
+        todayDate: "Today",
+        // Date Placeholders
+        datePlaceholderDay: "DD",
+        datePlaceholderMonth: "MM",
+        datePlaceholderYear: "YYYY"
     },
     ar: {
         appTitle: "حاسبة القروض",
@@ -249,6 +253,11 @@ const txt = {
         settlementStampLabel: "دمغة مستحقة:",
         totalSettlementLabel: "إجمالي السداد:",
         noScheduleError: "احسب القرض أولاً",
+
+        // Date Placeholders
+        datePlaceholderDay: "يوم",
+        datePlaceholderMonth: "شهر",
+        datePlaceholderYear: "سنة",
 
         // Error Messages
         errorCheckInputs: "يرجى التحقق من حقول الإدخال.",
@@ -1029,11 +1038,19 @@ function validateRateInput(input) {
     input.value = val;
 }
 
-/* ================= DATE INPUT - BEST PRACTICE IMPLEMENTATION ================= */
+/* ================= DATE INPUT - WINDOWS CALCULATOR STYLE ================= */
+/* Key behaviors:
+ * 1. Slashes are static and cannot be removed (format always DD/MM/YYYY)
+ * 2. Click on segment highlights it; typing replaces entire segment
+ * 3. DD/MM auto-advance to next segment when 2 digits filled
+ * 4. Arrow left/right add leading zero if needed, then move to adjacent segment
+ * 5. Backspace clears current segment first, then moves to previous
+ */
 
 const DATE_CONFIG = {
     MIN_DATE: "2000-01-01",
-    MAX_DATE: "2099-12-31"
+    MAX_DATE: "2099-12-31",
+    EMPTY_CHAR: '' // Empty character for unfilled positions
 };
 
 /* --- Date Helpers --- */
@@ -1061,169 +1078,303 @@ function dateIsWithinRange(iso) {
     return true;
 }
 
-function dateGetSegmentByCursor(pos) {
-    if (pos <= 2) return { start: 0, end: 2 };   // DD
-    if (pos <= 5) return { start: 3, end: 5 };   // MM
-    return { start: 6, end: 10 };                // YYYY
+/**
+ * Get segment info by cursor position
+ * Segments: DD(0-2), /(2), MM(3-5), /(5), YYYY(6-10)
+ */
+/**
+ * Get segment info by cursor position
+ * Dynamically calculates ranges based on slash positions to handle variable length (Arabic vs Digits)
+ */
+function dateGetSegmentByCursor(pos, value) {
+    if (!value) return { start: 0, end: 0, type: 'day', maxLen: 2 };
+
+    // Find slash positions
+    const slash1 = value.indexOf('/');
+    const slash2 = value.lastIndexOf('/');
+
+    // Default to strict index if slashes missing (fallback)
+    if (slash1 === -1) return { start: 1, end: 3, type: 'day', maxLen: 2 };
+
+    // Determine segment based on position relative to slashes
+    // Day: [LRM...DAY...LRM] /
+    if (pos <= slash1) {
+        return { start: 1, end: slash1 - 1, type: 'day', maxLen: 2 };
+    }
+    // Month: / [LRM...MONTH...LRM] /
+    if (pos <= slash2) {
+        return { start: slash1 + 2, end: slash2 - 1, type: 'month', maxLen: 2 };
+    }
+    // Year: / [LRM...YEAR]
+    return { start: slash2 + 2, end: value.length, type: 'year', maxLen: 4 };
 }
 
 /**
+ * Get segment by position index (0=day, 1=month, 2=year)
+ */
+function dateGetSegmentByIndex(index, value) {
+    if (!value) return { start: 0, end: 0, type: 'day', maxLen: 2 };
+
+    const slash1 = value.indexOf('/');
+    const slash2 = value.lastIndexOf('/');
+
+    if (slash1 === -1) return { start: 1, end: 3, type: 'day', maxLen: 2 }; // Fallback
+
+    if (index === 0) return { start: 1, end: slash1 - 1, type: 'day', maxLen: 2 };
+    if (index === 1) return { start: slash1 + 2, end: slash2 - 1, type: 'month', maxLen: 2 };
+    return { start: slash2 + 2, end: value.length, type: 'year', maxLen: 4 };
+}
+
+/**
+ * Parse segments from display value
+ * Strips placeholder text (localized) treating them as empty
+ */
+function dateParseSegments(value) {
+    const parts = value.split('/');
+    let day = (parts[0] || '').replace(/\D/g, '');
+    let month = (parts[1] || '').replace(/\D/g, '');
+    let year = (parts[2] || '').replace(/\D/g, '');
+
+    return { day, month, year };
+}
+
+/**
+ * Build display value from segments (static slashes)
+ * Uses placeholder text for empty segments: localized IDs
+ */
+function dateBuildValue(day, month, year, usePlaceholders = false) {
+    if (usePlaceholders) {
+        const lang = document.documentElement.lang || 'en';
+        const displayDay = day || t(lang, 'datePlaceholderDay');
+        const displayMonth = month || t(lang, 'datePlaceholderMonth');
+        const displayYear = year || t(lang, 'datePlaceholderYear');
+        // Use Left-to-Right Mark (\u200E) to force strict LTR visualization mixed with Arabic
+        return `\u200E${displayDay}\u200E/\u200E${displayMonth}\u200E/\u200E${displayYear}`;
+    }
+    // Also add LRM to standard numerical display to ensure consistency
+    return `\u200E${day}\u200E/\u200E${month}\u200E/\u200E${year}`;
+}
+
+/**
+ * Pad segment with leading zeros
+ */
+function datePadSegment(value, maxLen) {
+    if (!value) return '';
+    return value.padStart(maxLen, '0');
+}
+
+/* --- Segment Navigation with Leading Zero --- */
+
+/**
  * Navigate between date segments with arrow keys
- * ArrowLeft = previous segment (toward DD), ArrowRight = next segment (toward YYYY)
- * Consistent in both LTR and RTL modes since date format is always DD/MM/YYYY
+ * Adds leading zero to current segment before moving
  */
 function handleDateLateralArrow(e, input) {
     if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return false;
 
     const cursor = input.selectionStart;
-    const currentSeg = dateGetSegmentByCursor(cursor);
+    const currentSeg = dateGetSegmentByCursor(cursor, input.value);
+    const segments = dateParseSegments(input.value);
 
-    // Segment positions: DD(0-2), MM(3-5), YYYY(6-10)
-    let newSeg = null;
-
-    if (e.key === 'ArrowRight') {
-        // Move from DD -> MM -> YYYY
-        if (currentSeg.start === 0) {
-            newSeg = { start: 3, end: 5 };   // DD -> MM
-        } else if (currentSeg.start === 3) {
-            newSeg = { start: 6, end: 10 };  // MM -> YYYY
-        }
-        // Already at YYYY: stay there
-    } else {
-        // ArrowLeft: Move from YYYY -> MM -> DD
-        if (currentSeg.start === 6) {
-            newSeg = { start: 3, end: 5 };   // YYYY -> MM
-        } else if (currentSeg.start === 3) {
-            newSeg = { start: 0, end: 2 };   // MM -> DD
-        }
-        // Already at DD: stay there
+    // Pad current segment with leading zero if it has 1 digit (DD/MM only)
+    let needsUpdate = false;
+    if (currentSeg.type === 'day' && segments.day.length === 1) {
+        segments.day = datePadSegment(segments.day, 2);
+        needsUpdate = true;
+    } else if (currentSeg.type === 'month' && segments.month.length === 1) {
+        segments.month = datePadSegment(segments.month, 2);
+        needsUpdate = true;
     }
 
-    if (newSeg) {
+    // Determine new segment
+    let newSeg = null;
+    if (e.key === 'ArrowRight') {
+        if (currentSeg.type === 'day') newSeg = dateGetSegmentByIndex(1, input.value);
+        else if (currentSeg.type === 'month') newSeg = dateGetSegmentByIndex(2, input.value);
+    } else {
+        if (currentSeg.type === 'year') newSeg = dateGetSegmentByIndex(1, input.value);
+        else if (currentSeg.type === 'month') newSeg = dateGetSegmentByIndex(0, input.value);
+    }
+
+    if (newSeg || needsUpdate) {
         e.preventDefault();
-        input.setSelectionRange(newSeg.start, newSeg.end);
+
+        if (needsUpdate) {
+            input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
+        }
+
+        if (newSeg) {
+            input.setSelectionRange(newSeg.start, newSeg.end);
+        } else {
+            // Stay in current segment but update selection
+            // Recalculate segment indices as value might have changed (padding)
+            const refreshedSeg = dateGetSegmentByCursor(input.selectionStart, input.value);
+            input.setSelectionRange(refreshedSeg.start, refreshedSeg.end);
+        }
         return true;
     }
 
     return false;
 }
 
-/* --- Input Mask Handler (Segment-Aware) --- */
+/* --- Backspace Handler --- */
 
-function handleDateInputMask(input, nativeInput, errorCallback) {
-    const oldValue = input.value;
+/**
+ * Handle backspace: 
+ * - Clear entire current segment
+ * - Move to previous segment (if available)
+ * Windows Calculator style: backspace always clears whole segment
+ */
+function handleDateBackspace(e, input) {
+    if (e.key !== 'Backspace') return false;
+
+    e.preventDefault();
+
     const cursor = input.selectionStart;
+    const currentSeg = dateGetSegmentByCursor(cursor, input.value);
+    const segments = dateParseSegments(input.value);
 
-    // Parse existing segments from the current value
-    const parts = oldValue.split('/');
-    let day = (parts[0] || '').replace(/\D/g, '').slice(0, 2);
-    let month = (parts[1] || '').replace(/\D/g, '').slice(0, 2);
-    let year = (parts[2] || '').replace(/\D/g, '').slice(0, 4);
+    // Get current segment content
+    let segContent = '';
+    if (currentSeg.type === 'day') segContent = segments.day;
+    else if (currentSeg.type === 'month') segContent = segments.month;
+    else segContent = segments.year;
 
-    // Determine which segment the cursor is in (based on old value)
-    let cursorSegment = 0; // 0 = day, 1 = month, 2 = year
-    const firstSlash = oldValue.indexOf('/');
-    const secondSlash = oldValue.indexOf('/', firstSlash + 1);
+    // If segment has content, clear it entirely
+    if (segContent.length > 0) {
+        if (currentSeg.type === 'day') segments.day = '';
+        else if (currentSeg.type === 'month') segments.month = '';
+        else segments.year = '';
 
-    if (firstSlash === -1 || cursor <= firstSlash) {
-        cursorSegment = 0;
-    } else if (secondSlash === -1 || cursor <= secondSlash) {
-        cursorSegment = 1;
-    } else {
-        cursorSegment = 2;
-    }
+        input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
 
-    // Build new value preserving segment structure
-    let newValue = day;
+        // Move to previous segment
+        let prevSeg = null;
+        if (currentSeg.type === 'year') prevSeg = dateGetSegmentByIndex(1, input.value);
+        else if (currentSeg.type === 'month') prevSeg = dateGetSegmentByIndex(0, input.value);
 
-    // Only add slashes if we have content or are past that segment
-    if (month.length > 0 || year.length > 0 || day.length === 2) {
-        newValue += '/';
-        newValue += month;
-    }
-
-    if (year.length > 0 || month.length === 2) {
-        newValue += '/';
-        newValue += year;
-    }
-
-    // Calculate new cursor position within the segment
-    let newCursor;
-    let newCursorEnd; // For selection range (start, end)
-
-    // Auto-advance: if segment is complete, move to next segment
-    if (cursorSegment === 0 && day.length === 2) {
-        // Day complete -> move to month, select it if has data
-        newCursor = 3; // After "DD/"
-        newCursorEnd = month.length > 0 ? 3 + month.length : 3;
-    } else if (cursorSegment === 1 && month.length === 2) {
-        // Month complete -> move to year, select it if has data
-        newCursor = 6; // After "DD/MM/"
-        newCursorEnd = year.length > 0 ? 6 + year.length : 6;
-    } else {
-        // Normal cursor positioning within segment (no selection)
-        if (cursorSegment === 0) {
-            newCursor = Math.min(cursor, day.length);
-        } else if (cursorSegment === 1) {
-            const monthStart = day.length + 1; // After "DD/"
-            const offsetInMonth = cursor - (firstSlash + 1);
-            newCursor = monthStart + Math.min(Math.max(0, offsetInMonth), month.length);
+        if (prevSeg) {
+            input.setSelectionRange(prevSeg.start, prevSeg.end);
         } else {
-            const yearStart = day.length + 1 + month.length + 1; // After "DD/MM/"
-            const offsetInYear = cursor - (secondSlash + 1);
-            newCursor = yearStart + Math.min(Math.max(0, offsetInYear), year.length);
+            // Already at first segment, select the placeholder
+            // Must recalculate current segment range because length changed ("05" -> "يوم")
+            const refreshedSeg = dateGetSegmentByIndex(0, input.value); // Assume first seg if no prev
+            // Actually better to define "current" by index
+            const currentIdx = currentSeg.type === 'year' ? 2 : (currentSeg.type === 'month' ? 1 : 0);
+            const refSeg = dateGetSegmentByIndex(currentIdx, input.value);
+            input.setSelectionRange(refSeg.start, refSeg.end);
         }
-        newCursorEnd = newCursor; // No selection
+        return true;
     }
 
-    // Clamp to valid range
-    newCursor = Math.max(0, Math.min(newCursor, newValue.length));
-    newCursorEnd = Math.max(0, Math.min(newCursorEnd, newValue.length));
+    // Segment is empty - move to previous segment
+    let prevSeg = null;
+    if (currentSeg.type === 'year') prevSeg = dateGetSegmentByIndex(1, input.value);
+    else if (currentSeg.type === 'month') prevSeg = dateGetSegmentByIndex(0, input.value);
 
-    input.value = newValue;
+    if (prevSeg) {
+        input.setSelectionRange(prevSeg.start, prevSeg.end);
+    }
+    return true;
+}
 
-    // Restore cursor position (with potential selection)
-    requestAnimationFrame(() => {
-        input.setSelectionRange(newCursor, newCursorEnd);
-    });
+/* --- Digit Input Handler --- */
+
+/**
+ * Handle digit input with segment replacement behavior
+ */
+function handleDateDigitInput(e, input, nativeInput, errorCallback) {
+    // Only handle digit keys
+    if (!/^\d$/.test(e.key)) return false;
+
+    e.preventDefault();
+
+    const cursor = input.selectionStart;
+    const selEnd = input.selectionEnd;
+    const currentSeg = dateGetSegmentByCursor(cursor, input.value);
+    const segments = dateParseSegments(input.value);
+
+    // Get current segment content
+    let segContent = '';
+    if (currentSeg.type === 'day') segContent = segments.day;
+    else if (currentSeg.type === 'month') segContent = segments.month;
+    else segContent = segments.year;
+
+    // Determine if segment is fully selected (replace mode)
+    const isFullySelected = (cursor === currentSeg.start && selEnd === currentSeg.end);
+    const isAtSegmentEnd = (segContent.length >= currentSeg.maxLen);
+
+    let newContent;
+    if (isFullySelected || isAtSegmentEnd) {
+        // Replace entire segment with new digit
+        newContent = e.key;
+    } else {
+        // Append to segment (up to max length)
+        newContent = (segContent + e.key).slice(0, currentSeg.maxLen);
+    }
+
+    // Update segment
+    if (currentSeg.type === 'day') segments.day = newContent;
+    else if (currentSeg.type === 'month') segments.month = newContent;
+    else segments.year = newContent;
+
+    input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
+
+    // Auto-advance logic
+    const shouldAdvance = (currentSeg.type === 'day' && segments.day.length === 2) ||
+        (currentSeg.type === 'month' && segments.month.length === 2);
+
+    if (shouldAdvance) {
+        // Move to next segment and select it
+        let nextSeg = null;
+        if (currentSeg.type === 'day') nextSeg = dateGetSegmentByIndex(1, input.value);
+        else if (currentSeg.type === 'month') nextSeg = dateGetSegmentByIndex(2, input.value);
+
+        if (nextSeg) {
+            requestAnimationFrame(() => {
+                input.setSelectionRange(nextSeg.start, nextSeg.end);
+            });
+        }
+    } else {
+        // Position cursor after the entered digit
+        const newCursor = currentSeg.start + newContent.length;
+        requestAnimationFrame(() => {
+            input.setSelectionRange(newCursor, newCursor);
+        });
+    }
 
     // Validate if complete
-    validateDateInputAndSync(input, nativeInput, errorCallback);
+    validateDateInputAndSync(input, nativeInput, errorCallback, true);
+
+    return true;
 }
 
 /* --- Validation & Sync --- */
 
-function validateDateInputAndSync(input, nativeInput, errorCallback) {
-    const parts = input.value.split('/');
+function validateDateInputAndSync(input, nativeInput, errorCallback, silent = false) {
+    const segments = dateParseSegments(input.value);
 
-    if (parts.length !== 3) {
+    // Check if all segments are complete
+    if (segments.day.length !== 2 || segments.month.length !== 2 || segments.year.length !== 4) {
         input.classList.remove('text-red-500');
         return false;
     }
 
-    const [dd, mm, yyyy] = parts.map(s => s.trim());
+    const d = parseInt(segments.day, 10);
+    const m = parseInt(segments.month, 10);
+    const y = parseInt(segments.year, 10);
 
-    if (dd.length !== 2 || mm.length !== 2 || yyyy.length !== 4) {
-        input.classList.remove('text-red-500');
-        return false;
-    }
-
-    const d = parseInt(dd, 10);
-    const m = parseInt(mm, 10);
-    const y = parseInt(yyyy, 10);
-
-    // Get current language
     const lang = document.documentElement.lang || 'en';
 
     if (!d || !m || !y || y < 1000) {
         input.classList.add('text-red-500');
-        if (errorCallback) errorCallback(t(lang, 'errorInvalidDate'));
+        if (errorCallback && !silent) errorCallback(t(lang, 'errorInvalidDate'));
         return false;
     }
 
     if (!dateIsValid(d, m, y)) {
         input.classList.add('text-red-500');
-        if (errorCallback) errorCallback(t(lang, 'errorDateDoesNotExist'));
+        if (errorCallback && !silent) errorCallback(t(lang, 'errorDateDoesNotExist'));
         return false;
     }
 
@@ -1231,7 +1382,7 @@ function validateDateInputAndSync(input, nativeInput, errorCallback) {
 
     if (!dateIsWithinRange(iso)) {
         input.classList.add('text-red-500');
-        if (errorCallback) errorCallback(t(lang, 'errorDateOutOfRange'));
+        if (errorCallback && !silent) errorCallback(t(lang, 'errorDateOutOfRange'));
         return false;
     }
 
@@ -1243,85 +1394,123 @@ function validateDateInputAndSync(input, nativeInput, errorCallback) {
     return true;
 }
 
-/* --- Arrow Key Increment --- */
+/* --- Arrow Key Increment (Up/Down) --- */
 
 function handleDateArrowKey(e, input, nativeInput) {
-    if (!['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    if (!['ArrowUp', 'ArrowDown'].includes(e.key)) return false;
 
-    // Get ISO from dataset, or try to parse from display value
     let iso = input.dataset.iso;
 
     if (!iso) {
-        // Try to parse current display value (DD/MM/YYYY)
-        const parts = input.value.split('/');
-        if (parts.length === 3) {
-            const [dd, mm, yyyy] = parts.map(s => s.trim());
-            if (dd.length === 2 && mm.length === 2 && yyyy.length === 4) {
-                const d = parseInt(dd, 10);
-                const m = parseInt(mm, 10);
-                const y = parseInt(yyyy, 10);
-                if (dateIsValid(d, m, y)) {
-                    iso = dateToISO(d, m, y);
-                    input.dataset.iso = iso;
-                    nativeInput.value = iso;
-                }
+        const segments = dateParseSegments(input.value);
+        if (segments.day.length === 2 && segments.month.length === 2 && segments.year.length === 4) {
+            const d = parseInt(segments.day, 10);
+            const m = parseInt(segments.month, 10);
+            const y = parseInt(segments.year, 10);
+            if (dateIsValid(d, m, y)) {
+                iso = dateToISO(d, m, y);
+                input.dataset.iso = iso;
+                nativeInput.value = iso;
             }
         }
     }
 
-    if (!iso) return;
+    if (!iso) return false;
 
     e.preventDefault();
 
     const delta = e.key === 'ArrowUp' ? 1 : -1;
     const cursor = input.selectionStart;
-    const seg = dateGetSegmentByCursor(cursor);
-
+    const seg = dateGetSegmentByCursor(cursor, input.value);
     const date = new Date(iso);
 
-    // Increment based on cursor position
-    if (seg.start === 0) {
+    if (seg.type === 'day') {
         date.setDate(date.getDate() + delta);
-    } else if (seg.start === 3) {
+    } else if (seg.type === 'month') {
         date.setMonth(date.getMonth() + delta);
     } else {
         date.setFullYear(date.getFullYear() + delta);
     }
 
     const newISO = date.toISOString().slice(0, 10);
-    if (!dateIsWithinRange(newISO)) return;
+    if (!dateIsWithinRange(newISO)) return true;
 
     const [y, m, d] = newISO.split('-');
-    input.value = `${d}/${m}/${y}`;
+    input.value = dateBuildValue(d, m, y, true); // Use build logic to ensure LRM consistency
     input.dataset.iso = newISO;
     nativeInput.value = newISO;
 
-    // Restore segment selection
     input.setSelectionRange(seg.start, seg.end);
+    return true;
 }
 
 /* --- Segment Selection Handlers --- */
 
 function handleDateFocus(input) {
-    if (!input.value) return;
+    const segments = dateParseSegments(input.value);
+
+    // Show placeholders for empty segments
+    if (!segments.day && !segments.month && !segments.year) {
+        input.value = dateBuildValue('', '', '', true); // DD/MM/YYYY
+        requestAnimationFrame(() => {
+            const firstSeg = dateGetSegmentByIndex(0, input.value);
+            input.setSelectionRange(firstSeg.start, firstSeg.end);
+        });
+        return;
+    }
+
+    // If value has some content, show with placeholders for empty parts
+    input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
 
     requestAnimationFrame(() => {
-        const seg = dateGetSegmentByCursor(input.selectionStart || 0);
+        const seg = dateGetSegmentByCursor(input.selectionStart || 0, input.value);
         input.setSelectionRange(seg.start, seg.end);
     });
 }
 
 function handleDateClick(input) {
+    // Auto-pad incomplete segments before switching (like arrow key behavior)
+    const segments = dateParseSegments(input.value);
+    let needsUpdate = false;
+
+    if (segments.day.length === 1) {
+        segments.day = datePadSegment(segments.day, 2);
+        needsUpdate = true;
+    }
+    if (segments.month.length === 1) {
+        segments.month = datePadSegment(segments.month, 2);
+        needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+        input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
+    }
+
     requestAnimationFrame(() => {
-        const seg = dateGetSegmentByCursor(input.selectionStart);
+        const seg = dateGetSegmentByCursor(input.selectionStart, input.value);
         input.setSelectionRange(seg.start, seg.end);
     });
 }
 
 function handleDateDblClick(e, input) {
     e.preventDefault();
-    const seg = dateGetSegmentByCursor(input.selectionStart);
+    const seg = dateGetSegmentByCursor(input.selectionStart, input.value);
     input.setSelectionRange(seg.start, seg.end);
+}
+
+/* --- Blur Handler with Auto-Padding --- */
+
+function handleDateBlur(input, nativeInput, errorCallback) {
+    const segments = dateParseSegments(input.value);
+
+    // Auto-pad incomplete segments with leading zeros
+    if (segments.day.length === 1) segments.day = datePadSegment(segments.day, 2);
+    if (segments.month.length === 1) segments.month = datePadSegment(segments.month, 2);
+
+    // Update display with placeholders for empty segments
+    input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
+
+    validateDateInputAndSync(input, nativeInput, errorCallback);
 }
 
 /* --- Main Initialization Function --- */
@@ -1329,13 +1518,9 @@ function handleDateDblClick(e, input) {
 function initDateInput(displayInput, nativeInput) {
     if (!displayInput || !nativeInput) return;
 
-    // Set min/max on native picker
     nativeInput.min = DATE_CONFIG.MIN_DATE;
     nativeInput.max = DATE_CONFIG.MAX_DATE;
 
-    // Track composition state for Android keyboard compatibility
-    // Android keyboards (Gboard, Samsung) use composition events for predictive text
-    // During composition, we skip processing to avoid cursor jumping issues
     let isComposing = false;
 
     displayInput.addEventListener('compositionstart', () => {
@@ -1344,73 +1529,86 @@ function initDateInput(displayInput, nativeInput) {
 
     displayInput.addEventListener('compositionend', () => {
         isComposing = false;
-        // Process the input after composition ends
-        handleDateInputMask(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
     });
 
-    // Input mask - skip during composition for Android compatibility
-    displayInput.addEventListener('input', () => {
-        if (isComposing) return; // Wait for compositionend
-        handleDateInputMask(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
-    });
-
-    // Blur validation
-    displayInput.addEventListener('blur', () => {
-        validateDateInputAndSync(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
-    });
-
-    // Arrow key increment
+    // Keydown: handle all special keys and digit input
     displayInput.addEventListener('keydown', (e) => {
+        if (isComposing) return;
+
+        // Enter key
         if (e.key === 'Enter') {
             e.preventDefault();
-            e.stopPropagation(); // Prevent bubbling to global Enter handler
-            validateDateInputAndSync(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
-            displayInput.blur(); // Also blur to dismiss keyboard on mobile
+            e.stopPropagation();
+            handleDateBlur(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
+            displayInput.blur();
             return;
         }
 
-        // Handle backspace to move to previous segment
-        if (e.key === 'Backspace') {
+        // Tab: pad current segment before leaving
+        if (e.key === 'Tab') {
             const cursor = displayInput.selectionStart;
-            const selEnd = displayInput.selectionEnd;
-            const value = displayInput.value;
+            const currentSeg = dateGetSegmentByCursor(cursor);
+            const segments = dateParseSegments(displayInput.value);
 
-            // Only handle if no selection and cursor is at start of a segment (after a slash)
-            if (cursor === selEnd) {
-                const firstSlash = value.indexOf('/');
-                const secondSlash = value.indexOf('/', firstSlash + 1);
-
-                // At start of YYYY (position 6) -> move to end of MM
-                if (secondSlash !== -1 && cursor === secondSlash + 1) {
-                    e.preventDefault();
-                    displayInput.setSelectionRange(secondSlash, secondSlash);
-                    return;
-                }
-
-                // At start of MM (position 3) -> move to end of DD
-                if (firstSlash !== -1 && cursor === firstSlash + 1) {
-                    e.preventDefault();
-                    displayInput.setSelectionRange(firstSlash, firstSlash);
-                    return;
-                }
+            if (currentSeg.type === 'day' && segments.day.length === 1) {
+                segments.day = datePadSegment(segments.day, 2);
+                displayInput.value = dateBuildValue(segments.day, segments.month, segments.year);
+            } else if (currentSeg.type === 'month' && segments.month.length === 1) {
+                segments.month = datePadSegment(segments.month, 2);
+                displayInput.value = dateBuildValue(segments.day, segments.month, segments.year);
             }
+            return; // Let default tab behavior continue
         }
 
-        // Handle left/right arrows to navigate between segments (RTL-aware)
+        // Backspace
+        if (handleDateBackspace(e, displayInput)) {
+            validateDateInputAndSync(displayInput, nativeInput, null, true);
+            return;
+        }
+
+        // Left/Right arrows (with leading zero padding)
         if (handleDateLateralArrow(e, displayInput)) {
             return;
         }
 
-        handleDateArrowKey(e, displayInput, nativeInput);
+        // Up/Down arrows (increment/decrement)
+        if (handleDateArrowKey(e, displayInput, nativeInput)) {
+            return;
+        }
+
+        // Digit input
+        if (handleDateDigitInput(e, displayInput, nativeInput, (msg) => showToast(msg, 'error'))) {
+            return;
+        }
+
+        // Block all other keys except navigation
+        if (!['Home', 'End', 'Delete'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+        }
     });
 
-    // Segment selection on focus
+    // Prevent default input behavior (we handle everything in keydown)
+    displayInput.addEventListener('beforeinput', (e) => {
+        if (isComposing) return;
+        // Allow only deletion operations through
+        if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
+            return;
+        }
+        e.preventDefault();
+    });
+
+    // Blur validation with auto-padding
+    displayInput.addEventListener('blur', () => {
+        handleDateBlur(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
+    });
+
+    // Focus: select appropriate segment
     displayInput.addEventListener('focus', () => handleDateFocus(displayInput));
 
-    // Segment selection on click
+    // Click: select clicked segment
     displayInput.addEventListener('click', () => handleDateClick(displayInput));
 
-    // Segment selection on double-click
+    // Double-click: select segment
     displayInput.addEventListener('dblclick', (e) => handleDateDblClick(e, displayInput));
 
     // Native picker sync
