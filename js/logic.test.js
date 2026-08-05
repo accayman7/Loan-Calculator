@@ -306,6 +306,232 @@ function testEarlySettlementEdgeCases() {
     TestRunner.assertFalse(result2.valid, 'Null schedule is invalid');
 }
 
+function testSolveTdLoan() {
+    console.log('Testing solveTdLoan()...');
+
+    // Standard case: TD₁=1,000,000, TD rate=20%, Loan rate=22%, 36 months, stamp=0.2%, admin=1%
+    const bookingDate = new Date(2026, 0, 15);
+    const m1_Date = new Date(2026, 1, 15);
+
+    const result = solveTdLoan(
+        1000000, 20, 22, 36,
+        { bookingDate, m1_Date, isAdvanced: true },
+        0.2, 1
+    );
+
+    TestRunner.assertTrue(result.valid, 'Solver finds a valid solution');
+    TestRunner.assertTrue(result.td2 > 0, 'TD₂ is positive: ' + result.td2);
+    TestRunner.assertEqual(result.td2 % 1000, 0, 'TD₂ is a multiple of 1000');
+    TestRunner.assertTrue(result.grossLoan > result.td2, 'Gross loan > TD₂ (fees deducted)');
+    TestRunner.assertTrue(result.adminFeesAmount > 0, 'Admin fees > 0 when admin=1%');
+    TestRunner.assertApproxEqual(result.grossLoan - result.td2, result.adminFeesAmount, 1, 'grossLoan - td2 ≈ adminFees');
+    TestRunner.assertTrue(result.monthlyTdInterest > 0, 'Monthly interest > 0');
+    // Core constraint: customer pays nothing (TD interest covers installment)
+    TestRunner.assertTrue(result.monthlySurplus >= 0, 'Monthly surplus ≥ 0 (customer pays nothing): ' + result.monthlySurplus);
+    TestRunner.assertTrue(result.monthlyTdInterest >= result.installment, 'TD interest ≥ installment');
+    TestRunner.assertTrue(result.totalTdsAtEnd > result.simpleInterestAlt, 'Total TDs > simple interest alt');
+    TestRunner.assertTrue(result.netBenefit > 0, 'Net benefit is positive: ' + result.netBenefit);
+
+    // With no fees: TD₂ = grossLoan
+    const resultNoFees = solveTdLoan(
+        1000000, 20, 22, 36,
+        { bookingDate, m1_Date, isAdvanced: true },
+        0.2, 0
+    );
+    TestRunner.assertTrue(resultNoFees.valid, 'Solver works with no admin fees');
+    TestRunner.assertEqual(resultNoFees.td2 % 1000, 0, 'TD₂ still a multiple of 1000 (no fees)');
+    TestRunner.assertEqual(resultNoFees.adminFeesAmount, 0, 'Admin fees = 0 when admin=0%');
+    TestRunner.assertTrue(resultNoFees.monthlySurplus >= 0, 'No fees: surplus ≥ 0');
+
+    // Split-rate test: TD₂ rate differs from TD₁ rate
+    const resultSplitRate = solveTdLoan(
+        1000000, 20, 22, 36,
+        { bookingDate, m1_Date, isAdvanced: true },
+        0.2, 1, 18  // td2Rate=18% (lower than td1Rate=20%)
+    );
+    TestRunner.assertTrue(resultSplitRate.valid, 'Solver works with split rates');
+    TestRunner.assertTrue(resultSplitRate.td2 > 0, 'TD₂ positive with split rate: ' + resultSplitRate.td2);
+    TestRunner.assertEqual(resultSplitRate.td2 % 1000, 0, 'TD₂ multiple of 1000 with split rate');
+    TestRunner.assertTrue(resultSplitRate.monthlySurplus >= 0, 'Split rate: surplus ≥ 0');
+
+    // Explicit same-rate produces same result as default
+    const resultExplicit = solveTdLoan(
+        1000000, 20, 22, 36,
+        { bookingDate, m1_Date, isAdvanced: true },
+        0.2, 1, 20  // td2Rate=20% same as td1Rate
+    );
+    TestRunner.assertTrue(resultExplicit.valid, 'Explicit same rate is valid');
+    TestRunner.assertEqual(resultExplicit.td2, result.td2, 'Explicit td2Rate=tdRate gives same TD₂');
+    TestRunner.assertApproxEqual(resultExplicit.monthlyTdInterest, result.monthlyTdInterest, 0.01, 'Same monthly interest when rates match');
+}
+
+function testSolveTdLoanEdgeCases() {
+    console.log('Testing solveTdLoan() edge cases...');
+
+    // Invalid inputs
+    TestRunner.assertFalse(solveTdLoan(0, 20, 22, 36, {}, 0, 0).valid, 'Zero TD₁ is invalid');
+    TestRunner.assertFalse(solveTdLoan(1000000, 0, 22, 36, {}, 0, 0).valid, 'Zero TD rate is invalid');
+    TestRunner.assertFalse(solveTdLoan(1000000, 20, 0, 36, {}, 0, 0).valid, 'Zero loan rate is invalid');
+    TestRunner.assertFalse(solveTdLoan(1000000, 20, 22, 0, {}, 0, 0).valid, 'Zero period is invalid');
+    TestRunner.assertFalse(solveTdLoan(1000000, 20, 22, 36, {}, 0, 0, 0).valid, 'Zero td2Rate is invalid');
+
+    // Non-advanced mode
+    const result = solveTdLoan(
+        500000, 18, 20, 24,
+        { bookingDate: new Date(2026, 5, 1), m1_Date: new Date(2026, 6, 1), isAdvanced: false },
+        0, 0
+    );
+    TestRunner.assertTrue(result.valid, 'Solver works in non-advanced mode');
+    TestRunner.assertTrue(result.td2 > 0, 'TD₂ > 0 in non-advanced mode');
+    TestRunner.assertEqual(result.td2 % 1000, 0, 'TD₂ is multiple of 1000 in non-advanced mode');
+    TestRunner.assertTrue(typeof result.monthlySurplus === 'number', 'monthlySurplus is returned');
+}
+
+// ========================================
+// REGRESSION TESTS (monthly backward-compat)
+// ========================================
+
+function testMonthlyRegression() {
+    console.log('Testing monthly regression - freq omitted vs freq=1...');
+
+    // calculateLoan: omitting freq should give same results as freq=1
+    const r1 = calculateLoan({ amount: '100000', rate: '10', period: '12' }, 'installment');
+    const r1f = calculateLoan({ amount: '100000', rate: '10', period: '12' }, 'installment', 1);
+    TestRunner.assertApproxEqual(r1.M, r1f.M, 0.001, 'Regression: installment identical with freq=1 vs omitted');
+
+    const r2 = calculateLoan({ installment: '8791.59', rate: '10', period: '12' }, 'amount');
+    const r2f = calculateLoan({ installment: '8791.59', rate: '10', period: '12' }, 'amount', 1);
+    TestRunner.assertApproxEqual(r2.P, r2f.P, 0.001, 'Regression: amount identical with freq=1 vs omitted');
+
+    const r3 = calculateLoan({ amount: '100000', rate: '10', installment: '10000' }, 'period');
+    const r3f = calculateLoan({ amount: '100000', rate: '10', installment: '10000' }, 'period', 1);
+    TestRunner.assertEqual(r3.N, r3f.N, 'Regression: period identical with freq=1 vs omitted');
+
+    const r4 = calculateLoan({ amount: '100000', period: '12', installment: '8791.59' }, 'rate');
+    const r4f = calculateLoan({ amount: '100000', period: '12', installment: '8791.59' }, 'rate', 1);
+    TestRunner.assertApproxEqual(r4.R, r4f.R, 0.001, 'Regression: rate identical with freq=1 vs omitted');
+
+    // Pin known monthly installment value
+    TestRunner.assertApproxEqual(r1.M, 8791.59, 0.01, 'Regression: 100k@10%/12mo = 8791.59');
+
+    // generateSchedule: omitting freq should give same results as freq=1
+    const loanData = { P: 100000, R: 12, N: 12, M: 8884.88 };
+    const dates = { bookingDate: new Date(2024, 0, 15), m1_Date: new Date(2024, 1, 15), isAdvanced: false };
+    const s1 = generateSchedule(loanData, dates, 0);
+    const s1f = generateSchedule(loanData, dates, 0, 1);
+    TestRunner.assertEqual(s1.schedule.length, s1f.schedule.length, 'Regression: schedule length identical');
+    TestRunner.assertApproxEqual(s1.totalActualInterest, s1f.totalActualInterest, 0.01, 'Regression: total interest identical');
+    TestRunner.assertApproxEqual(s1.schedule[0].int, s1f.schedule[0].int, 0.01, 'Regression: first interest identical');
+}
+
+// ========================================
+// QUARTERLY FREQUENCY TESTS
+// ========================================
+
+function testCalculateLoanQuarterly() {
+    console.log('Testing calculateLoan() - quarterly (freq=3)...');
+
+    // Quarterly: 500,000 @ 29% for 2 quarterly installments
+    // Quarterly rate = 29/400 = 0.0725
+    // M = P * i * (1+i)^N / ((1+i)^N - 1)
+    const result = calculateLoan({ amount: '500000', rate: '29', period: '2' }, 'installment', 3);
+    TestRunner.assertTrue(result.valid, 'Quarterly loan calculation is valid');
+    TestRunner.assertApproxEqual(result.M, 277504.52, 1, 'Quarterly installment ≈ 277,504.52');
+
+    // Solve for amount: given the installment, can we recover the principal?
+    const resultA = calculateLoan({ installment: String(result.M), rate: '29', period: '2' }, 'amount', 3);
+    TestRunner.assertTrue(resultA.valid, 'Quarterly solve-for-amount is valid');
+    TestRunner.assertApproxEqual(resultA.P, 500000, 1, 'Quarterly reverse amount ≈ 500,000');
+
+    // Quarterly installment should be larger than monthly for same N
+    const monthlyResult = calculateLoan({ amount: '500000', rate: '29', period: '2' }, 'installment', 1);
+    TestRunner.assertTrue(result.M > monthlyResult.M, 'Quarterly installment > monthly installment for same N');
+}
+
+function testGenerateScheduleQuarterly() {
+    console.log('Testing generateSchedule() - quarterly matching bank PDF...');
+
+    // Bank loan: P=500,000, R=29%, N=2 quarterly installments
+    // Booking: 26/02/2026, First payment: 05/05/2026
+    const P = 500000;
+    const R = 29;
+    const N = 2;
+    const freq = 3;
+    const calcResult = calculateLoan({ amount: String(P), rate: String(R), period: String(N) }, 'installment', freq);
+    const M = calcResult.M;
+
+    const bookingDate = new Date(2026, 1, 26); // Feb 26, 2026
+    const m1_Date = new Date(2026, 5, 5);      // Jun 5, 2026
+
+    const result = generateSchedule(
+        { P, R, N, M },
+        { bookingDate, m1_Date, isAdvanced: true },
+        0,   // no stamp
+        freq
+    );
+
+    // Schedule should have 2 entries (2 quarterly installments)
+    TestRunner.assertEqual(result.schedule.length, 2, 'Quarterly schedule has 2 entries');
+
+    // Entry 1: Jun 5, 2026
+    // days360(26/02/2026, 05/06/2026) = 99 days
+    // Interest = 500,000 * 29/100 * 99/360 = 39,875.00
+    TestRunner.assertApproxEqual(result.schedule[0].int, 39875.00, 0.01, 'Q1 interest = 39,875.00 (bank PDF match)');
+    TestRunner.assertApproxEqual(result.schedule[0].prin, 241254.52, 1, 'Q1 principal ≈ 241,254.52 (bank PDF match)');
+
+    // Entry 2: Sep 5, 2026
+    // Balance = 500,000 - 241,254.52 = 258,745.48
+    // Interest = 258,745.48 * 29/100 * 90/360 = 18,759.05
+    TestRunner.assertApproxEqual(result.schedule[1].bal, 258745.48, 1, 'Q2 opening balance ≈ 258,745.48');
+    TestRunner.assertApproxEqual(result.schedule[1].int, 18759.05, 0.10, 'Q2 interest ≈ 18,759.05 (bank PDF match)');
+
+    // Final balance should be 0
+    TestRunner.assertApproxEqual(result.schedule[1].rem, 0, 1, 'Final balance ≈ 0');
+
+    // Total interest = 39,875.00 + 18,759.05 = 58,634.05
+    TestRunner.assertApproxEqual(result.totalActualInterest, 58634.05, 1, 'Total interest ≈ 58,634.05 (bank PDF match)');
+
+    // Second installment date should be 3 months after the first
+    const q2Date = result.schedule[1].rawDate;
+    TestRunner.assertEqual(q2Date.getMonth(), 8, 'Q2 date is September (month index 8)');
+    TestRunner.assertEqual(q2Date.getDate(), 5, 'Q2 date is the 5th');
+}
+
+function testGetNextQuarterlyDate() {
+    console.log('Testing getNextQuarterlyDate()...');
+
+    // Booking Jan 15 → next quarterly 4th month → May 5
+    const d1 = getNextQuarterlyDate(new Date(2026, 0, 15));
+    TestRunner.assertEqual(d1.getMonth(), 4, 'Jan booking → May (index 4)');
+    TestRunner.assertEqual(d1.getDate(), 5, 'Jan booking → 5th');
+
+    // Booking Feb 26 → next quarterly 4th month → Jun 5
+    const d2 = getNextQuarterlyDate(new Date(2026, 1, 26));
+    TestRunner.assertEqual(d2.getMonth(), 5, 'Feb 26 booking → June (index 5)');
+    TestRunner.assertEqual(d2.getDate(), 5, 'Feb 26 booking → 5th');
+
+    // Booking Mar 10 → next quarterly 4th month → Jul 5
+    const d3 = getNextQuarterlyDate(new Date(2026, 2, 10));
+    TestRunner.assertEqual(d3.getMonth(), 6, 'Mar booking → July (index 6)');
+
+    // Booking Sep 1 → next quarterly 4th month → Jan 5 next year
+    const d4 = getNextQuarterlyDate(new Date(2026, 8, 1));
+    TestRunner.assertEqual(d4.getMonth(), 0, 'Sep booking → January next year (index 0)');
+    TestRunner.assertEqual(d4.getFullYear(), 2027, 'Sep booking → year 2027');
+    TestRunner.assertEqual(d4.getDate(), 5, 'Sep booking → 5th');
+
+    // Booking Nov 10 → next quarterly 4th month → Mar 5 next year
+    const d5 = getNextQuarterlyDate(new Date(2026, 10, 10));
+    TestRunner.assertEqual(d5.getMonth(), 2, 'Nov booking → Mar next year (index 2)');
+    TestRunner.assertEqual(d5.getFullYear(), 2027, 'Nov booking → year 2027');
+    TestRunner.assertEqual(d5.getDate(), 5, 'Nov booking → 5th');
+
+    // Booking Dec 1 → next quarterly 4th month → Apr 5 next year
+    const d6 = getNextQuarterlyDate(new Date(2026, 11, 1));
+    TestRunner.assertEqual(d6.getMonth(), 3, 'Dec booking → April next year (index 3)');
+    TestRunner.assertEqual(d6.getFullYear(), 2027, 'Dec booking → year 2027');
+}
+
 // ========================================
 // RUN ALL TESTS
 // ========================================
@@ -339,6 +565,18 @@ function runAllTests() {
     // Early settlement tests
     testEarlySettlement();
     testEarlySettlementEdgeCases();
+
+    // Self-sufficient TD solver tests
+    testSolveTdLoan();
+    testSolveTdLoanEdgeCases();
+
+    // Regression tests (monthly backward-compat)
+    testMonthlyRegression();
+
+    // Quarterly frequency tests
+    testGetNextQuarterlyDate();
+    testCalculateLoanQuarterly();
+    testGenerateScheduleQuarterly();
 
     console.log('\n=== Test Results ===');
 

@@ -8,7 +8,12 @@ const txt = {
         loanAmountLabel: "Loan Amount",
         interestRateLabel: "Interest Rate (%)",
         loanPeriodLabel: "Period (months)",
+        loanPeriodBase: "Period",
         monthlyInstallmentLabel: "Monthly Installment",
+        frequencyLabel: "Installment Frequency",
+        freqMonthly: "Monthly",
+        freqQuarterly: "Quarterly",
+        quarterUnit: "Quarters",
         startDateLabel: "Start Date",
         bookingDateLabel: "Booking Date",
         advancedToggle: "Advanced Options",
@@ -45,14 +50,43 @@ const txt = {
         colPrincipal: "Principal",
         colRemaining: "Remaining",
         selfSufficientMode: "Self-Sufficient Mode",
-        ssDesc: "Calculate required Term Deposit to cover installments.",
-        tdRateLabel: "TD Rate (%):",
-        tdAmountLabel: "Your TD:",
-        reqTdLabel: "Required TD:",
+        ssDesc: "Calculate required Certificate of Deposit to cover installments.",
+        ssDescAdvanced: "Calculate a self-paying loan backed by your CD.",
+        ssBookingDateLabel: "Booking Date:",
+        ssCd1InterestDateLabel: "CD₁ Next Interest Date:",
+        ssCd2InterestDateLabel: "CD₂ First Interest Date:",
+        ssCdInterestBeforeM1Label: "CD Interest Before 1st Inst.:",
+        tdRateLabel: "CD₁ Rate (%):",
+        td2RateLabel: "CD₂ Rate (%):",
+        tdAmountLabel: "Your CD (CD₁):",
+        reqTdLabel: "Required CD:",
         netFlowLabel: "Net Flow:",
+        ssTd2Label: "New CD (CD₂):",
+        ssGrossLoanLabel: "Gross Loan Amount:",
+        ssLoanRateLabel: "Loan Rate (%):",
+        ssPeriodLabel: "Period (months):",
+        ssAdminFeesInputLabel: "Admin Fees (%):",
+        ssStampRateInputLabel: "Stamp Rate (%):",
+        ssMonthlyTdInterest: "Combined Monthly CD Interest:",
+        ssInstallmentLabel: "Loan Installment:",
+        ssMonthlySurplusLabel: "Monthly Surplus:",
+        ssFirstInstBufferLabel: "1st Installment Reserve:",
+        ssTotalStampLabel: "Total Stamp Cost:",
+        ssAdminFeesLabel: "Admin Fees (deducted):",
+        ssTotalTdsLabel: "Total CDs After Term:",
+        ssSimpleInterestAlt: "Simple Interest Alternative:",
+        ssNetBenefitLabel: "Net Benefit:",
+        ssEffectiveRateLabel: "Effective Earning Rate:",
+        ssNetLeftoverLabel: "Net Remaining:",
+        ssErrorTdRequired: "Please enter your CD amount.",
+        ssErrorNoSolution: "No solution found. CD rate must exceed loan effective cost.",
+        ssPeriodicTdInterest: "Combined Periodic CD Interest:",
         chartLabelPrincipal: "Principal",
         chartLabelInterest: "Interest",
         installApp: "Install App",
+        installAppAbout: "Install App",
+        installManualHint: "Open your browser menu and select \"Install\" or \"Add to Home Screen\"",
+        alreadyInstalled: "App is already installed!",
         iosInstallHead: "Install this app on your iPhone:",
         iosInstallBody: "Tap",
         iosInstallFoot: "then select <strong>\"Add to Home Screen\"</strong>",
@@ -103,6 +137,8 @@ const txt = {
         settlementFeeLabel: "Early Settlement Fee:",
         accruedInterestLabel: "Accrued Interest",
         settlementStampLabel: "Quarter Stamp:",
+        settlementBeforeStampLabel: "Settlement (before stamp):",
+        settlementStampOnTotalLabel: "Stamp on Settlement:",
         totalSettlementLabel: "Total Settlement:",
         noScheduleError: "Calculate loan first",
 
@@ -112,6 +148,7 @@ const txt = {
         errorInvalidDate: "Invalid date format",
         errorDateOutOfRange: "Date must be between 2000-2099",
         errorDateDoesNotExist: "Date does not exist",
+        errorFirstInstBeforeBooking: "First installment date cannot be before the booking date",
         errorLoanNotCalculated: "Please calculate loan details first.",
 
         // Offline & Compliance
@@ -142,13 +179,40 @@ const txt = {
         // Date Picker
         monthNames: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         dayNamesShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        dayNamesFull: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         confirmDate: "Confirm",
         cancelDate: "Cancel",
         todayDate: "Today",
+        selectDate: "Select date",
+        clearDate: "Clear",
+        prevMonth: "Previous month",
+        nextMonth: "Next month",
+        invalidDateHint: "Invalid date. Use DD/MM/YYYY.",
+        dateRangeHint: "Date must be between {min} and {max}.",
         // Date Placeholders
         datePlaceholderDay: "DD",
         datePlaceholderMonth: "MM",
-        datePlaceholderYear: "YYYY"
+        datePlaceholderYear: "YYYY",
+
+        // Additional Missing Translations
+        invalidAmount: "Please enter a valid amount.",
+        invalidRate: "Please enter a valid rate.",
+        invalidPeriod: "Please enter a valid period.",
+        invalidValue: "Invalid value.",
+        maxRate: "Max rate is 100%",
+        days: "days",
+        enterDetailsToSeeChart: "Enter details to see chart",
+        noCalcToShare: "No calculation to share",
+        failedToCopy: "Failed to copy",
+        storageFull: "Storage full",
+        copyFailed: "Copy failed",
+        printFailed: "Print failed",
+        exportFailed: "Export failed",
+        libNotLoaded: "Error: Library not loaded",
+        calcLoanAmount: "Calculate Loan Amount",
+        calcInterestRate: "Calculate Interest Rate",
+        calcPeriod: "Calculate Period",
+        calcInstallment: "Calculate Installment"
     },
     ar: {
         appTitle: "حاسبة القروض",
@@ -156,7 +220,12 @@ const txt = {
         loanAmountLabel: "مبلغ القرض",
         interestRateLabel: "الفائدة السنوية (%)",
         loanPeriodLabel: "المدة (أشهر)",
+        loanPeriodBase: "المدة",
         monthlyInstallmentLabel: "القسط الشهري",
+        frequencyLabel: "تكرار السداد",
+        freqMonthly: "شهري",
+        freqQuarterly: "ربع سنوي",
+        quarterUnit: "أرباع",
         startDateLabel: "تاريخ البداية",
         bookingDateLabel: "تاريخ المنح",
         advancedToggle: "خيارات متقدمة",
@@ -193,14 +262,42 @@ const txt = {
         colPrincipal: "الأصل",
         colRemaining: "المتبقي",
         selfSufficientMode: "وضع الاكتفاء الذاتي",
-        ssDesc: "حساب الوديعة المطلوبة لتغطية الأقساط.",
-        tdRateLabel: "فائدة الوديعة (%):",
-        tdAmountLabel: "وديعتك الحالية:",
-        reqTdLabel: "الوديعة المطلوبة:",
+        ssDesc: "حساب الشهادة المطلوبة لتغطية الأقساط.",
+        ssDescAdvanced: "حساب قرض ذاتي السداد مدعوم بشهادتك.",
+        ssBookingDateLabel: "تاريخ المنح:",
+        ssCd1InterestDateLabel: "تاريخ عائد شهادة ۱:",
+        ssCd2InterestDateLabel: "تاريخ عائد شهادة ۲:",
+        ssCdInterestBeforeM1Label: "عائد الشهادات قبل القسط الأول:",
+        tdRateLabel: "فائدة الشهادة 1 (%):",
+        td2RateLabel: "فائدة الشهادة 2 (%):",
+        tdAmountLabel: "شهادتك (الشهادة 1):",
+        reqTdLabel: "الشهادة المطلوبة:",
         netFlowLabel: "صافي التدفق:",
+        ssTd2Label: "الشهادة الجديدة (شهادة 2):",
+        ssGrossLoanLabel: "إجمالي مبلغ القرض:",
+        ssLoanRateLabel: "فائدة القرض (%):",
+        ssPeriodLabel: "المدة (أشهر):",
+        ssAdminFeesInputLabel: "مصاريف إدارية (%):",
+        ssStampRateInputLabel: "الدمغة النسبية (%):",
+        ssMonthlyTdInterest: "العائد الشهري المشترك:",
+        ssInstallmentLabel: "قسط القرض:",
+        ssMonthlySurplusLabel: "الفائض الشهري:",
+        ssFirstInstBufferLabel: "احتياطي القسط الأول:",
+        ssTotalStampLabel: "إجمالي الدمغة:",
+        ssAdminFeesLabel: "المصاريف الإدارية (تخصم):",
+        ssTotalTdsLabel: "إجمالي الشهادات بعد المدة:",
+        ssSimpleInterestAlt: "العائد بالشهادة فقط:",
+        ssNetBenefitLabel: "صافي الاستفادة:",
+        ssEffectiveRateLabel: "معدل العائد الفعلي:",
+        ssNetLeftoverLabel: "المتبقي من صافي القرض:",
+        ssErrorTdRequired: "يرجى إدخال مبلغ الشهادة.",
+        ssErrorNoSolution: "لا يوجد حل. فائدة الشهادة يجب أن تتجاوز التكلفة الفعلية للقرض.",
         chartLabelPrincipal: "أصل القرض",
         chartLabelInterest: "إجمالي الفائدة",
         installApp: "تثبيت التطبيق",
+        installAppAbout: "تثبيت التطبيق",
+        installManualHint: "افتح قائمة المتصفح واختر \"تثبيت\" أو \"إضافة إلى الشاشة الرئيسية\"",
+        alreadyInstalled: "التطبيق مثبت بالفعل!",
         iosInstallHead: "لتثبيت التطبيق على الآيفون:",
         iosInstallBody: "اضغط على",
         iosInstallFoot: "ثم اختر <strong>\"إضافة إلى الشاشة الرئيسية\"</strong>",
@@ -250,7 +347,9 @@ const txt = {
         principalBalanceLabel: "رصيد الأصل:",
         settlementFeeLabel: "عمولة السداد المبكر:",
         accruedInterestLabel: "العائد حتى تاريخه",
-        settlementStampLabel: "دمغة مستحقة:",
+        settlementStampLabel: "دمغة ربع سنوية:",
+        settlementBeforeStampLabel: "الإجمالي (قبل الدمغة):",
+        settlementStampOnTotalLabel: "دمغة على السداد:",
         totalSettlementLabel: "إجمالي السداد:",
         noScheduleError: "احسب القرض أولاً",
 
@@ -265,6 +364,7 @@ const txt = {
         errorInvalidDate: "صيغة التاريخ غير صحيحة",
         errorDateOutOfRange: "التاريخ يجب أن يكون بين 2000 و 2099",
         errorDateDoesNotExist: "التاريخ غير موجود",
+        errorFirstInstBeforeBooking: "تاريخ أول قسط لا يمكن أن يسبق تاريخ المنح",
         errorLoanNotCalculated: "يرجى حساب تفاصيل القرض أولاً.",
 
         // Offline & Compliance
@@ -295,9 +395,36 @@ const txt = {
         // Date Picker
         monthNames: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
         dayNamesShort: ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
+        dayNamesFull: ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
         confirmDate: "تأكيد",
         cancelDate: "إلغاء",
-        todayDate: "اليوم"
+        todayDate: "اليوم",
+        selectDate: "اختر التاريخ",
+        clearDate: "مسح",
+        prevMonth: "الشهر السابق",
+        nextMonth: "الشهر التالي",
+        invalidDateHint: "تاريخ غير صحيح. استخدم يوم/شهر/سنة.",
+        dateRangeHint: "التاريخ يجب أن يكون بين {min} و {max}.",
+
+        // Additional Missing Translations
+        invalidAmount: "يرجى إدخال مبلغ صحيح.",
+        invalidRate: "يرجى إدخال فائدة صحيحة.",
+        invalidPeriod: "يرجى إدخال مدة صحيحة.",
+        invalidValue: "قيمة غير صالحة.",
+        maxRate: "الحد الأقصى 100%",
+        days: "يوم",
+        enterDetailsToSeeChart: "أدخل التفاصيل لعرض الرسم البياني",
+        noCalcToShare: "لا يوجد حساب للمشاركة",
+        failedToCopy: "فشل النسخ",
+        storageFull: "الذاكرة ممتلئة",
+        copyFailed: "فشل النسخ",
+        printFailed: "فشلت الطباعة",
+        exportFailed: "فشل التصدير",
+        libNotLoaded: "خطأ: المكتبة غير محملة",
+        calcLoanAmount: "حساب مبلغ القرض",
+        calcInterestRate: "حساب نسبة الفائدة",
+        calcPeriod: "حساب المدة",
+        calcInstallment: "حساب القسط"
     }
 };
 
@@ -316,6 +443,53 @@ function t(lang, key) {
 let chartInst = null;
 let modalTimer = null;
 let toastTimer = null;
+
+/* ================= SCROLL LOCK UTILITY ================= */
+/**
+ * Utility to prevent background scrolling when modals are open
+ * without causing layout shifts from the scrollbar disappearing.
+ * Centralized here to avoid repeating the logic across different components.
+ */
+const ScrollLock = (() => {
+    let lockCount = 0;
+
+    function enable() {
+        lockCount++;
+        if (lockCount > 1) return; // Already locked
+
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        if (scrollbarWidth > 0) {
+            const pad = `${scrollbarWidth}px`;
+            document.body.style.paddingRight = pad;
+            const nav = document.querySelector('nav');
+            if (nav) nav.style.paddingRight = pad;
+            const updateBanner = document.getElementById('update-banner');
+            if (updateBanner) updateBanner.style.paddingRight = pad;
+            const messageBox = document.getElementById('message-box');
+            if (messageBox && !messageBox.classList.contains('hidden')) {
+                messageBox.style.paddingRight = pad;
+            }
+        }
+        document.body.classList.add('scroll-lock');
+    }
+
+    function disable() {
+        lockCount--;
+        if (lockCount > 0) return; // Still locked by other modals
+        lockCount = 0; // Safeguard
+
+        document.body.classList.remove('scroll-lock');
+        document.body.style.paddingRight = '';
+        const nav = document.querySelector('nav');
+        if (nav) nav.style.paddingRight = '';
+        const updateBanner = document.getElementById('update-banner');
+        if (updateBanner) updateBanner.style.paddingRight = '';
+        const messageBox = document.getElementById('message-box');
+        if (messageBox) messageBox.style.paddingRight = '';
+    }
+
+    return { enable, disable };
+})();
 
 // Debug mode flag - set to true during development
 const DEBUG_MODE = false;
@@ -669,6 +843,7 @@ function applyTheme(themeMode, lastRes) {
 function updateLangUI(lang) {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.title = t(lang, 'appTitle');
 
     document.querySelectorAll('[data-lang-key]').forEach(e => {
         if (e.id === 'date-label') {
@@ -684,7 +859,7 @@ function updateLangUI(lang) {
         }
     });
 
-    const inputIds = ['loan-amount', 'interest-rate', 'loan-period', 'monthly-installment', 'early-settlement-fee', 'admin-fees', 'stamp-rate', 'td-rate', 'td-amount'];
+    const inputIds = ['loan-amount', 'interest-rate', 'loan-period', 'monthly-installment', 'early-settlement-fee', 'admin-fees', 'stamp-rate', 'td-rate', 'td-amount', 'td2-rate', 'ss-loan-rate', 'ss-loan-period', 'ss-admin-fees', 'ss-stamp-rate'];
     inputIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -707,6 +882,11 @@ function updateLangUI(lang) {
         e.title = t(lang, key);
     });
 
+    document.querySelectorAll('[data-lang-aria-label]').forEach(e => {
+        const key = e.dataset.langAriaLabel;
+        e.setAttribute('aria-label', t(lang, key));
+    });
+
     // Tooltips for new Radio Buttons
     document.querySelectorAll('input[type="radio"][name="calc-target"]').forEach(radio => {
         radio.title = t(lang, 'calcField');
@@ -717,6 +897,9 @@ function updateLangUI(lang) {
         const key = el.dataset.langTooltip;
         el.dataset.tooltip = t(lang, key);
     });
+
+    // Dispatch event so other components can apply dynamic text formatting (e.g. adding (Months)/(Quarters))
+    window.dispatchEvent(new CustomEvent('languageUpdated', { detail: { lang } }));
 }
 
 /**
@@ -736,7 +919,7 @@ function showToast(message, type = 'normal') {
     msgBox.textContent = message;
     msgBox.style.zIndex = "100";
 
-    const baseClasses = 'fixed top-24 left-0 right-0 mx-auto w-fit max-w-[90vw] z-[100] px-6 py-3 rounded-lg text-white font-medium shadow-2xl text-sm text-center transition-all duration-300 ease-out transform';
+    const baseClasses = 'fixed top-24 left-0 right-0 mx-auto w-fit max-w-[90vw] z-[100] px-6 py-3 rounded-lg text-white font-medium shadow-2xl text-sm text-center transition duration-300 ease-out transform';
 
     let colorClasses;
     if (type === 'error') {
@@ -750,6 +933,16 @@ function showToast(message, type = 'normal') {
     // Start state: hidden above, fully transparent
     msgBox.className = `${baseClasses} ${colorClasses} opacity-0 -translate-y-3`;
     msgBox.classList.remove('hidden');
+
+    // Inherit scrollbar padding if a modal is currently open
+    if (document.body.classList.contains('scroll-lock')) {
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        if (scrollbarWidth > 0) {
+            msgBox.style.paddingRight = `${scrollbarWidth}px`;
+        }
+    } else {
+        msgBox.style.paddingRight = '';
+    }
 
     void msgBox.offsetWidth; // Force reflow
 
@@ -824,17 +1017,7 @@ function toggleModal(modal) {
     if (modalTimer) clearTimeout(modalTimer);
 
     if (isOpening) {
-        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-        if (scrollbarWidth > 0) {
-            const pad = `${scrollbarWidth}px`;
-            document.body.style.paddingRight = pad;
-            const nav = document.querySelector('nav');
-            if (nav) nav.style.paddingRight = pad;
-            // Compensate fixed elements for scrollbar width
-            const updateBanner = document.getElementById('update-banner');
-            if (updateBanner) updateBanner.style.paddingRight = pad;
-        }
-        document.body.classList.add('scroll-lock');
+        ScrollLock.enable();
 
         // Register with BackHandler for Android back button support
         if (typeof BackHandler !== 'undefined') {
@@ -842,13 +1025,7 @@ function toggleModal(modal) {
         }
     } else {
         modalTimer = setTimeout(() => {
-            document.body.classList.remove('scroll-lock');
-            document.body.style.paddingRight = '';
-            const nav = document.querySelector('nav');
-            if (nav) nav.style.paddingRight = '';
-            // Reset fixed elements
-            const updateBanner = document.getElementById('update-banner');
-            if (updateBanner) updateBanner.style.paddingRight = '';
+            ScrollLock.disable();
         }, 300);
 
         // Unregister from BackHandler
@@ -957,9 +1134,15 @@ function renderChart(canvas, principal, interest, lang) {
 
 function formatCurrencyInput(input) {
     if (!input) return;
-    let selectionStart = input.selectionStart;
-    let oldVal = input.value;
 
+    let selectionStart = 0;
+    try {
+        selectionStart = input.selectionStart || 0;
+    } catch (e) {
+        // Some input types (like number) don't support selectionStart
+    }
+    
+    let oldVal = input.value;
     let raw = oldVal.replace(/[^0-9.]/g, '');
 
     const parts = raw.split('.');
@@ -972,35 +1155,65 @@ function formatCurrencyInput(input) {
 
         let formattedInt = "";
         if (integerPart) {
-            // Use Intl.NumberFormat to avoid ReDoS vulnerability (CWE-1333)
-            // BigInt handles arbitrary precision for large loan amounts
-            try {
-                formattedInt = new Intl.NumberFormat('en-US').format(BigInt(integerPart));
-            } catch (e) {
-                console.warn('Currency formatting error:', e);
-                formattedInt = integerPart; // Fallback
+            // Strip leading zeros so e.g. deleting '1' from '1,000,000'
+            // leaves '' (empty) instead of collapsing '000000' → 0.
+            const stripped = integerPart.replace(/^0+/, '');
+            if (stripped === '') {
+                // All zeros — only show '0' when there IS a decimal part
+                formattedInt = decimalPart ? '0' : '';
+            } else {
+                // Use Intl.NumberFormat to avoid ReDoS vulnerability (CWE-1333)
+                // BigInt handles arbitrary precision for large loan amounts
+                try {
+                    formattedInt = new Intl.NumberFormat('en-US').format(BigInt(stripped));
+                } catch (e) {
+                    console.warn('Currency formatting error:', e);
+                    formattedInt = stripped; // Fallback
+                }
             }
         }
 
         newVal = formattedInt + decimalPart;
+
     }
-    input.value = newVal;
-    restoreCursorPosition(input, oldVal, newVal, selectionStart);
+
+    if (oldVal !== newVal) {
+        input.value = newVal;
+        restoreCursorPosition(input, oldVal, newVal, selectionStart);
+    }
 }
 
 /**
  * Helper to restore cursor position after formatting
  */
 function restoreCursorPosition(input, oldVal, newVal, selectionStart) {
-    let oldCommas = (oldVal.slice(0, selectionStart).match(/,/g) || []).length;
-    let newCommas = (newVal.slice(0, selectionStart).match(/,/g) || []).length;
+    // If cursor was at the very end of old string, put it at the very end of new string
+    if (selectionStart >= oldVal.length) {
+        try {
+            input.setSelectionRange(newVal.length, newVal.length);
+        } catch (e) {}
+        return;
+    }
 
-    if (oldVal !== newVal) {
-        if (selectionStart < oldVal.length) {
-            let newPos = selectionStart + (newCommas - oldCommas);
-            newPos = Math.max(0, Math.min(newPos, newVal.length));
-            try { input.setSelectionRange(newPos, newPos); } catch (e) { /* Ignore - some input types don't support selection */ }
+    // Number of commas before the cursor in the old string
+    let oldCommas = (oldVal.slice(0, selectionStart).match(/,/g) || []).length;
+    
+    // We want the cursor to stay after the same number of non-comma characters.
+    let targetNonCommas = selectionStart - oldCommas;
+    
+    let newPos = 0;
+    let nonCommaCount = 0;
+    while (newPos < newVal.length && nonCommaCount < targetNonCommas) {
+        if (newVal[newPos] !== ',') {
+            nonCommaCount++;
         }
+        newPos++;
+    }
+    
+    try { 
+        input.setSelectionRange(newPos, newPos); 
+    } catch (e) { 
+        /* Ignore */ 
     }
 }
 
@@ -1038,601 +1251,9 @@ function validateRateInput(input) {
     input.value = val;
 }
 
-/* ================= DATE INPUT - WINDOWS CALCULATOR STYLE ================= */
-/* Key behaviors:
- * 1. Slashes are static and cannot be removed (format always DD/MM/YYYY)
- * 2. Click on segment highlights it; typing replaces entire segment
- * 3. DD/MM auto-advance to next segment when 2 digits filled
- * 4. Arrow left/right add leading zero if needed, then move to adjacent segment
- * 5. Backspace clears current segment first, then moves to previous
- */
-
-const DATE_CONFIG = {
-    MIN_DATE: "2000-01-01",
-    MAX_DATE: "2099-12-31",
-    EMPTY_CHAR: '' // Empty character for unfilled positions
-};
-
-/* --- Date Helpers --- */
-
-function dateIsValid(d, m, y) {
-    const date = new Date(y, m - 1, d);
-    return (
-        date.getFullYear() === y &&
-        date.getMonth() === m - 1 &&
-        date.getDate() === d
-    );
-}
-
-function dateToISO(d, m, y) {
-    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-}
-
-function dateCompareISO(a, b) {
-    return new Date(a) - new Date(b);
-}
-
-function dateIsWithinRange(iso) {
-    if (dateCompareISO(iso, DATE_CONFIG.MIN_DATE) < 0) return false;
-    if (dateCompareISO(iso, DATE_CONFIG.MAX_DATE) > 0) return false;
-    return true;
-}
-
-/**
- * Get segment info by cursor position
- * Segments: DD(0-2), /(2), MM(3-5), /(5), YYYY(6-10)
- */
-/**
- * Get segment info by cursor position
- * Dynamically calculates ranges based on slash positions to handle variable length (Arabic vs Digits)
- */
-function dateGetSegmentByCursor(pos, value) {
-    if (!value) return { start: 0, end: 0, type: 'day', maxLen: 2 };
-
-    // Find slash positions
-    const slash1 = value.indexOf('/');
-    const slash2 = value.lastIndexOf('/');
-
-    // Default to strict index if slashes missing (fallback)
-    if (slash1 === -1) return { start: 1, end: 3, type: 'day', maxLen: 2 };
-
-    // Determine segment based on position relative to slashes
-    // Day: [LRM...DAY...LRM] /
-    if (pos <= slash1) {
-        return { start: 1, end: slash1 - 1, type: 'day', maxLen: 2 };
-    }
-    // Month: / [LRM...MONTH...LRM] /
-    if (pos <= slash2) {
-        return { start: slash1 + 2, end: slash2 - 1, type: 'month', maxLen: 2 };
-    }
-    // Year: / [LRM...YEAR]
-    return { start: slash2 + 2, end: value.length, type: 'year', maxLen: 4 };
-}
-
-/**
- * Get segment by position index (0=day, 1=month, 2=year)
- */
-function dateGetSegmentByIndex(index, value) {
-    if (!value) return { start: 0, end: 0, type: 'day', maxLen: 2 };
-
-    const slash1 = value.indexOf('/');
-    const slash2 = value.lastIndexOf('/');
-
-    if (slash1 === -1) return { start: 1, end: 3, type: 'day', maxLen: 2 }; // Fallback
-
-    if (index === 0) return { start: 1, end: slash1 - 1, type: 'day', maxLen: 2 };
-    if (index === 1) return { start: slash1 + 2, end: slash2 - 1, type: 'month', maxLen: 2 };
-    return { start: slash2 + 2, end: value.length, type: 'year', maxLen: 4 };
-}
-
-/**
- * Parse segments from display value
- * Strips placeholder text (localized) treating them as empty
- */
-function dateParseSegments(value) {
-    const parts = value.split('/');
-    let day = (parts[0] || '').replace(/\D/g, '');
-    let month = (parts[1] || '').replace(/\D/g, '');
-    let year = (parts[2] || '').replace(/\D/g, '');
-
-    return { day, month, year };
-}
-
-/**
- * Build display value from segments (static slashes)
- * Uses placeholder text for empty segments: localized IDs
- */
-function dateBuildValue(day, month, year, usePlaceholders = false) {
-    if (usePlaceholders) {
-        const lang = document.documentElement.lang || 'en';
-        const displayDay = day || t(lang, 'datePlaceholderDay');
-        const displayMonth = month || t(lang, 'datePlaceholderMonth');
-        const displayYear = year || t(lang, 'datePlaceholderYear');
-        // Use Left-to-Right Mark (\u200E) to force strict LTR visualization mixed with Arabic
-        return `\u200E${displayDay}\u200E/\u200E${displayMonth}\u200E/\u200E${displayYear}`;
-    }
-    // Also add LRM to standard numerical display to ensure consistency
-    return `\u200E${day}\u200E/\u200E${month}\u200E/\u200E${year}`;
-}
-
-/**
- * Pad segment with leading zeros
- */
-function datePadSegment(value, maxLen) {
-    if (!value) return '';
-    return value.padStart(maxLen, '0');
-}
-
-/* --- Segment Navigation with Leading Zero --- */
-
-/**
- * Navigate between date segments with arrow keys
- * Adds leading zero to current segment before moving
- */
-function handleDateLateralArrow(e, input) {
-    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return false;
-
-    const cursor = input.selectionStart;
-    const currentSeg = dateGetSegmentByCursor(cursor, input.value);
-    const segments = dateParseSegments(input.value);
-
-    // Pad current segment with leading zero if it has 1 digit (DD/MM only)
-    let needsUpdate = false;
-    if (currentSeg.type === 'day' && segments.day.length === 1) {
-        segments.day = datePadSegment(segments.day, 2);
-        needsUpdate = true;
-    } else if (currentSeg.type === 'month' && segments.month.length === 1) {
-        segments.month = datePadSegment(segments.month, 2);
-        needsUpdate = true;
-    }
-
-    // Determine new segment
-    let newSeg = null;
-    if (e.key === 'ArrowRight') {
-        if (currentSeg.type === 'day') newSeg = dateGetSegmentByIndex(1, input.value);
-        else if (currentSeg.type === 'month') newSeg = dateGetSegmentByIndex(2, input.value);
-    } else {
-        if (currentSeg.type === 'year') newSeg = dateGetSegmentByIndex(1, input.value);
-        else if (currentSeg.type === 'month') newSeg = dateGetSegmentByIndex(0, input.value);
-    }
-
-    if (newSeg || needsUpdate) {
-        e.preventDefault();
-
-        if (needsUpdate) {
-            input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
-        }
-
-        if (newSeg) {
-            input.setSelectionRange(newSeg.start, newSeg.end);
-        } else {
-            // Stay in current segment but update selection
-            // Recalculate segment indices as value might have changed (padding)
-            const refreshedSeg = dateGetSegmentByCursor(input.selectionStart, input.value);
-            input.setSelectionRange(refreshedSeg.start, refreshedSeg.end);
-        }
-        return true;
-    }
-
-    return false;
-}
-
-/* --- Backspace Handler --- */
-
-/**
- * Handle backspace: 
- * - Clear entire current segment
- * - Move to previous segment (if available)
- * Windows Calculator style: backspace always clears whole segment
- */
-function handleDateBackspace(e, input) {
-    if (e.key !== 'Backspace') return false;
-
-    e.preventDefault();
-
-    const cursor = input.selectionStart;
-    const currentSeg = dateGetSegmentByCursor(cursor, input.value);
-    const segments = dateParseSegments(input.value);
-
-    // Get current segment content
-    let segContent = '';
-    if (currentSeg.type === 'day') segContent = segments.day;
-    else if (currentSeg.type === 'month') segContent = segments.month;
-    else segContent = segments.year;
-
-    // If segment has content, clear it entirely
-    if (segContent.length > 0) {
-        if (currentSeg.type === 'day') segments.day = '';
-        else if (currentSeg.type === 'month') segments.month = '';
-        else segments.year = '';
-
-        input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
-
-        // Move to previous segment
-        let prevSeg = null;
-        if (currentSeg.type === 'year') prevSeg = dateGetSegmentByIndex(1, input.value);
-        else if (currentSeg.type === 'month') prevSeg = dateGetSegmentByIndex(0, input.value);
-
-        if (prevSeg) {
-            input.setSelectionRange(prevSeg.start, prevSeg.end);
-        } else {
-            // Already at first segment, select the placeholder
-            // Must recalculate current segment range because length changed ("05" -> "يوم")
-            const refreshedSeg = dateGetSegmentByIndex(0, input.value); // Assume first seg if no prev
-            // Actually better to define "current" by index
-            const currentIdx = currentSeg.type === 'year' ? 2 : (currentSeg.type === 'month' ? 1 : 0);
-            const refSeg = dateGetSegmentByIndex(currentIdx, input.value);
-            input.setSelectionRange(refSeg.start, refSeg.end);
-        }
-        return true;
-    }
-
-    // Segment is empty - move to previous segment
-    let prevSeg = null;
-    if (currentSeg.type === 'year') prevSeg = dateGetSegmentByIndex(1, input.value);
-    else if (currentSeg.type === 'month') prevSeg = dateGetSegmentByIndex(0, input.value);
-
-    if (prevSeg) {
-        input.setSelectionRange(prevSeg.start, prevSeg.end);
-    }
-    return true;
-}
-
-/* --- Digit Input Handler --- */
-
-/**
- * Handle digit input with segment replacement behavior
- */
-function handleDateDigitInput(e, input, nativeInput, errorCallback) {
-    // Only handle digit keys
-    if (!/^\d$/.test(e.key)) return false;
-
-    e.preventDefault();
-
-    const cursor = input.selectionStart;
-    const selEnd = input.selectionEnd;
-    const currentSeg = dateGetSegmentByCursor(cursor, input.value);
-    const segments = dateParseSegments(input.value);
-
-    // Get current segment content
-    let segContent = '';
-    if (currentSeg.type === 'day') segContent = segments.day;
-    else if (currentSeg.type === 'month') segContent = segments.month;
-    else segContent = segments.year;
-
-    // Determine if segment is fully selected (replace mode)
-    const isFullySelected = (cursor === currentSeg.start && selEnd === currentSeg.end);
-    const isAtSegmentEnd = (segContent.length >= currentSeg.maxLen);
-
-    let newContent;
-    if (isFullySelected || isAtSegmentEnd) {
-        // Replace entire segment with new digit
-        newContent = e.key;
-    } else {
-        // Append to segment (up to max length)
-        newContent = (segContent + e.key).slice(0, currentSeg.maxLen);
-    }
-
-    // Update segment
-    if (currentSeg.type === 'day') segments.day = newContent;
-    else if (currentSeg.type === 'month') segments.month = newContent;
-    else segments.year = newContent;
-
-    input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
-
-    // Auto-advance logic
-    const shouldAdvance = (currentSeg.type === 'day' && segments.day.length === 2) ||
-        (currentSeg.type === 'month' && segments.month.length === 2);
-
-    if (shouldAdvance) {
-        // Move to next segment and select it
-        let nextSeg = null;
-        if (currentSeg.type === 'day') nextSeg = dateGetSegmentByIndex(1, input.value);
-        else if (currentSeg.type === 'month') nextSeg = dateGetSegmentByIndex(2, input.value);
-
-        if (nextSeg) {
-            requestAnimationFrame(() => {
-                input.setSelectionRange(nextSeg.start, nextSeg.end);
-            });
-        }
-    } else {
-        // Position cursor after the entered digit
-        const newCursor = currentSeg.start + newContent.length;
-        requestAnimationFrame(() => {
-            input.setSelectionRange(newCursor, newCursor);
-        });
-    }
-
-    // Validate if complete
-    validateDateInputAndSync(input, nativeInput, errorCallback, true);
-
-    return true;
-}
-
-/* --- Validation & Sync --- */
-
-function validateDateInputAndSync(input, nativeInput, errorCallback, silent = false) {
-    const segments = dateParseSegments(input.value);
-
-    // Check if all segments are complete
-    if (segments.day.length !== 2 || segments.month.length !== 2 || segments.year.length !== 4) {
-        input.classList.remove('text-red-500');
-        return false;
-    }
-
-    const d = parseInt(segments.day, 10);
-    const m = parseInt(segments.month, 10);
-    const y = parseInt(segments.year, 10);
-
-    const lang = document.documentElement.lang || 'en';
-
-    if (!d || !m || !y || y < 1000) {
-        input.classList.add('text-red-500');
-        if (errorCallback && !silent) errorCallback(t(lang, 'errorInvalidDate'));
-        return false;
-    }
-
-    if (!dateIsValid(d, m, y)) {
-        input.classList.add('text-red-500');
-        if (errorCallback && !silent) errorCallback(t(lang, 'errorDateDoesNotExist'));
-        return false;
-    }
-
-    const iso = dateToISO(d, m, y);
-
-    if (!dateIsWithinRange(iso)) {
-        input.classList.add('text-red-500');
-        if (errorCallback && !silent) errorCallback(t(lang, 'errorDateOutOfRange'));
-        return false;
-    }
-
-    // Valid! Sync to native input
-    input.classList.remove('text-red-500');
-    input.dataset.iso = iso;
-    nativeInput.value = iso;
-    nativeInput.dispatchEvent(new Event('change'));
-    return true;
-}
-
-/* --- Arrow Key Increment (Up/Down) --- */
-
-function handleDateArrowKey(e, input, nativeInput) {
-    if (!['ArrowUp', 'ArrowDown'].includes(e.key)) return false;
-
-    let iso = input.dataset.iso;
-
-    if (!iso) {
-        const segments = dateParseSegments(input.value);
-        if (segments.day.length === 2 && segments.month.length === 2 && segments.year.length === 4) {
-            const d = parseInt(segments.day, 10);
-            const m = parseInt(segments.month, 10);
-            const y = parseInt(segments.year, 10);
-            if (dateIsValid(d, m, y)) {
-                iso = dateToISO(d, m, y);
-                input.dataset.iso = iso;
-                nativeInput.value = iso;
-            }
-        }
-    }
-
-    if (!iso) return false;
-
-    e.preventDefault();
-
-    const delta = e.key === 'ArrowUp' ? 1 : -1;
-    const cursor = input.selectionStart;
-    const seg = dateGetSegmentByCursor(cursor, input.value);
-    const date = new Date(iso);
-
-    if (seg.type === 'day') {
-        date.setDate(date.getDate() + delta);
-    } else if (seg.type === 'month') {
-        date.setMonth(date.getMonth() + delta);
-    } else {
-        date.setFullYear(date.getFullYear() + delta);
-    }
-
-    const newISO = date.toISOString().slice(0, 10);
-    if (!dateIsWithinRange(newISO)) return true;
-
-    const [y, m, d] = newISO.split('-');
-    input.value = dateBuildValue(d, m, y, true); // Use build logic to ensure LRM consistency
-    input.dataset.iso = newISO;
-    nativeInput.value = newISO;
-
-    input.setSelectionRange(seg.start, seg.end);
-    return true;
-}
-
-/* --- Segment Selection Handlers --- */
-
-function handleDateFocus(input) {
-    const segments = dateParseSegments(input.value);
-
-    // Show placeholders for empty segments
-    if (!segments.day && !segments.month && !segments.year) {
-        input.value = dateBuildValue('', '', '', true); // DD/MM/YYYY
-        requestAnimationFrame(() => {
-            const firstSeg = dateGetSegmentByIndex(0, input.value);
-            input.setSelectionRange(firstSeg.start, firstSeg.end);
-        });
-        return;
-    }
-
-    // If value has some content, show with placeholders for empty parts
-    input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
-
-    requestAnimationFrame(() => {
-        const seg = dateGetSegmentByCursor(input.selectionStart || 0, input.value);
-        input.setSelectionRange(seg.start, seg.end);
-    });
-}
-
-function handleDateClick(input) {
-    // Auto-pad incomplete segments before switching (like arrow key behavior)
-    const segments = dateParseSegments(input.value);
-    let needsUpdate = false;
-
-    if (segments.day.length === 1) {
-        segments.day = datePadSegment(segments.day, 2);
-        needsUpdate = true;
-    }
-    if (segments.month.length === 1) {
-        segments.month = datePadSegment(segments.month, 2);
-        needsUpdate = true;
-    }
-
-    if (needsUpdate) {
-        input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
-    }
-
-    requestAnimationFrame(() => {
-        const seg = dateGetSegmentByCursor(input.selectionStart, input.value);
-        input.setSelectionRange(seg.start, seg.end);
-    });
-}
-
-function handleDateDblClick(e, input) {
-    e.preventDefault();
-    const seg = dateGetSegmentByCursor(input.selectionStart, input.value);
-    input.setSelectionRange(seg.start, seg.end);
-}
-
-/* --- Blur Handler with Auto-Padding --- */
-
-function handleDateBlur(input, nativeInput, errorCallback) {
-    const segments = dateParseSegments(input.value);
-
-    // Auto-pad incomplete segments with leading zeros
-    if (segments.day.length === 1) segments.day = datePadSegment(segments.day, 2);
-    if (segments.month.length === 1) segments.month = datePadSegment(segments.month, 2);
-
-    // Update display with placeholders for empty segments
-    input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
-
-    validateDateInputAndSync(input, nativeInput, errorCallback);
-}
-
-/* --- Main Initialization Function --- */
-
-function initDateInput(displayInput, nativeInput) {
-    if (!displayInput || !nativeInput) return;
-
-    nativeInput.min = DATE_CONFIG.MIN_DATE;
-    nativeInput.max = DATE_CONFIG.MAX_DATE;
-
-    let isComposing = false;
-
-    displayInput.addEventListener('compositionstart', () => {
-        isComposing = true;
-    });
-
-    displayInput.addEventListener('compositionend', () => {
-        isComposing = false;
-    });
-
-    // Keydown: handle all special keys and digit input
-    displayInput.addEventListener('keydown', (e) => {
-        if (isComposing) return;
-
-        // Enter key
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            e.stopPropagation();
-            handleDateBlur(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
-            displayInput.blur();
-            return;
-        }
-
-        // Tab: pad current segment before leaving
-        if (e.key === 'Tab') {
-            const cursor = displayInput.selectionStart;
-            const currentSeg = dateGetSegmentByCursor(cursor);
-            const segments = dateParseSegments(displayInput.value);
-
-            if (currentSeg.type === 'day' && segments.day.length === 1) {
-                segments.day = datePadSegment(segments.day, 2);
-                displayInput.value = dateBuildValue(segments.day, segments.month, segments.year);
-            } else if (currentSeg.type === 'month' && segments.month.length === 1) {
-                segments.month = datePadSegment(segments.month, 2);
-                displayInput.value = dateBuildValue(segments.day, segments.month, segments.year);
-            }
-            return; // Let default tab behavior continue
-        }
-
-        // Backspace
-        if (handleDateBackspace(e, displayInput)) {
-            validateDateInputAndSync(displayInput, nativeInput, null, true);
-            return;
-        }
-
-        // Left/Right arrows (with leading zero padding)
-        if (handleDateLateralArrow(e, displayInput)) {
-            return;
-        }
-
-        // Up/Down arrows (increment/decrement)
-        if (handleDateArrowKey(e, displayInput, nativeInput)) {
-            return;
-        }
-
-        // Digit input
-        if (handleDateDigitInput(e, displayInput, nativeInput, (msg) => showToast(msg, 'error'))) {
-            return;
-        }
-
-        // Block all other keys except navigation
-        if (!['Home', 'End', 'Delete'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
-            e.preventDefault();
-        }
-    });
-
-    // Prevent default input behavior (we handle everything in keydown)
-    displayInput.addEventListener('beforeinput', (e) => {
-        if (isComposing) return;
-        // Allow only deletion operations through
-        if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
-            return;
-        }
-        e.preventDefault();
-    });
-
-    // Blur validation with auto-padding
-    displayInput.addEventListener('blur', () => {
-        handleDateBlur(displayInput, nativeInput, (msg) => showToast(msg, 'error'));
-    });
-
-    // Focus: select appropriate segment
-    displayInput.addEventListener('focus', () => handleDateFocus(displayInput));
-
-    // Click: select clicked segment
-    displayInput.addEventListener('click', () => handleDateClick(displayInput));
-
-    // Double-click: select segment
-    displayInput.addEventListener('dblclick', (e) => handleDateDblClick(e, displayInput));
-
-    // Native picker sync
-    nativeInput.addEventListener('change', () => {
-        if (!nativeInput.value) {
-            displayInput.value = '';
-            displayInput.dataset.iso = '';
-            return;
-        }
-
-        const [y, m, d] = nativeInput.value.split('-');
-        displayInput.value = `${d}/${m}/${y}`;
-        displayInput.dataset.iso = nativeInput.value;
-        displayInput.classList.remove('text-red-500');
-    });
-}
-
-/* --- Legacy wrapper for backwards compatibility --- */
-
-function validateAndFormatDate(e, nativeInput) {
-    // This is now a thin wrapper - actual logic is in handleDateInputMask
-    const input = e.target;
-    handleDateInputMask(input, nativeInput, (msg) => showToast(msg, 'error'));
-}
+/* ================= DATE INPUT ================= */
+/* All date input code has been moved to js/dateinput.js for isolation.
+ * Do NOT add date-related functions here — edit dateinput.js instead. */
 
 /**
  * Updates input field states based on active calculation target
@@ -1682,7 +1303,13 @@ function renderHistoryList(history, lang) {
     historyList.innerHTML = history.map((item, index) => {
         const date = new Date(item.date).toLocaleDateString(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         const totalPayment = item.res.P + item.res.TI;
-        const periodUnit = lang === 'ar' ? ' شهر' : ' mo';
+        const freq = parseInt(item.values?.freq) || (item.res?.freq) || 1;
+        const periodUnit = freq === 3
+            ? (lang === 'ar' ? ' ربع' : ' qtr')
+            : (lang === 'ar' ? ' شهر' : ' mo');
+        const instUnit = freq === 3
+            ? (lang === 'ar' ? '/ربع' : '/qtr')
+            : (lang === 'ar' ? '/شهر' : '/mo');
         return `
         <div class="history-card bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-[0.98]" data-index="${index}">
             <div class="flex justify-between items-start mb-2">
@@ -1703,7 +1330,7 @@ function renderHistoryList(history, lang) {
                 </span>
                 <span class="flex items-center gap-1">
                     <svg class="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                    ${fmt(item.res.M)}/${lang === 'ar' ? 'شهر' : 'mo'}
+                    ${fmt(item.res.M)}${instUnit}
                 </span>
             </div>
             <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">

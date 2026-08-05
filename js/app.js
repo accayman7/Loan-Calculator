@@ -16,6 +16,31 @@
         TOAST: 100
     };
 
+    // Lazy loading promise for XLSX library
+    let xlsxLoadPromise = null;
+
+    /**
+     * Lazy load XLSX library on first use
+     * @returns {Promise} Resolves when XLSX is loaded
+     */
+    function loadXLSX() {
+        if (xlsxLoadPromise) return xlsxLoadPromise;
+        if (typeof XLSX !== 'undefined') return Promise.resolve();
+
+        xlsxLoadPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = './xlsx.mini.min.js';
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => {
+                xlsxLoadPromise = null; // Allow retry
+                reject(new Error('Failed to load XLSX library'));
+            };
+            document.head.appendChild(script);
+        });
+        return xlsxLoadPromise;
+    }
+
     const MENU_CLASSES = {
         VISIBLE: ['visible', 'opacity-100', 'scale-100', 'translate-y-0', 'pointer-events-auto'],
         HIDDEN: ['invisible', 'opacity-0', 'scale-95', '-translate-y-2', 'pointer-events-none']
@@ -109,17 +134,35 @@
         // 4. Set Initial Date if empty
         if (dateInputs.startNative && !dateInputs.startNative.value) {
             const today = new Date();
-            dateInputs.startNative.valueAsDate = today;
-            if (dateInputs.startDisplay) dateInputs.startDisplay.value = formatDate(today);
+            // Use local date components to avoid UTC off-by-one (valueAsDate uses UTC)
+            const ty = today.getFullYear();
+            const tm = String(today.getMonth() + 1).padStart(2, '0');
+            const td = String(today.getDate()).padStart(2, '0');
+            const todayISO = `${ty}-${tm}-${td}`;
+            dateInputs.startNative.value = todayISO;
+            if (dateInputs.startDisplay) {
+                dateInputs.startDisplay.value = (typeof dateBuildValue === 'function')
+                    ? dateBuildValue(td, tm, String(ty), false)
+                    : formatDate(today);
+                dateInputs.startDisplay.dataset.iso = todayISO;
+            }
 
             // Also set first installment date: 5th of second month after booking date
             if (dateInputs.firstNative) {
                 const firstInstDate = new Date(today.getFullYear(), today.getMonth() + 2, 5);
-                const y = firstInstDate.getFullYear();
-                const m = String(firstInstDate.getMonth() + 1).padStart(2, '0');
-                const d = String(firstInstDate.getDate()).padStart(2, '0');
-                dateInputs.firstNative.value = `${y}-${m}-${d}`;
-                if (dateInputs.firstDisplay) dateInputs.firstDisplay.value = formatDate(firstInstDate);
+                const fy = firstInstDate.getFullYear();
+                const fm = String(firstInstDate.getMonth() + 1).padStart(2, '0');
+                const fd = String(firstInstDate.getDate()).padStart(2, '0');
+                const firstISO = `${fy}-${fm}-${fd}`;
+                dateInputs.firstNative.value = firstISO;
+                // Seed min so constraint is enforced immediately (today cannot be overridden)
+                dateInputs.firstNative.min = todayISO;
+                if (dateInputs.firstDisplay) {
+                    dateInputs.firstDisplay.value = (typeof dateBuildValue === 'function')
+                        ? dateBuildValue(fd, fm, String(fy), false)
+                        : formatDate(firstInstDate);
+                    dateInputs.firstDisplay.dataset.iso = firstISO;
+                }
             }
         }
 
@@ -570,6 +613,9 @@
                     const d = String(firstInstDate.getDate()).padStart(2, '0');
                     dateInputs.firstNative.value = `${y}-${m}-${d}`;
                     dateInputs.firstNative.dispatchEvent(new Event('change'));
+
+                    // Enforce constraint: first installment cannot be before booking date
+                    dateInputs.firstNative.min = e.target.value;
                 }
             });
 
@@ -598,6 +644,10 @@
         }
 
         if (dateInputs.firstDisplay && dateInputs.firstNative) {
+            // Seed min constraint from already-filled grant date before initDateInput runs
+            if (dateInputs.startNative && dateInputs.startNative.value) {
+                dateInputs.firstNative.min = dateInputs.startNative.value;
+            }
             if (typeof initDateInput === 'function') {
                 initDateInput(dateInputs.firstDisplay, dateInputs.firstNative);
             }
@@ -608,6 +658,10 @@
                 firstPickerBtn.addEventListener('click', () => {
                     if (typeof haptic !== 'undefined') haptic('light');
                     if (typeof openDatePicker === 'function') {
+                        // Pass booking date as minDate so pre-grant dates are greyed out.
+                        // normalizeConstraint expects a Date object or DD/MM/YYYY string (not ISO).
+                        const grantDateISO = dateInputs.startNative ? dateInputs.startNative.value : '';
+                        const minDateObj = grantDateISO ? new Date(grantDateISO + 'T00:00:00') : null;
                         openDatePicker(dateInputs.firstDisplay, AppState.lang, (selectedDate) => {
                             if (selectedDate) {
                                 dateInputs.firstDisplay.value = formatDate(selectedDate);
@@ -617,7 +671,7 @@
                                 dateInputs.firstNative.value = `${y}-${m}-${d}`;
                                 dateInputs.firstNative.dispatchEvent(new Event('change'));
                             }
-                        });
+                        }, minDateObj ? { minDate: minDateObj } : {});
                     } else {
                         dateInputs.firstNative.showPicker();
                     }
@@ -656,129 +710,14 @@
             });
         }
 
-        const ssToggle = document.getElementById('self-sufficient-toggle');
-        if (ssToggle) {
-            const ssSection = document.getElementById('self-sufficient-section');
-            ssToggle.addEventListener('change', (e) => {
-                if (typeof haptic !== 'undefined') haptic('medium');
-
-                // Visual toggle bounce animation
-                animateToggleBounce(e.target);
-
-                if (e.target.checked) {
-                    ssSection.classList.remove('max-h-0', 'opacity-0');
-                    ssSection.style.maxHeight = '500px';
-                    ssSection.classList.add('opacity-100');
-
-                } else {
-                    ssSection.classList.add('max-h-0', 'opacity-0');
-                    ssSection.style.maxHeight = '0';
-                    ssSection.classList.remove('opacity-100');
-                }
-            });
+        // Self-Sufficient module (selfsufficient.js)
+        if (typeof initSelfSufficient === 'function') {
+            initSelfSufficient(AppState, dateInputs, formInputs, animateToggleBounce, appCalculate);
         }
 
-        // Self-Sufficient Button
-        const ssCalcBtn = document.getElementById('self-sufficient-calc-btn');
-        if (ssCalcBtn) {
-            ssCalcBtn.addEventListener('click', () => {
-                if (typeof haptic !== 'undefined') haptic('light');
-                updateSelfSufficient(true);
-            });
-        }
-
-        // Early Settlement Toggle
-        const earlySettlementToggle = document.getElementById('early-settlement-toggle');
-        const earlySettlementSection = document.getElementById('early-settlement-section');
-        const settlementDateDisplay = document.getElementById('settlement-date-display');
-        const settlementDateNative = document.getElementById('settlement-date-native');
-        const settlementFeeInput = document.getElementById('early-settlement-fee');
-        const settlementDatePickerBtn = document.getElementById('settlement-date-picker-btn');
-
-        if (earlySettlementToggle && earlySettlementSection) {
-            earlySettlementToggle.addEventListener('change', (e) => {
-                if (typeof haptic !== 'undefined') haptic('medium');
-
-                // Visual toggle bounce animation
-                animateToggleBounce(e.target);
-
-                if (e.target.checked) {
-                    earlySettlementSection.classList.remove('max-h-0', 'opacity-0');
-                    earlySettlementSection.style.maxHeight = '800px';
-                    earlySettlementSection.classList.add('opacity-100');
-
-                    // Reset error state
-                    const esError = document.getElementById('error-early-settlement');
-                    if (esError) esError.classList.add('hidden');
-
-                    // Set default settlement date to today if empty
-                    if (settlementDateNative && !settlementDateNative.value) {
-                        settlementDateNative.valueAsDate = new Date();
-                        if (settlementDateDisplay) settlementDateDisplay.value = formatDate(new Date());
-                    }
-
-
-                } else {
-                    earlySettlementSection.classList.add('max-h-0', 'opacity-0');
-                    earlySettlementSection.style.maxHeight = '0';
-                    earlySettlementSection.classList.remove('opacity-100');
-                }
-            });
-        }
-
-        // Initialize settlement date input
-        if (settlementDateDisplay && settlementDateNative) {
-            if (typeof initDateInput === 'function') {
-                initDateInput(settlementDateDisplay, settlementDateNative);
-            }
-
-            // Update calculation when date changes - DISABLED for manual button
-            // settlementDateNative.addEventListener('change', () => {
-            //     if (earlySettlementToggle?.checked) updateEarlySettlement();
-            // });
-
-            // Date picker button
-            if (settlementDatePickerBtn) {
-                settlementDatePickerBtn.addEventListener('click', () => {
-                    if (typeof haptic !== 'undefined') haptic('light');
-                    if (typeof openDatePicker === 'function') {
-                        openDatePicker(settlementDateDisplay, AppState.lang, (selectedDate) => {
-                            if (selectedDate) {
-                                settlementDateDisplay.value = formatDate(selectedDate);
-                                const y = selectedDate.getFullYear();
-                                const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                                const d = String(selectedDate.getDate()).padStart(2, '0');
-                                settlementDateNative.value = `${y}-${m}-${d}`;
-                                settlementDateNative.dispatchEvent(new Event('change'));
-                            }
-                        });
-                    } else {
-                        settlementDateNative.showPicker();
-                    }
-                });
-            }
-
-            // Calculate Button
-            const esCalcBtn = document.getElementById('early-settlement-calc-btn');
-            if (esCalcBtn) {
-                esCalcBtn.addEventListener('click', () => {
-                    if (typeof haptic !== 'undefined') haptic('light');
-                    if (earlySettlementToggle?.checked) updateEarlySettlement(true);
-                });
-            }
-        }
-
-        // Settlement fee input handler - with max 100% validation
-        if (settlementFeeInput) {
-            settlementFeeInput.addEventListener('input', () => {
-                if (typeof validateRateInput === 'function') validateRateInput(settlementFeeInput);
-                const val = parseFloat(settlementFeeInput.value);
-                if (!isNaN(val) && val > 100) settlementFeeInput.parentElement.classList.add('error-state');
-                else settlementFeeInput.parentElement.classList.remove('error-state');
-            });
-            settlementFeeInput.addEventListener('blur', () => {
-                if (typeof formatRateInputBlur === 'function') formatRateInputBlur(settlementFeeInput);
-            });
+        // Early Settlement module (earlysettlement.js)
+        if (typeof initEarlySettlement === 'function') {
+            initEarlySettlement(AppState, formInputs, animateToggleBounce, formatDate);
         }
 
         // Main Buttons
@@ -829,24 +768,228 @@
         // Keyboard
         document.addEventListener('keydown', handleKeyboard);
 
+        // Frequency selector — update labels and first installment date dynamically
+        const freqSelect = document.getElementById('installment-freq');
+        if (freqSelect) {
+            let _savedFirstInstDate = { native: '', display: '' }; // saved monthly date
+
+            const updateFreqLabels = () => {
+                const f = parseInt(freqSelect.value) || 1;
+                const periodLabels = document.querySelectorAll('[data-lang-key="loanPeriodLabel"]');
+                const instLabels = document.querySelectorAll('[data-lang-key="monthlyInstallmentLabel"]');
+                
+                periodLabels.forEach(periodLabel => {
+                    const base = t(AppState.lang, 'loanPeriodBase');
+                    const unit = f === 3
+                        ? (AppState.lang === 'ar' ? ' (أرباع)' : ' (quarters)')
+                        : (AppState.lang === 'ar' ? ' (أشهر)' : ' (months)');
+                    periodLabel.textContent = base + unit;
+                });
+
+                instLabels.forEach(instLabel => {
+                    instLabel.textContent = f === 3
+                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        : t(AppState.lang, 'monthlyInstallmentLabel');
+                });
+            };
+
+            const syncQuarterlyDate = () => {
+                // Calculate the quarterly first installment date from the booking date
+                let bookingDate = new Date();
+                if (dateInputs.startNative && dateInputs.startNative.value) {
+                    const p = dateInputs.startNative.value.split('-');
+                    bookingDate = new Date(p[0], p[1] - 1, p[2]);
+                }
+                const qDate = getNextQuarterlyDate(bookingDate);
+                const y = qDate.getFullYear();
+                const m = String(qDate.getMonth() + 1).padStart(2, '0');
+                const d = String(qDate.getDate()).padStart(2, '0');
+                if (dateInputs.firstNative) dateInputs.firstNative.value = `${y}-${m}-${d}`;
+                if (dateInputs.firstDisplay) dateInputs.firstDisplay.value = `${d}/${m}/${y}`;
+            };
+
+            freqSelect.addEventListener('change', () => {
+                const f = parseInt(freqSelect.value) || 1;
+                if (f === 3) {
+                    // Save current monthly date before overwriting
+                    _savedFirstInstDate.native = dateInputs.firstNative?.value || '';
+                    _savedFirstInstDate.display = dateInputs.firstDisplay?.value || '';
+                    syncQuarterlyDate();
+                } else {
+                    // Restore the saved monthly date
+                    if (dateInputs.firstNative) dateInputs.firstNative.value = _savedFirstInstDate.native;
+                    if (dateInputs.firstDisplay) dateInputs.firstDisplay.value = _savedFirstInstDate.display;
+                }
+                updateFreqLabels();
+
+                // Update summary card labels immediately
+                const stdInstLabel = document.querySelector('#std-installments-view [data-lang-key="monthlyInstallmentLabel"]');
+                if (stdInstLabel) {
+                    stdInstLabel.textContent = f === 3
+                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        : t(AppState.lang, 'monthlyInstallmentLabel');
+                }
+                const regInstLabel = document.querySelector('[data-lang-key="regularInstLabel"]');
+                if (regInstLabel) {
+                    regInstLabel.textContent = f === 3
+                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        : t(AppState.lang, 'regularInstLabel');
+                }
+            });
+
+            // When booking date changes while quarterly, update the quarterly date
+            if (dateInputs.startNative) {
+                dateInputs.startNative.addEventListener('change', () => {
+                    if (parseInt(freqSelect.value) === 3) syncQuarterlyDate();
+                });
+            }
+            if (dateInputs.startDisplay) {
+                dateInputs.startDisplay.addEventListener('change', () => {
+                    if (parseInt(freqSelect.value) === 3) {
+                        // Small delay to let the native input sync first
+                        setTimeout(syncQuarterlyDate, 50);
+                    }
+                });
+            }
+
+            // Set initial labels
+            updateFreqLabels();
+
+            // Refresh labels when language or UI updates wipe out the dynamic text
+            window.addEventListener('languageUpdated', updateFreqLabels);
+        }
+
+        // Custom frequency dropdown behavior
+        const freqTrigger = document.getElementById('freq-trigger');
+        const freqDropdown = document.getElementById('freq-dropdown');
+        const freqChevron = document.getElementById('freq-chevron');
+        const freqTriggerText = document.getElementById('freq-trigger-text');
+        if (freqTrigger && freqDropdown) {
+            const freqOptions = freqDropdown.querySelectorAll('.freq-option');
+            const primaryColor = 'var(--primary-color, #6366f1)';
+
+            const updateFreqRadios = (selectedVal) => {
+                freqOptions.forEach(opt => {
+                    const val = opt.dataset.value;
+                    const check = opt.querySelector('.freq-check');
+                    const dot = check?.querySelector('span');
+                    if (val === selectedVal) {
+                        check.style.borderColor = primaryColor;
+                        if (dot) dot.style.background = primaryColor;
+                        opt.setAttribute('aria-selected', 'true');
+                    } else {
+                        check.style.borderColor = '#d1d5db';
+                        if (dot) dot.style.background = 'transparent';
+                        opt.setAttribute('aria-selected', 'false');
+                    }
+                });
+            };
+
+            const openFreqDropdown = () => {
+                freqDropdown.classList.remove('hidden');
+                freqDropdown.style.opacity = '0';
+                freqDropdown.style.transform = 'scaleY(0.95) translateY(-4px)';
+                void freqDropdown.offsetHeight; // force reflow
+                freqDropdown.style.opacity = '1';
+                freqDropdown.style.transform = 'scaleY(1) translateY(0)';
+                if (freqChevron) freqChevron.style.transform = 'rotate(180deg)';
+                freqTrigger.setAttribute('aria-expanded', 'true');
+            };
+
+            const closeFreqDropdown = () => {
+                freqDropdown.style.opacity = '0';
+                freqDropdown.style.transform = 'scaleY(0.95) translateY(-8px)';
+                setTimeout(() => freqDropdown.classList.add('hidden'), 200);
+                if (freqChevron) freqChevron.style.transform = 'rotate(0deg)';
+                freqTrigger.setAttribute('aria-expanded', 'false');
+            };
+
+            const isFreqOpen = () => !freqDropdown.classList.contains('hidden');
+
+            freqTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (typeof haptic !== 'undefined') haptic('light');
+                if (isFreqOpen()) {
+                    closeFreqDropdown();
+                } else {
+                    updateFreqRadios(freqSelect.value);
+                    openFreqDropdown();
+                }
+            });
+
+            freqOptions.forEach(opt => {
+                opt.addEventListener('click', () => {
+                    const val = opt.dataset.value;
+                    if (typeof haptic !== 'undefined') haptic('medium');
+                    
+                    // Update trigger text and its lang key immediately for responsiveness
+                    const label = opt.querySelector('.freq-option-label');
+                    if (freqTriggerText && label) {
+                        freqTriggerText.textContent = label.textContent;
+                        freqTriggerText.setAttribute('data-lang-key', val === '3' ? 'freqQuarterly' : 'freqMonthly');
+                    }
+                    updateFreqRadios(val);
+                    
+                    // Start the closing animation immediately (browser composite pipeline will handle it)
+                    closeFreqDropdown();
+                    
+                    // Defer heavy calculation (250ms) to allow the 200ms dropdown closing animation to finish strictly
+                    setTimeout(() => {
+                        freqSelect.value = val;
+                        freqSelect.dispatchEvent(new Event('change'));
+                    }, 250);
+                });
+            });
+
+            // Close on outside click
+            document.addEventListener('click', (e) => {
+                if (isFreqOpen() && !freqTrigger.contains(e.target) && !freqDropdown.contains(e.target)) {
+                    closeFreqDropdown();
+                }
+            });
+
+            // Keyboard: Escape to close
+            freqDropdown.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeFreqDropdown();
+            });
+
+            // Sync trigger text when select changes programmatically (e.g. restore from history)
+            const origDispatch = freqSelect.dispatchEvent.bind(freqSelect);
+            freqSelect.addEventListener('change', () => {
+                const val = freqSelect.value;
+                const matchOpt = freqDropdown.querySelector(`.freq-option[data-value="${val}"]`);
+                if (matchOpt && freqTriggerText) {
+                    const label = matchOpt.querySelector('.freq-option-label');
+                    if (label) {
+                        freqTriggerText.textContent = label.textContent;
+                        freqTriggerText.setAttribute('data-lang-key', val === '3' ? 'freqQuarterly' : 'freqMonthly');
+                    }
+                }
+                updateFreqRadios(val);
+            });
+        }
+
         // Copy Summary Listener
         const copySummaryBtn = document.getElementById('copy-summary-btn');
         if (copySummaryBtn) {
             copySummaryBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
                 if (!AppState.lastRes.P) {
-                    showToast("No calculation to share", "error");
+                    showToast(t(AppState.lang, 'noCalcToShare'), "error");
                     return;
                 }
 
                 const res = AppState.lastRes;
-                const periodUnit = AppState.lang === 'ar' ? ' شهر' : ' Months';
+                const freq = res.freq || 1;
+                const periodUnit = freq === 3
+                    ? (AppState.lang === 'ar' ? ' ربع' : ' Quarters')
+                    : (AppState.lang === 'ar' ? ' شهر' : ' Months');
 
                 let text = `*${t(AppState.lang, 'appTitle')} - ${t(AppState.lang, 'summaryTitle')}*\n`;
                 text += `-------------------\n`;
                 text += `${t(AppState.lang, 'loanAmountLabel')}: ${displayFmt(res.P)}\n`;
                 text += `${t(AppState.lang, 'interestRateLabel')}: ${res.R.toFixed(2)}%\n`;
-                text += `${t(AppState.lang, 'loanPeriodLabel')}: ${res.N}${periodUnit}\n`;
+                text += `${t(AppState.lang, 'loanPeriodLabel')}: ${res.N}\n`;
 
                 const isAdvanced = document.getElementById('advanced-toggle').checked;
                 if (isAdvanced) {
@@ -857,11 +1000,17 @@
                     const m1_Payment = parseFloat(document.getElementById('summary-first-inst').textContent.replace(/,/g, '')) || 0;
 
                     text += `${t(AppState.lang, 'firstInstAmountLabel')}: ${displayFmt(m1_Payment)} (${firstDate})\n`;
-                    text += `${t(AppState.lang, 'regularInstLabel')}: ${displayFmt(res.M)}\n`;
+                    const regLabel = freq === 3
+                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        : t(AppState.lang, 'regularInstLabel');
+                    text += `${regLabel}: ${displayFmt(res.M)}\n`;
                     text += `${t(AppState.lang, 'adminFeesLabel')}: ${displayFmt(fees)}\n`;
                     text += `${t(AppState.lang, 'netLoanLabel')}: ${displayFmt(netLoan)}\n`;
                 } else {
-                    text += `${t(AppState.lang, 'monthlyInstallmentLabel')}: ${displayFmt(res.M)}\n`;
+                    const instLabel = freq === 3
+                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        : t(AppState.lang, 'monthlyInstallmentLabel');
+                    text += `${instLabel}: ${displayFmt(res.M)}\n`;
                 }
 
                 text += `-------------------\n`;
@@ -872,7 +1021,7 @@
                 if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
                     navigator.share({ title: t(AppState.lang, 'summaryTitle'), text: text }).catch(console.error);
                 } else {
-                    navigator.clipboard.writeText(text).then(() => { showToast(t(AppState.lang, 'toastSummaryCopied')); }).catch(() => showToast("Failed to copy", "error"));
+                    navigator.clipboard.writeText(text).then(() => { showToast(t(AppState.lang, 'toastSummaryCopied')); }).catch(() => showToast(t(AppState.lang, 'failedToCopy'), "error"));
                 }
             });
         }
@@ -910,8 +1059,8 @@
 
         // REFRESH DYNAMIC VALUES
         if (AppState.lastRes.P) {
-            const periodUnit = AppState.lang === 'ar' ? ' شهر' : ' Months';
-            document.getElementById('summary-period').textContent = AppState.lastRes.N + periodUnit;
+            const freq = AppState.lastRes.freq || 1;
+            document.getElementById('summary-period').textContent = AppState.lastRes.N;
 
             const isAdvancedMode = document.getElementById('advanced-toggle')?.checked || false;
             if (typeof showScheduleUI === 'function') showScheduleUI(AppState.schedule, AppState.lang, false, isAdvancedMode);
@@ -1032,12 +1181,30 @@
         }
 
         const isAdvanced = document.getElementById('advanced-toggle').checked;
+
+        // Block calculation when first installment date is invalid or before the booking date.
+        // Check both the native value (for arrow-key nav) AND the display field's red-state
+        // (which persists when the typed value failed validation but nativeInput kept its last good value).
+        if (isAdvanced) {
+            const firstDateInvalid =
+                dateInputs.firstDisplay.classList.contains('text-red-500') ||
+                (dateInputs.firstNative.value && dateInputs.startNative.value &&
+                    dateInputs.firstNative.value < dateInputs.startNative.value);
+            if (firstDateInvalid) {
+                showToast(t(AppState.lang, 'errorFirstInstBeforeBooking'), 'error');
+                if (typeof haptic !== 'undefined') haptic('error');
+                dateInputs.firstDisplay.classList.add('text-red-500');
+                return;
+            }
+        }
+        const freq = parseInt(document.getElementById('installment-freq').value) || 1;
+
         const calcResult = calculateLoan({
             amount: formInputs.amount.value,
             rate: formInputs.rate.value,
             period: formInputs.period.value,
             installment: formInputs.installment.value
-        }, AppState.activeKey);
+        }, AppState.activeKey, freq);
 
         if (calcResult.valid) {
             const { P, R, N, M } = calcResult;
@@ -1054,7 +1221,11 @@
             }
 
             let m1_Date;
-            if (isAdvanced && dateInputs.firstNative.value) {
+            if (freq === 3) {
+                // Quarterly: ALWAYS use fixed dates (5th of Mar/Jun/Sep/Dec)
+                // Bank convention — quarterly installment dates are non-negotiable
+                m1_Date = getNextQuarterlyDate(bookingDate);
+            } else if (isAdvanced && dateInputs.firstNative.value) {
                 const parts = dateInputs.firstNative.value.split('-');
                 m1_Date = new Date(parts[0], parts[1] - 1, parts[2]);
             } else {
@@ -1066,13 +1237,14 @@
             const stampRateInput = document.getElementById('stamp-rate');
             const stampRate = isAdvanced && stampRateInput ? (parseFloat(stampRateInput.value) || 0) : 0;
 
-            const schedResult = generateSchedule({ P, R, N, M }, { bookingDate, m1_Date, isAdvanced }, stampRate);
+            const schedResult = generateSchedule({ P, R, N, M }, { bookingDate, m1_Date, isAdvanced }, stampRate, freq);
 
             AppState.schedule = schedResult.schedule;
             const totalActualInterest = schedResult.totalActualInterest;
             const totalStamp = schedResult.totalStamp || 0;
             const finalTotalPayment = P + totalActualInterest;
-            const finalFlatRate = (N > 0 && P > 0) ? ((totalActualInterest / P) / (N / 12) * 100).toFixed(2) : '0';
+            const totalMonths = N * freq; // Convert periods to months for flat rate
+            const finalFlatRate = (totalMonths > 0 && P > 0) ? ((totalActualInterest / P) / (totalMonths / 12) * 100).toFixed(2) : '0';
 
             // SAVED m1_Payment HERE
             AppState.lastRes = {
@@ -1081,7 +1253,8 @@
                 TI: totalActualInterest,
                 startDate: dateInputs.startNative.value,
                 m1_Payment: schedResult.m1_Payment,
-                totalStamp: totalStamp
+                totalStamp: totalStamp,
+                freq: freq
             };
 
             document.getElementById('summary-rate').textContent = R.toFixed(2) + '%';
@@ -1092,22 +1265,25 @@
             document.querySelectorAll('.flat-rate-display').forEach(el => el.textContent = finalFlatRate + '%');
             document.getElementById('chart-empty-state').classList.add('hidden');
 
-            const periodUnit = AppState.lang === 'ar' ? ' شهر' : ' Months';
-            document.getElementById('summary-period').textContent = N + periodUnit;
+            document.getElementById('summary-period').textContent = N;
 
-            if (isAdvanced) {
+            if (isAdvanced || freq === 3) {
                 document.getElementById('summary-first-inst').textContent = displayFmt(schedResult.m1_Payment);
 
-                if (dateInputs.firstNative.value) {
-                    const d = new Date(dateInputs.firstNative.value);
-                    document.getElementById('summary-first-date').textContent = formatDate(d);
-                } else {
-                    document.getElementById('summary-first-date').textContent = '';
-                }
+                // Use the actual m1_Date (not the input field) for display
+                document.getElementById('summary-first-date').textContent = formatDate(m1_Date);
 
                 const regInstEl = document.getElementById('summary-regular-inst');
                 regInstEl.textContent = displayFmt(M);
                 regInstEl.className = "text-lg font-bold text-white select-text";
+
+                // Update regular installment label for quarterly
+                const regInstLabel = document.querySelector('[data-lang-key="regularInstLabel"]');
+                if (regInstLabel) {
+                    regInstLabel.textContent = freq === 3
+                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        : t(AppState.lang, 'regularInstLabel');
+                }
 
                 const adminFeesVal = parseFloat(document.getElementById('admin-fees').value) || 0;
                 const fees = (P * adminFeesVal) / 100;
@@ -1126,8 +1302,16 @@
                 if (totalStampEl) {
                     totalStampEl.textContent = totalStamp > 0 ? displayFmt(totalStamp) : '-';
                 }
-            } else {
-                document.getElementById('summary-std-inst').textContent = displayFmt(M);
+            }
+
+            // Always update the standard installment view (visible when advanced is off)
+            document.getElementById('summary-std-inst').textContent = displayFmt(M);
+            // Update its label for quarterly
+            const stdInstLabel = document.querySelector('#std-installments-view [data-lang-key="monthlyInstallmentLabel"]');
+            if (stdInstLabel) {
+                stdInstLabel.textContent = freq === 3
+                    ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                    : t(AppState.lang, 'monthlyInstallmentLabel');
             }
 
             updateSelfSufficient(false);
@@ -1138,6 +1322,7 @@
                     amount: P,
                     rate: R,
                     period: N,
+                    freq: freq,
                     // Use native ISO dates for stable canonicalization (avoid locale/format issues)
                     startDate: dateInputs.startNative?.value || '',
                     // Include other cost factors for audit
@@ -1196,9 +1381,10 @@
                 esResults.classList.remove('opacity-100', 'max-h-96');
             }
             const ssResults = document.getElementById('self-sufficient-results');
-            if (ssResults) {
-                ssResults.classList.add('opacity-0', 'max-h-0');
-                ssResults.classList.remove('opacity-100', 'max-h-96');
+            if (ssResults && !updateSelfSufficient._fromSolver) {
+                ssResults.classList.add('opacity-0');
+                ssResults.classList.remove('opacity-100');
+                ssResults.style.maxHeight = '0';
             }
 
             // Hide errors too
@@ -1212,224 +1398,11 @@
         }
     }
 
-    // --- Early Settlement Calculator ---
-    function updateEarlySettlement(showError = false) {
-        const resultsPanel = document.getElementById('settlement-results');
-        const settlementDateNative = document.getElementById('settlement-date-native');
-        const settlementFeeInput = document.getElementById('early-settlement-fee');
-
-        const errorEl = document.getElementById('error-early-settlement');
-
-        if (!resultsPanel) return;
-
-        if (showError && errorEl) errorEl.classList.add('hidden'); // Reset error state
-
-        // 1. Check if we have a valid main loan calculation (schedule exists)
-        if (!AppState.schedule || AppState.schedule.length === 0) {
-            resultsPanel.classList.add('opacity-0', 'max-h-0');
-            resultsPanel.classList.remove('opacity-100', 'max-h-96');
-            if (errorEl && showError) {
-                // Show specific 'Loan not calculated' error
-                errorEl.textContent = t(AppState.lang, 'errorLoanNotCalculated');
-                errorEl.classList.remove('hidden');
-            }
-            return;
-        }
-
-        // 2. Check if local inputs are valid
-        // Fees must be filled (can be 0, but not empty)
-        const feeVal = settlementFeeInput?.value.trim();
-        if (!settlementDateNative?.value || feeVal === '' || feeVal === undefined) {
-            resultsPanel.classList.add('opacity-0', 'max-h-0');
-            resultsPanel.classList.remove('opacity-100', 'max-h-96');
-            if (errorEl && showError) {
-                // Show standard 'Check inputs' error
-                errorEl.textContent = t(AppState.lang, 'errorCheckInputs');
-                errorEl.classList.remove('hidden');
-            }
-            return;
-        }
-
-        if (errorEl) errorEl.classList.add('hidden');
-
-        const [y, m, d] = settlementDateNative.value.split('-');
-        const settlementDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
-
-        // Get fee percentage
-        const feePercentage = parseFloat((settlementFeeInput?.value || '0').replace(/,/g, '')) || 0;
-
-        // Get annual rate
-        const annualRate = parseFloat((formInputs.rate?.value || '0').replace(/,/g, '')) || 0;
-
-        // Get stamp rate
-        const stampRateInput = document.getElementById('stamp-rate');
-        const stampRate = parseFloat((stampRateInput?.value || '0').replace(/,/g, '')) || 0;
-
-        // Calculate
-        if (typeof calculateEarlySettlement !== 'function') {
-            console.error('calculateEarlySettlement not found');
-            return;
-        }
-
-        const result = calculateEarlySettlement(AppState.schedule, settlementDate, feePercentage, annualRate, stampRate);
-
-        if (!result.valid) {
-            resultsPanel.classList.add('opacity-0', 'max-h-0');
-            resultsPanel.classList.remove('opacity-100', 'max-h-96');
-            return;
-        }
-
-        // Update UI - animate in
-        resultsPanel.classList.remove('opacity-0', 'max-h-0');
-        resultsPanel.classList.add('opacity-100', 'max-h-96');
-
-        // Last paid installment
-        const lastPaidEl = document.getElementById('settlement-last-paid');
-        if (lastPaidEl) {
-            if (result.lastPaidDate) {
-                lastPaidEl.textContent = `#${result.lastPaidInstallment} (${formatDate(result.lastPaidDate)})`;
-            } else {
-                lastPaidEl.textContent = '-';
-            }
-        }
-
-        // Principal balance
-        const principalEl = document.getElementById('settlement-principal');
-        if (principalEl) {
-            principalEl.textContent = displayFmt(result.principalBalance);
-        }
-
-        // Fee
-        const feeEl = document.getElementById('settlement-fee');
-        if (feeEl) {
-            feeEl.textContent = displayFmt(result.fee);
-        }
-
-        // Accrued interest with days
-        const daysEl = document.getElementById('settlement-days');
-        if (daysEl) {
-            daysEl.textContent = `(${result.daysElapsed} ${AppState.lang === 'ar' ? 'يوم' : 'days'})`;
-        }
-
-        const interestEl = document.getElementById('settlement-interest');
-        if (interestEl) {
-            interestEl.textContent = displayFmt(result.accruedInterest);
-        }
-
-        // Settlement stamp
-        const stampEl = document.getElementById('settlement-stamp');
-        const stampRow = document.getElementById('settlement-stamp-row');
-        if (stampEl && stampRow) {
-            if (result.settlementStamp > 0) {
-                stampEl.textContent = displayFmt(result.settlementStamp);
-                stampRow.classList.remove('hidden');
-            } else {
-                stampRow.classList.add('hidden');
-            }
-        }
-
-        // Total
-        const totalEl = document.getElementById('settlement-total');
-        if (totalEl) {
-            totalEl.textContent = displayFmt(result.totalSettlement);
-        }
-    }
-
-    function updateSubsidiaryErrors() {
-        // 1. Early Settlement Error
-        const esToggle = document.getElementById('early-settlement-toggle');
-        const esResults = document.getElementById('settlement-results');
-        const esError = document.getElementById('error-early-settlement');
-
-        if (esToggle && esToggle.checked) {
-            if (esResults) {
-                esResults.classList.add('opacity-0', 'max-h-0');
-                esResults.classList.remove('opacity-100', 'max-h-96');
-            }
-            if (esError) esError.classList.remove('hidden');
-        } else {
-            if (esError) esError.classList.add('hidden');
-        }
-
-        // 2. Self-Sufficient Error
-        const ssToggle = document.getElementById('self-sufficient-toggle');
-        const ssResults = document.getElementById('self-sufficient-results');
-        const ssError = document.getElementById('error-self-sufficient');
-
-        if (ssToggle && ssToggle.checked) {
-            if (ssResults) {
-                ssResults.classList.add('opacity-0', 'max-h-0');
-                ssResults.classList.remove('opacity-100', 'max-h-96');
-            }
-            if (ssError) ssError.classList.remove('hidden');
-        } else {
-            if (ssError) ssError.classList.add('hidden');
-        }
-    }
-
-    function updateSelfSufficient(showError = false) {
-        if (!document.getElementById('self-sufficient-toggle').checked) return;
-
-        const ssResults = document.getElementById('self-sufficient-results');
-        const ssError = document.getElementById('error-self-sufficient');
-        const tdRateInput = document.getElementById('td-rate');
-
-        // Validation
-        const tdR = safeParseFloat(tdRateInput.value);
-
-        // 1. Check if main loan is calculated (M exists)
-        const M = AppState.lastRes?.M;
-        if (!M) {
-            if (ssResults) {
-                ssResults.classList.add('opacity-0', 'max-h-0');
-                ssResults.classList.remove('opacity-100', 'max-h-96');
-            }
-            if (showError && ssError) {
-                ssError.textContent = t(AppState.lang, 'errorLoanNotCalculated');
-                ssError.classList.remove('hidden');
-            }
-            return;
-        }
-
-        // 2. Check local inputs
-        if (tdRateInput.value === '' || tdR <= 0) {
-            if (ssResults) {
-                ssResults.classList.add('opacity-0', 'max-h-0');
-                ssResults.classList.remove('opacity-100', 'max-h-96');
-            }
-            if (showError && ssError) {
-                ssError.textContent = t(AppState.lang, 'errorCheckInputs');
-                ssError.classList.remove('hidden');
-            }
-            return;
-        }
-
-        // If valid, show results and hide error (always update if valid)
-        if (ssResults) {
-            ssResults.classList.remove('opacity-0', 'max-h-0');
-            ssResults.classList.add('opacity-100', 'max-h-96');
-        }
-        if (ssError) ssError.classList.add('hidden');
-
-        document.getElementById('req-td-display').textContent = displayFmt(M / (tdR / 1200));
-
-        const userTd = safeParseFloat(document.getElementById('td-amount').value);
-        if (!isNaN(userTd) && userTd > 0) {
-            const net = (userTd * (tdR / 1200)) - M;
-            const el = document.getElementById('net-flow-display');
-            el.textContent = displayFmt(net);
-            el.className = `font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`;
-        } else {
-            // Reset net flow display if user TD is empty?
-            document.getElementById('net-flow-display').textContent = '-';
-            document.getElementById('net-flow-display').className = 'font-bold text-green-900 dark:text-white select-text';
-        }
-    }
+    // updateEarlySettlement, updateSubsidiaryErrors, updateSelfSufficient
+    // are now global functions in earlysettlement.js and selfsufficient.js
 
     function resetApp() {
         Object.values(formInputs).forEach(i => i.value = '');
-        document.getElementById('td-rate').value = '';
-        document.getElementById('td-amount').value = '';
 
         dateInputs.startNative.valueAsDate = new Date();
         dateInputs.startNative.dispatchEvent(new Event('change'));
@@ -1445,17 +1418,9 @@
         const stampRateInput = document.getElementById('stamp-rate');
         if (stampRateInput) stampRateInput.value = '0.2';
 
-        document.getElementById('self-sufficient-toggle').checked = false;
-        document.getElementById('self-sufficient-toggle').dispatchEvent(new Event('change'));
-
-        // Reset early settlement
-        const earlySettlementToggle = document.getElementById('early-settlement-toggle');
-        if (earlySettlementToggle) {
-            earlySettlementToggle.checked = false;
-            earlySettlementToggle.dispatchEvent(new Event('change'));
-        }
-        document.getElementById('early-settlement-fee').value = '';
-        document.getElementById('settlement-results')?.classList.add('hidden');
+        // Reset subsidiary modules
+        if (typeof resetSelfSufficient === 'function') resetSelfSufficient();
+        if (typeof resetEarlySettlement === 'function') resetEarlySettlement();
 
         // RESET RADIO BUTTON STATE
         AppState.activeKey = 'installment';
@@ -1465,7 +1430,7 @@
 
         ['summary-rate', 'summary-principal', 'total-interest', 'total-sum', 'summary-period', 'summary-first-date'].forEach(id => document.getElementById(id).textContent = '-');
         document.querySelectorAll('.flat-rate-display').forEach(el => el.textContent = '-');
-        ['summary-first-inst', 'summary-regular-inst', 'summary-std-inst', 'summary-admin-fees', 'summary-net-loan', 'summary-total-stamp', 'req-td-display', 'net-flow-display'].forEach(id => {
+        ['summary-first-inst', 'summary-regular-inst', 'summary-std-inst', 'summary-admin-fees', 'summary-net-loan', 'summary-total-stamp'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = '-';
         });
@@ -1572,6 +1537,13 @@
                             formInputs.rate.value = item.values.rate;
                             formInputs.period.value = item.values.period;
                             formInputs.installment.value = item.values.installment;
+
+                            // Restore frequency BEFORE dates (affects date logic)
+                            const freqSel = document.getElementById('installment-freq');
+                            if (freqSel) {
+                                freqSel.value = item.values.freq || '1';
+                                freqSel.dispatchEvent(new Event('change'));
+                            }
                             if (item.values.startDate) {
                                 dateInputs.startNative.value = item.values.startDate;
                                 dateInputs.startNative.dispatchEvent(new Event('change'));
@@ -1629,6 +1601,7 @@
                         rate: formInputs.rate.value,
                         period: formInputs.period.value,
                         installment: formInputs.installment.value,
+                        freq: document.getElementById('installment-freq')?.value || '1',
                         startDate: dateInputs.startNative.value,
                         // Advanced options
                         isAdvanced: isAdvanced,
@@ -1642,7 +1615,7 @@
                 if (history.length > 20) history.pop();
                 localStorage.setItem('loanHistory', JSON.stringify(history));
                 showToast(t(AppState.lang, 'saveSuccess'));
-            } catch (e) { showToast("Storage full", 'error'); }
+            } catch (e) { showToast(t(AppState.lang, 'storageFull'), 'error'); }
         });
 
         // About Modal
@@ -1663,7 +1636,7 @@
                 if (navigator.share) {
                     try { await navigator.share({ title: t(AppState.lang, 'shareTitle'), text: t(AppState.lang, 'shareText'), url: shareUrl }); } catch (err) { /* User cancelled or share failed - no action needed */ }
                 } else {
-                    try { await navigator.clipboard.writeText(shareUrl); showToast(t(AppState.lang, 'toastLinkCopied')); } catch (err) { showToast("Copy failed"); }
+                    try { await navigator.clipboard.writeText(shareUrl); showToast(t(AppState.lang, 'toastLinkCopied')); } catch (err) { showToast(t(AppState.lang, 'copyFailed')); }
                 }
             });
         }
@@ -1860,13 +1833,16 @@
             // Execute directly - document is already ready. Focus is needed for some browsers.
             script.textContent = 'setTimeout(() => { window.focus(); window.print(); }, 500);';
             body.appendChild(script);
-        } catch (e) { console.error(e); showToast("Print failed", "error"); }
+        } catch (e) { console.error(e); showToast(t(AppState.lang, 'printFailed'), "error"); }
     }
 
-    function exportExcel() {
+    async function exportExcel() {
         if (AppState.schedule.length === 0) return;
-        if (typeof XLSX === 'undefined') {
-            showToast(AppState.lang === 'ar' ? "خطأ: المكتبة غير محملة" : "Error: Library not loaded", "error");
+
+        try {
+            await loadXLSX();
+        } catch (e) {
+            showToast(t(AppState.lang, 'libNotLoaded'), "error");
             return;
         }
 
@@ -2038,7 +2014,7 @@
 
         } catch (e) {
             console.error(e);
-            showToast("Export failed", "error");
+            showToast(t(AppState.lang, 'exportFailed'), "error");
         }
     }
 
@@ -2064,30 +2040,94 @@
     }
 
     // --- Install & Keyboard ---
-    function setupInstallListeners() {
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); deferredPrompt = e;
-            const instBtn = document.getElementById('install-button');
-            if (instBtn) instBtn.classList.remove('hidden');
-        });
+    let deferredPrompt = null; // Shared across floating + about-modal install buttons
+
+    // Capture beforeinstallprompt IMMEDIATELY (before window.load)
+    // so the event is never missed regardless of timing.
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // DOM might not be ready yet — guard the querySelector
         const instBtn = document.getElementById('install-button');
+        if (instBtn) instBtn.classList.remove('hidden');
+    });
+
+    /** Mark the app as installed and hide both install buttons */
+    function markAppInstalled() {
+        deferredPrompt = null;
+        localStorage.setItem('pwaInstalled', '1');
+        const instBtn = document.getElementById('install-button');
+        const aboutInstBtn = document.getElementById('about-install-btn');
+        if (instBtn) instBtn.classList.add('hidden');
+        if (aboutInstBtn) aboutInstBtn.classList.add('hidden');
+    }
+
+    function setupInstallListeners() {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const wasInstalled = localStorage.getItem('pwaInstalled') === '1';
+
+        // If beforeinstallprompt already fired before load, show the floating button now
+        const instBtn = document.getElementById('install-button');
+        if (instBtn && deferredPrompt) instBtn.classList.remove('hidden');
+
+        // Floating install button click handler
         if (instBtn) instBtn.addEventListener('click', async () => {
             if (typeof haptic !== 'undefined') haptic('medium');
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
             await deferredPrompt.userChoice;
-            deferredPrompt = null;
-            instBtn.classList.add('hidden');
+            markAppInstalled();
         });
-        const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+        // --- About modal install button ---
+        // Show only if: not standalone AND not already installed AND not remembered as installed
+        const aboutInstBtn = document.getElementById('about-install-btn');
+        if (aboutInstBtn && !isStandalone && !wasInstalled) {
+            aboutInstBtn.classList.remove('hidden');
+
+            aboutInstBtn.addEventListener('click', async () => {
+                if (typeof haptic !== 'undefined') haptic('medium');
+
+                // 1. If we have a deferred prompt, use it directly
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    await deferredPrompt.userChoice;
+                    markAppInstalled();
+                    return;
+                }
+
+                // 2. iOS → show the iOS install instructions banner
+                if (isIos) {
+                    const iosMsg = document.getElementById('ios-install-message');
+                    if (iosMsg) iosMsg.classList.remove('hidden');
+                    // Close the about modal so the user can see the banner
+                    const aboutModal = document.getElementById('about-modal');
+                    if (aboutModal && !aboutModal.classList.contains('pointer-events-none')) {
+                        toggleModal(aboutModal);
+                    }
+                    return;
+                }
+
+                // 3. Other browsers → show manual hint toast
+                showToast(t(AppState.lang, 'installManualHint'));
+            });
+        }
+
+        // --- iOS auto-banner (existing behavior) ---
         if (isIos && !isStandalone) {
             const iosMsg = document.getElementById('ios-install-message');
             if (iosMsg) iosMsg.classList.remove('hidden');
             const closeIos = document.getElementById('close-ios-msg');
             if (closeIos) closeIos.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); iosMsg.classList.add('hidden'); });
         }
+
+        // --- Safety net: hide install buttons on appinstalled / standalone change ---
+        window.addEventListener('appinstalled', () => markAppInstalled());
+
+        window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+            if (e.matches) markAppInstalled();
+        });
     }
 
     function setupMobileKeyboard() {
@@ -2096,11 +2136,21 @@
 
     function handleKeyboard(e) {
         if (e.key === 'Escape') {
+            // Skip if date picker is open - it handles its own Escape key
+            if (typeof isDatePickerOpen === 'function' && isDatePickerOpen()) return;
+
+            // Close dropdown menus
+            const themeMenu = document.getElementById('theme-menu');
+            const langMenu = document.getElementById('lang-menu');
+            if (isMenuOpen(themeMenu)) closeMenu(themeMenu);
+            if (isMenuOpen(langMenu)) closeMenu(langMenu);
+
             const aboutModal = document.getElementById('about-modal');
             const historyModal = document.getElementById('history-modal');
             const schedContainer = document.getElementById('schedule-container');
-            if (aboutModal && !aboutModal.classList.contains('opacity-0')) toggleModal(aboutModal);
-            else if (historyModal && !historyModal.classList.contains('opacity-0')) toggleModal(historyModal);
+
+            if (aboutModal && !aboutModal.classList.contains('pointer-events-none')) toggleModal(aboutModal);
+            else if (historyModal && !historyModal.classList.contains('pointer-events-none')) toggleModal(historyModal);
             else if (schedContainer && !schedContainer.classList.contains('hidden') && typeof closeScheduleUI === 'function') closeScheduleUI();
         }
 

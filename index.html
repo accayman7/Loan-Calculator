@@ -18,7 +18,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="LoanCalc">
 
-    <script src="./xlsx.mini.min.js" defer></script>
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+
+    <!-- XLSX is loaded lazily on first export for faster initial load -->
     <!-- Chart.js is loaded lazily on first calculation for faster initial load -->
     <script src="./tailwind.js"></script>
 
@@ -27,7 +30,10 @@
     <script src="./js/version.js"></script>
     <script src="./js/logic.js"></script>
     <script src="./js/ui.js"></script>
+    <script src="./js/dateinput.js"></script>
     <script src="./js/datepicker.js"></script>
+    <script src="./js/earlysettlement.js"></script>
+    <script src="./js/selfsufficient.js"></script>
     <script src="./js/app.js"></script>
 
     <script>
@@ -190,6 +196,30 @@
         .dark .input-group {
             background-color: #1f2937 !important;
             border-color: #374151 !important;
+        }
+
+        /* Custom frequency dropdown */
+        .freq-option:hover {
+            background: rgba(99, 102, 241, 0.08);
+        }
+        .freq-option:active {
+            background: rgba(99, 102, 241, 0.15);
+        }
+        .dark .freq-option:hover {
+            background: rgba(99, 102, 241, 0.15);
+        }
+        .dark .freq-option:active {
+            background: rgba(99, 102, 241, 0.25);
+        }
+        .dark #freq-dropdown {
+            background: #1f2937 !important;
+            border-color: #374151 !important;
+        }
+        .dark .freq-option {
+            border-color: #374151 !important;
+        }
+        .dark .freq-check {
+            border-color: #4b5563 !important;
         }
 
         .input-group.error-state {
@@ -415,6 +445,14 @@
             background: transparent;
             padding: 0.5rem;
             color: #111827;
+        }
+
+        /* Numeric inputs must always be LTR so cursor/caret aligns with digit order.
+           In RTL layouts we right-align the value so numbers sit on the correct edge. */
+        [dir="rtl"] input[inputmode="decimal"],
+        [dir="rtl"] input[inputmode="numeric"] {
+            direction: ltr;
+            text-align: right;
         }
 
         .text-input:focus {
@@ -1078,6 +1116,10 @@
             opacity: 0.8;
         }
 
+        #freq-trigger {
+            transition: all 0.2s;
+        }
+
         .input-group:active {
             opacity: 0.9;
         }
@@ -1500,6 +1542,508 @@
         }
 
         /* ============================================= */
+        /* DESKTOP CALENDAR PICKER                       */
+        /* ============================================= */
+
+        .desktop-calendar-modal {
+            width: 100%;
+            max-width: 360px;
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            transform: scale(0.95) translateY(-10px);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            overflow: hidden;
+            margin: auto;
+        }
+
+        .dark .desktop-calendar-modal {
+            background-color: #1f2937;
+        }
+
+        .date-picker-backdrop.visible .desktop-calendar-modal {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        /* Center backdrop for desktop */
+        .date-picker-backdrop:has(.desktop-calendar-modal) {
+            align-items: center;
+        }
+
+        .desktop-calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dark .desktop-calendar-header {
+            border-bottom-color: #374151;
+        }
+
+        .desktop-calendar-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }
+
+        .dark .desktop-calendar-header h2 {
+            color: #f3f4f6;
+        }
+
+        .desktop-calendar-close {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            color: #6b7280;
+            font-size: 1.25rem;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .desktop-calendar-close:hover {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+
+        .dark .desktop-calendar-close {
+            color: #9ca3af;
+        }
+
+        .dark .desktop-calendar-close:hover {
+            background-color: #374151;
+            color: #f3f4f6;
+        }
+
+        .desktop-calendar-input-row {
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dark .desktop-calendar-input-row {
+            border-bottom-color: #374151;
+        }
+
+        .desktop-calendar-input {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            font-size: 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background-color: #f9fafb;
+            color: #111827;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            text-align: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .desktop-calendar-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        .dark .desktop-calendar-input {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #f3f4f6;
+        }
+
+        .dark .desktop-calendar-input:focus {
+            border-color: #818cf8;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+        }
+
+        .desktop-calendar-error {
+            font-size: 0.75rem;
+            color: #dc2626;
+            margin-top: 0.375rem;
+            min-height: 1rem;
+        }
+
+        .dark .desktop-calendar-error {
+            color: #f87171;
+        }
+
+        .desktop-calendar-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            gap: 0.5rem;
+        }
+
+        .desktop-calendar-nav-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .desktop-calendar-nav-btn:hover {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+
+        .dark .desktop-calendar-nav-btn {
+            color: #9ca3af;
+        }
+
+        .dark .desktop-calendar-nav-btn:hover {
+            background-color: #374151;
+            color: #f3f4f6;
+        }
+
+        .dcal-select-wrapper {
+            flex: 1;
+        }
+
+        .dcal-custom-trigger {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background-color: #ffffff;
+            color: #374151;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .dcal-custom-trigger:hover, .dcal-custom-trigger:focus {
+            border-color: #6366f1;
+        }
+
+        .dcal-chevron {
+            transition: transform 0.2s;
+            opacity: 0.6;
+            flex-shrink: 0;
+        }
+
+        .dcal-custom-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 50;
+            transform-origin: top;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+
+        .dcal-dropdown-option {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            color: #374151;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .dcal-dropdown-option:hover {
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .dcal-dropdown-option.selected {
+            background: rgba(99, 102, 241, 0.15);
+            font-weight: 600;
+            color: #4f46e5;
+        }
+
+        .dark .dcal-custom-trigger {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #f3f4f6;
+        }
+
+        .dark .dcal-custom-trigger:hover, .dark .dcal-custom-trigger:focus {
+            border-color: #818cf8;
+        }
+
+        .dark .dcal-custom-dropdown {
+            background: #1f2937;
+            border-color: #374151;
+        }
+
+        .dark .dcal-dropdown-option {
+            color: #f3f4f6;
+        }
+
+        .dark .dcal-dropdown-option:hover {
+            background: rgba(99, 102, 241, 0.15);
+        }
+
+        .dark .dcal-dropdown-option.selected {
+            background: rgba(99, 102, 241, 0.25);
+            color: #818cf8;
+        }
+
+        .desktop-calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            padding: 0 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dark .desktop-calendar-weekdays {
+            border-bottom-color: #374151;
+        }
+
+        .desktop-calendar-weekday {
+            padding: 0.5rem 0;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+
+        .dark .desktop-calendar-weekday {
+            color: #9ca3af;
+        }
+
+        .desktop-calendar-grid {
+            display: grid;
+            grid-template-areas: "content";
+            overflow: hidden;
+            padding: 0.5rem 1rem;
+            outline: none;
+            /* Ensure height stability */
+            min-height: 250px;
+            align-items: start;
+        }
+
+        .desktop-calendar-view {
+            grid-area: content;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.25rem;
+            width: 100%;
+            transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+            backface-visibility: hidden;
+        }
+
+        /* Animation Classes */
+        .anim-next-enter {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        .anim-next-enter-active {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .anim-next-exit {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .anim-next-exit-active {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+
+        .anim-prev-enter {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+
+        .anim-prev-enter-active {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .anim-prev-exit {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .anim-prev-exit-active {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        .desktop-calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.15s, color 0.15s, transform 0.1s;
+            outline: none;
+        }
+
+        .desktop-calendar-day:hover:not(.disabled):not(.selected) {
+            background-color: #f3f4f6;
+        }
+
+        .desktop-calendar-day:focus-visible {
+            box-shadow: inset 0 0 0 2px #6366f1;
+        }
+
+        .desktop-calendar-day.outside-month {
+            color: #9ca3af;
+        }
+
+        .desktop-calendar-day.today {
+            background-color: #ecfdf5;
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .desktop-calendar-day.selected {
+            background-color: #4f46e5;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .desktop-calendar-day.selected:hover {
+            background-color: #4338ca;
+        }
+
+        .desktop-calendar-day.active:not(.selected) {
+            box-shadow: inset 0 0 0 2px #818cf8;
+        }
+
+        .desktop-calendar-day.disabled {
+            color: #d1d5db;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .dark .desktop-calendar-day {
+            color: #e5e7eb;
+        }
+
+        .dark .desktop-calendar-day:hover:not(.disabled):not(.selected) {
+            background-color: #374151;
+        }
+
+        .dark .desktop-calendar-day.outside-month {
+            color: #6b7280;
+        }
+
+        .dark .desktop-calendar-day.today {
+            background-color: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+        }
+
+        .dark .desktop-calendar-day.selected {
+            background-color: #6366f1;
+            color: #ffffff;
+        }
+
+        .dark .desktop-calendar-day.selected:hover {
+            background-color: #4f46e5;
+        }
+
+        .dark .desktop-calendar-day.disabled {
+            color: #4b5563;
+        }
+
+        .desktop-calendar-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .dark .desktop-calendar-footer {
+            border-top-color: #374151;
+        }
+
+        .desktop-calendar-footer-right {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .desktop-calendar-btn {
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.15s;
+        }
+
+        .desktop-calendar-btn.today {
+            color: #059669;
+            background-color: #ecfdf5;
+        }
+
+        .desktop-calendar-btn.today:hover {
+            background-color: #d1fae5;
+        }
+
+        .dark .desktop-calendar-btn.today {
+            color: #34d399;
+            background-color: rgba(52, 211, 153, 0.15);
+        }
+
+        .dark .desktop-calendar-btn.today:hover {
+            background-color: rgba(52, 211, 153, 0.25);
+        }
+
+        .desktop-calendar-btn.cancel {
+            color: #6b7280;
+        }
+
+        .desktop-calendar-btn.cancel:hover {
+            background-color: #f3f4f6;
+        }
+
+        .dark .desktop-calendar-btn.cancel {
+            color: #9ca3af;
+        }
+
+        .dark .desktop-calendar-btn.cancel:hover {
+            background-color: #374151;
+        }
+
+        .desktop-calendar-btn.confirm {
+            color: #ffffff;
+            background-color: #4f46e5;
+        }
+
+        .desktop-calendar-btn.confirm:hover {
+            background-color: #4338ca;
+        }
+
+        .dark .desktop-calendar-btn.confirm {
+            background-color: #6366f1;
+        }
+
+        .dark .desktop-calendar-btn.confirm:hover {
+            background-color: #4f46e5;
+        }
+
+        /* ============================================= */
         /* BOUNCY MODAL ANIMATION (mobile only)         */
         /* ============================================= */
 
@@ -1517,7 +2061,7 @@
     <button id="install-button"
         class="hidden fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-xl font-bold flex items-center gap-2 hover:bg-indigo-700 hover:scale-105 transition-all">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
@@ -1561,7 +2105,7 @@
                 <div class="flex items-center space-x-2 flex-shrink-0">
 
                     <button id="about-btn" class="btn-icon" title="About App" data-lang-title="aboutBtn"
-                        aria-label="About App">
+                        aria-label="About App" data-lang-aria-label="aboutBtn">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                             aria-hidden="true">
@@ -1573,7 +2117,7 @@
 
                     <div class="relative" id="theme-menu-wrapper">
                         <button id="theme-toggle" class="btn-icon relative z-20" title="Change Theme"
-                            data-lang-title="themeBtn" aria-label="Change Theme" aria-haspopup="true">
+                            data-lang-title="themeBtn" aria-label="Change Theme" data-lang-aria-label="themeBtn" aria-haspopup="true">
                             <svg id="icon-sun" class="w-5 h-5 theme-icon" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24" stroke-width="2">
                                 <circle cx="12" cy="12" r="5"></circle>
@@ -1649,7 +2193,7 @@
 
                     <div class="relative" id="lang-menu-wrapper">
                         <button id="lang-toggle" class="btn-icon relative z-20" title="Language"
-                            data-lang-title="langBtn" aria-label="Language" aria-haspopup="true">
+                            data-lang-title="langBtn" aria-label="Language" data-lang-aria-label="langBtn" aria-haspopup="true">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <path
@@ -1688,7 +2232,7 @@
     </nav>
 
     <div id="message-box" role="status" aria-live="polite"
-        class="fixed top-24 left-0 right-0 mx-auto w-fit max-w-[90vw] z-[100] px-6 py-3 rounded-lg text-white font-medium shadow-2xl text-sm text-center transition-all duration-300 ease-out transform hidden opacity-0 -translate-y-3">
+        class="fixed top-24 left-0 right-0 mx-auto w-fit max-w-[90vw] z-[100] px-6 py-3 rounded-lg text-white font-medium shadow-2xl text-sm text-center transition duration-300 ease-out transform hidden opacity-0 -translate-y-3">
     </div>
 
     <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full pb-24">
@@ -1706,7 +2250,7 @@
                                 <path
                                     d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                             </svg>
-                            <span data-lang-key="radioHint">Select which value to calculate</span>
+                            <span data-lang-key="radioHint">Choose the value you want the calculator to solve</span>
                         </p>
 
                         <div>
@@ -1721,12 +2265,13 @@
                             <div class="input-group" id="group-amount">
                                 <div class="radio-cell">
                                     <input type="radio" name="calc-target" value="amount" title="Calculate this field"
-                                        aria-label="Calculate Loan Amount">
+                                        aria-label="Calculate Loan Amount" data-lang-aria-label="calcLoanAmount">
                                 </div>
                                 <input type="text" inputmode="decimal" id="loan-amount" data-key="amount"
-                                    class="text-input select-text">
+                                    class="text-input select-text" autocomplete="off" autocorrect="off"
+                                    autocapitalize="off" spellcheck="false">
                             </div>
-                            <p class="error-text hidden" id="error-amount">Please enter a valid amount.</p>
+                            <p class="error-text hidden" id="error-amount" data-lang-key="invalidAmount">Please enter a valid amount.</p>
                         </div>
 
                         <div>
@@ -1741,12 +2286,70 @@
                             <div class="input-group" id="group-rate">
                                 <div class="radio-cell">
                                     <input type="radio" name="calc-target" value="rate" title="Calculate this field"
-                                        aria-label="Calculate Interest Rate">
+                                        aria-label="Calculate Interest Rate" data-lang-aria-label="calcInterestRate">
                                 </div>
                                 <input type="text" inputmode="decimal" id="interest-rate" data-key="rate"
-                                    class="text-input select-text">
+                                    class="text-input select-text" autocomplete="off" autocorrect="off"
+                                    autocapitalize="off" spellcheck="false">
                             </div>
-                            <p class="error-text hidden" id="error-rate">Please enter a valid rate.</p>
+                            <p class="error-text hidden" id="error-rate" data-lang-key="invalidRate">Please enter a valid rate.</p>
+                        </div>
+
+                        <div>
+                            <label class="field-label">
+                                <svg class="w-4 h-4 text-teal-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span data-lang-key="frequencyLabel">Installment Frequency</span>
+                            </label>
+                            <div class="input-group" style="position: relative;">
+                                <!-- Hidden native select for value syncing -->
+                                <select id="installment-freq" style="display:none;">
+                                    <option value="1">Monthly</option>
+                                    <option value="3">Quarterly</option>
+                                </select>
+                                <!-- Custom dropdown trigger -->
+                                <button type="button" id="freq-trigger" class="text-input select-text"
+                                    aria-expanded="false" aria-haspopup="listbox" aria-controls="freq-dropdown"
+                                    style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; width:100%; text-align:start; gap:8px;">
+                                    <span id="freq-trigger-text" data-lang-key="freqMonthly">Monthly</span>
+                                    <svg class="w-4 h-4 opacity-60 flex-shrink-0 transition-transform duration-200" id="freq-chevron"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <!-- Custom dropdown panel -->
+                                <div id="freq-dropdown"
+                                    class="hidden" role="listbox" aria-labelledby="frequencyLabel"
+                                    style="position:absolute; left:0; right:0; top:100%; margin-top:4px; z-index:50;
+                                           border-radius:12px; overflow:hidden;
+                                           box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1);
+                                           border: 1px solid var(--border-color, #e5e7eb);
+                                           background: var(--card-bg, #fff);
+                                           will-change: opacity, transform;
+                                           transform-origin: top; transition: opacity 200ms cubic-bezier(0.4,0,0.2,1), transform 200ms cubic-bezier(0.4,0,0.2,1);">
+                                    <div class="freq-option" data-value="1" role="option" tabindex="0" aria-selected="true"
+                                        style="padding:12px 16px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+                                               transition: background 0.15s ease; border-bottom: 1px solid var(--border-color, #e5e7eb);">
+                                        <span class="freq-option-label" data-lang-key="freqMonthly" style="font-weight:500;">Monthly</span>
+                                        <span class="freq-check" style="width:20px; height:20px; border-radius:50%;
+                                              border: 2px solid var(--primary-color, #6366f1); display:flex; align-items:center; justify-content:center;">
+                                            <span style="width:10px; height:10px; border-radius:50%; background:var(--primary-color, #6366f1);"></span>
+                                        </span>
+                                    </div>
+                                    <div class="freq-option" data-value="3" role="option" tabindex="0" aria-selected="false"
+                                        style="padding:12px 16px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+                                               transition: background 0.15s ease;">
+                                        <span class="freq-option-label" data-lang-key="freqQuarterly" style="font-weight:500;">Quarterly</span>
+                                        <span class="freq-check" style="width:20px; height:20px; border-radius:50%;
+                                              border: 2px solid #d1d5db; display:flex; align-items:center; justify-content:center;">
+                                            <span style="width:10px; height:10px; border-radius:50%; background:transparent;"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
@@ -1761,12 +2364,13 @@
                             <div class="input-group" id="group-period">
                                 <div class="radio-cell">
                                     <input type="radio" name="calc-target" value="period" title="Calculate this field"
-                                        aria-label="Calculate Period">
+                                        aria-label="Calculate Period" data-lang-aria-label="calcPeriod">
                                 </div>
                                 <input type="text" inputmode="numeric" pattern="[0-9]*" id="loan-period"
-                                    data-key="period" class="text-input select-text">
+                                    data-key="period" class="text-input select-text" autocomplete="off"
+                                    autocorrect="off" autocapitalize="off" spellcheck="false">
                             </div>
-                            <p class="error-text hidden" id="error-period">Please enter a valid period.</p>
+                            <p class="error-text hidden" id="error-period" data-lang-key="invalidPeriod">Please enter a valid period.</p>
                         </div>
 
                         <div>
@@ -1781,12 +2385,12 @@
                             <div class="input-group active-target" id="group-installment">
                                 <div class="radio-cell">
                                     <input type="radio" name="calc-target" value="installment" checked
-                                        title="Calculate this field" aria-label="Calculate Monthly Installment">
+                                        title="Calculate this field" aria-label="Calculate Monthly Installment" data-lang-aria-label="calcInstallment">
                                 </div>
                                 <input type="text" inputmode="decimal" id="monthly-installment" data-key="installment"
-                                    class="text-input select-text" readonly>
+                                    class="text-input select-text" readonly autocomplete="off">
                             </div>
-                            <p class="error-text hidden" id="error-installment">Invalid value.</p>
+                            <p class="error-text hidden" id="error-installment" data-lang-key="invalidValue">Invalid value.</p>
                         </div>
 
                         <div class="pt-2">
@@ -1879,7 +2483,8 @@
                                 </label>
                                 <div class="input-group">
                                     <input type="text" inputmode="decimal" id="admin-fees"
-                                        class="text-input select-text" data-placeholder-key="inputPlaceholder">
+                                        class="text-input select-text" data-placeholder-key="inputPlaceholder"
+                                        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                 </div>
                             </div>
 
@@ -1894,7 +2499,8 @@
                                 </label>
                                 <div class="input-group">
                                     <input type="text" inputmode="decimal" id="stamp-rate" value="0.2"
-                                        class="text-input select-text" data-placeholder-key="inputPlaceholder">
+                                        class="text-input select-text" data-placeholder-key="inputPlaceholder"
+                                        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                 </div>
 
                             </div>
@@ -1909,10 +2515,10 @@
 
                         <button type="button" id="save-button"
                             class="w-14 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95 disabled:opacity-50"
-                            disabled title="Save to History" data-lang-title="saveBtn">
+                            disabled title="Save to History" data-lang-title="saveBtn" aria-label="Save to History" data-lang-aria-label="saveBtn">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
+                                stroke-linejoin="round" aria-hidden="true">
                                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
                                 <polyline points="7 3 7 8 15 8"></polyline>
@@ -1921,10 +2527,10 @@
 
                         <button type="button" id="history-btn"
                             class="w-14 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95"
-                            title="View History" data-lang-title="historyBtn">
+                            title="View History" data-lang-title="historyBtn" aria-label="View History" data-lang-aria-label="historyBtn">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
+                                stroke-linejoin="round" aria-hidden="true">
                                 <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                         </button>
@@ -1999,7 +2605,8 @@
                                     <div class="input-group">
                                         <input type="text" inputmode="decimal" id="early-settlement-fee"
                                             class="w-full border-0 bg-transparent focus:ring-0 p-2 text-gray-900 dark:text-white placeholder-gray-400 select-text"
-                                            placeholder="Enter value">
+                                            placeholder="Enter value" autocomplete="off" autocorrect="off"
+                                            autocapitalize="off" spellcheck="false">
                                     </div>
                                 </div>
                             </div>
@@ -2048,15 +2655,33 @@
                                             <span id="settlement-interest"
                                                 class="font-medium text-gray-900 dark:text-gray-100">-</span>
                                         </div>
-                                        <div id="settlement-stamp-row" class="flex justify-between sm:flex-col hidden">
-                                            <span class="text-gray-600 dark:text-gray-400"
-                                                data-lang-key="settlementStampLabel">Quarter Stamp:</span>
-                                            <span id="settlement-stamp"
-                                                class="font-medium text-gray-900 dark:text-gray-100">-</span>
-                                        </div>
 
+                                        <!-- Settlement Before Stamp subtotal -->
                                         <div
                                             class="col-span-1 sm:col-span-2 border-t border-amber-200 dark:border-amber-700 pt-2 mt-2">
+                                            <div class="flex justify-between">
+                                                <span class="font-bold text-amber-800 dark:text-amber-300"
+                                                    data-lang-key="settlementBeforeStampLabel">Settlement (before
+                                                    stamp):</span>
+                                                <span id="settlement-before-stamp"
+                                                    class="font-bold text-amber-800 dark:text-amber-300 text-lg">-</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Stamp on settlement -->
+                                        <div id="settlement-stamp-total-row" class="col-span-1 sm:col-span-2 hidden">
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400"
+                                                    data-lang-key="settlementStampOnTotalLabel">Stamp on
+                                                    Settlement:</span>
+                                                <span id="settlement-stamp-on-total"
+                                                    class="font-medium text-gray-900 dark:text-gray-100">-</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Total with stamp -->
+                                        <div
+                                            class="col-span-1 sm:col-span-2 border-t border-amber-200 dark:border-amber-700 pt-2 mt-1">
                                             <div class="flex justify-between">
                                                 <span class="font-bold text-amber-800 dark:text-amber-300"
                                                     data-lang-key="totalSettlementLabel">Total Settlement:</span>
@@ -2093,24 +2718,137 @@
                     <div id="self-sufficient-section"
                         class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
                         <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3" data-lang-key="ssDesc">Calculate
-                                required Term Deposit to cover installments.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3" data-lang-key="ssDescAdvanced">
+                                Calculate a self-paying loan backed by your CD.</p>
                             <div class="grid grid-cols-2 gap-4 p-1">
-                                <div>
+                                <div class="col-span-2">
                                     <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="tdRateLabel">TD Rate (%):</label>
-                                    <div class="input-group" id="group-td-rate">
-                                        <input type="text" inputmode="decimal" id="td-rate" placeholder="Enter value"
-                                            class="text-input select-text">
+                                        data-lang-key="ssBookingDateLabel" for="ss-booking-date-display">Booking Date:</label>
+                                    <div class="input-group relative">
+                                        <input type="text" inputmode="numeric" id="ss-booking-date-display"
+                                            class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
+                                            autocomplete="off">
+                                        <button type="button" id="ss-booking-date-picker-btn"
+                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
+                                            aria-label="Open date picker">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor"
+                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <input type="date" id="ss-booking-date-native"
+                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
+                                                tabindex="-1" aria-hidden="true">
+                                        </button>
                                     </div>
-                                    <p class="error-text hidden" id="error-td-rate">Max rate is 100%</p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="tdAmountLabel">Your TD:</label>
+                                        data-lang-key="ssCd1InterestDateLabel" for="ss-cd1-interest-date-display">CD₁ Next Interest Date:</label>
+                                    <div class="input-group relative">
+                                        <input type="text" inputmode="numeric" id="ss-cd1-interest-date-display"
+                                            class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
+                                            autocomplete="off">
+                                        <button type="button" id="ss-cd1-interest-date-picker-btn"
+                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
+                                            aria-label="Open date picker">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor"
+                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <input type="date" id="ss-cd1-interest-date-native"
+                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
+                                                tabindex="-1" aria-hidden="true">
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="ssCd2InterestDateLabel" for="ss-cd2-interest-date-display">CD₂ First Interest Date:</label>
+                                    <div class="input-group relative">
+                                        <input type="text" inputmode="numeric" id="ss-cd2-interest-date-display"
+                                            class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
+                                            autocomplete="off">
+                                        <button type="button" id="ss-cd2-interest-date-picker-btn"
+                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
+                                            aria-label="Open date picker">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor"
+                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <input type="date" id="ss-cd2-interest-date-native"
+                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
+                                                tabindex="-1" aria-hidden="true">
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="tdAmountLabel">Your CD (CD₁):</label>
                                     <div class="input-group" id="group-td-amount">
                                         <input type="text" inputmode="decimal" id="td-amount" placeholder="Enter value"
-                                            class="text-input select-text">
+                                            class="text-input select-text" autocomplete="off" autocorrect="off"
+                                            autocapitalize="off" spellcheck="false">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="tdRateLabel">CD₁ Rate (%):</label>
+                                    <div class="input-group" id="group-td-rate">
+                                        <input type="text" inputmode="decimal" id="td-rate" placeholder="Enter value"
+                                            class="text-input select-text" autocomplete="off" autocorrect="off"
+                                            autocapitalize="off" spellcheck="false">
+                                    </div>
+                                    <p class="error-text hidden" id="error-td-rate" data-lang-key="maxRate">Max rate is 100%</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="td2RateLabel">CD₂ Rate (%):</label>
+                                    <div class="input-group" id="group-td2-rate">
+                                        <input type="text" inputmode="decimal" id="td2-rate" placeholder="Enter value"
+                                            class="text-input select-text" autocomplete="off" autocorrect="off"
+                                            autocapitalize="off" spellcheck="false">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="ssLoanRateLabel">Loan Rate (%):</label>
+                                    <div class="input-group" id="group-ss-loan-rate">
+                                        <input type="text" inputmode="decimal" id="ss-loan-rate"
+                                            placeholder="Enter value" class="text-input select-text" autocomplete="off"
+                                            autocorrect="off" autocapitalize="off" spellcheck="false">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="ssPeriodLabel">Period (months):</label>
+                                    <div class="input-group" id="group-ss-period">
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="ss-loan-period"
+                                            placeholder="Enter value" class="text-input select-text" autocomplete="off"
+                                            autocorrect="off" autocapitalize="off" spellcheck="false">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="ssAdminFeesInputLabel">Admin Fees (%):</label>
+                                    <div class="input-group" id="group-ss-admin-fees">
+                                        <input type="text" inputmode="decimal" id="ss-admin-fees"
+                                            placeholder="Enter value" class="text-input select-text" autocomplete="off"
+                                            autocorrect="off" autocapitalize="off" spellcheck="false">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                                        data-lang-key="ssStampRateInputLabel">Stamp Rate (%):</label>
+                                    <div class="input-group" id="group-ss-stamp-rate">
+                                        <input type="text" inputmode="decimal" id="ss-stamp-rate"
+                                            placeholder="Enter value" class="text-input select-text" autocomplete="off"
+                                            autocorrect="off" autocapitalize="off" spellcheck="false">
                                     </div>
                                 </div>
                             </div>
@@ -2124,21 +2862,111 @@
                             <p class="text-xs text-red-500 mt-2 hidden" id="error-self-sufficient"
                                 data-lang-key="errorCheckInputs">Please check input fields.</p>
                             <div id="self-sufficient-results"
-                                class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
+                                class="overflow-hidden transition-all duration-300 opacity-0" style="max-height:0">
                                 <div
-                                    class="mt-3 bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border border-green-100 dark:border-green-800">
-                                    <div class="flex justify-between items-center mb-1">
-                                        <span class="text-xs text-green-800 dark:text-green-300"
-                                            data-lang-key="reqTdLabel">Required TD:</span>
-                                        <span id="req-td-display"
-                                            class="font-bold text-green-900 dark:text-white select-text">-</span>
-                                    </div>
+                                    class="mt-3 bg-green-50 dark:bg-green-900/30 p-4 rounded-lg border border-green-100 dark:border-green-800 space-y-2">
+
                                     <div class="flex justify-between items-center">
                                         <span class="text-xs text-green-800 dark:text-green-300"
-                                            data-lang-key="netFlowLabel">Net Flow:</span>
-                                        <span id="net-flow-display"
+                                            data-lang-key="ssGrossLoanLabel">Gross Loan Amount:</span>
+                                        <span id="ss-gross-loan-display"
                                             class="font-bold text-green-900 dark:text-white select-text">-</span>
                                     </div>
+
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs text-red-600 dark:text-red-400"
+                                            data-lang-key="ssAdminFeesLabel">Admin Fees (deducted):</span>
+                                        <span id="ss-admin-fees-display"
+                                            class="font-bold text-red-600 dark:text-red-400 select-text">-</span>
+                                    </div>
+
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs text-emerald-600 dark:text-emerald-400"
+                                            data-lang-key="ssCdInterestBeforeM1Label">CD Interest Before 1st Inst.:</span>
+                                        <span id="ss-cd-interest-before-m1-display"
+                                            class="font-bold text-emerald-600 dark:text-emerald-400 select-text">-</span>
+                                    </div>
+
+                                    <div id="ss-first-inst-buffer-row" class="flex justify-between items-center hidden">
+                                        <span class="text-xs text-blue-700 dark:text-blue-300"
+                                            data-lang-key="ssFirstInstBufferLabel">1st Installment Reserve:</span>
+                                        <span id="ss-first-inst-buffer-display"
+                                            class="font-bold text-blue-700 dark:text-blue-300 select-text">-</span>
+                                    </div>
+
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs text-green-800 dark:text-green-300"
+                                            data-lang-key="ssTd2Label">New CD (CD₂):</span>
+                                        <span id="ss-td2-display"
+                                            class="font-bold text-green-900 dark:text-white select-text">-</span>
+                                    </div>
+
+                                    <div id="ss-net-leftover-row" class="flex justify-between items-center hidden">
+                                        <span class="text-xs text-gray-500 dark:text-gray-400"
+                                            data-lang-key="ssNetLeftoverLabel">Net Remaining:</span>
+                                        <span id="ss-net-leftover-display"
+                                            class="font-medium text-gray-500 dark:text-gray-400 select-text">-</span>
+                                    </div>
+
+                                    <div class="border-t border-green-200 dark:border-green-700 pt-2 mt-1">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-green-800 dark:text-green-300"
+                                                data-lang-key="ssMonthlyTdInterest">Combined Monthly CD Interest:</span>
+                                            <span id="ss-monthly-interest-display"
+                                                class="font-bold text-green-900 dark:text-white select-text">-</span>
+                                        </div>
+
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-green-800 dark:text-green-300"
+                                                data-lang-key="ssInstallmentLabel">Loan Installment:</span>
+                                            <span id="ss-installment-display"
+                                                class="font-bold text-green-900 dark:text-white select-text">-</span>
+                                        </div>
+
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-green-800 dark:text-green-300"
+                                                data-lang-key="ssMonthlySurplusLabel">Monthly Surplus:</span>
+                                            <span id="ss-monthly-surplus-display" class="font-bold select-text">-</span>
+                                        </div>
+
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-red-600 dark:text-red-400"
+                                                data-lang-key="ssTotalStampLabel">Total Stamp Cost:</span>
+                                            <span id="ss-total-stamp-display"
+                                                class="font-bold text-red-600 dark:text-red-400 select-text">-</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="border-t border-green-200 dark:border-green-700 pt-2 mt-1">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-green-800 dark:text-green-300"
+                                                data-lang-key="ssTotalTdsLabel">Total CDs After Term:</span>
+                                            <span id="ss-total-tds-display"
+                                                class="font-bold text-green-900 dark:text-white select-text text-base">-</span>
+                                        </div>
+                                        <div class="flex justify-between items-center mt-1">
+                                            <span class="text-xs text-green-800 dark:text-green-300"
+                                                data-lang-key="ssSimpleInterestAlt">Simple Interest Alternative:</span>
+                                            <span id="ss-simple-alt-display"
+                                                class="font-bold text-green-900 dark:text-white select-text">-</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="border-t border-green-200 dark:border-green-700 pt-2 mt-1">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs font-semibold text-green-800 dark:text-green-300"
+                                                data-lang-key="ssNetBenefitLabel">Net Benefit:</span>
+                                            <span id="ss-net-benefit-display"
+                                                class="font-bold text-base select-text">-</span>
+                                        </div>
+                                        <div class="flex justify-between items-center mt-1">
+                                            <span class="text-xs font-semibold text-green-800 dark:text-green-300"
+                                                data-lang-key="ssEffectiveRateLabel">Effective Earning Rate:</span>
+                                            <span id="ss-effective-rate-display"
+                                                class="font-bold text-base select-text text-green-700 dark:text-green-300">-</span>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -2179,7 +3007,7 @@
                         </div>
                         <div class="text-end">
                             <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
-                                data-lang-key="loanPeriodLabel">Period</p>
+                                data-lang-key="loanPeriodLabel">Period (months)</p>
                             <p class="text-xl font-bold tracking-tight text-white drop-shadow-sm break-all select-text"
                                 id="summary-period">-</p>
                         </div>
@@ -2190,7 +3018,7 @@
                     <div class="summary-grid mb-2">
                         <div>
                             <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
-                                data-lang-key="interestRateLabel">Rate</p>
+                                data-lang-key="interestRateLabel">Interest Rate (%)</p>
                             <p class="text-lg font-bold text-white select-text" id="summary-rate">-</p>
                         </div>
                         <div class="text-end">
@@ -2311,7 +3139,7 @@
                         <canvas id="loan-chart"></canvas>
                         <div id="chart-empty-state"
                             class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-10">
-                            <span class="text-gray-400 font-medium text-sm">Enter details to see chart</span>
+                            <span class="text-gray-400 font-medium text-sm" data-lang-key="enterDetailsToSeeChart">Enter details to see chart</span>
                         </div>
                     </div>
 
@@ -2388,8 +3216,9 @@
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 text-center w-full"
                     data-lang-key="scheduleTitle">Amortization Schedule</h2>
                 <button type="button" id="close-schedule-btn"
-                    class="absolute right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="absolute right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 p-2"
+                    aria-label="Close" data-lang-aria-label="closeBtn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
                         </path>
                     </svg>
@@ -2482,7 +3311,8 @@
                 <button id="share-btn"
                     class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        aria-hidden="true">
                         <circle cx="18" cy="5" r="3"></circle>
                         <circle cx="6" cy="12" r="3"></circle>
                         <circle cx="18" cy="19" r="3"></circle>
@@ -2492,9 +3322,22 @@
                     <span data-lang-key="shareBtnLabel">Share App</span>
                 </button>
 
+                <button id="about-install-btn"
+                    class="hidden w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    <span data-lang-key="installAppAbout">Install App</span>
+                </button>
+
                 <button id="force-update-btn"
                     class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium transition-all active:scale-95">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
                         </path>

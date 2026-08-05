@@ -1,7 +1,7 @@
 # Loan Calculator Pro — Compliance Statement
 
-**Version:** 1.12.23 
-**Document Date:** 2026-02-03  
+**Version:** 1.17.0 
+**Document Date:** 2026-02-13  
 **Application Type:** Progressive Web Application (PWA)
 
 ---
@@ -95,7 +95,14 @@ Complex financial outputs include interactive tooltips (ℹ) that provide immedi
 
 These features ensure users are not presented with "black box" numbers, supporting **Consumer Duty** and **Fair Treatment of Customers** principles.
 
-### 5.3 Calculation Fingerprint
+### 5.3 Self-Sufficient TD Mode
+The Self-Sufficient calculator provides a **TD Doubling Strategy** analysis:
+- **Solver Transparency:** Uses binary search to find the optimal loan amount, with all intermediate values displayed
+- **Constraint Visibility:** TD₂ floored to nearest 1,000 EGP and based on net loan (after admin fees)
+- **Comparison Metrics:** Effective Earning Rate shown alongside simple TD rate for informed decision-making
+- **Net Benefit:** Clear positive/negative indicator with color coding
+
+### 5.4 Calculation Fingerprint
 Each calculation generates a unique, deterministic **Calculation ID** (e.g., `v1.9-8XK29A`) based on:
 - **Inputs**: Loan Amount, Rate, Period, Start Date
 - **App Version**: Ensures recalculations on updated versions generate new IDs

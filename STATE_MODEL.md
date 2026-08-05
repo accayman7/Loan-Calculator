@@ -153,6 +153,38 @@ stateDiagram-v2
 - Quarter stamp (if applicable)
 - Total settlement amount
 
+## Self-Sufficient TD Mode
+
+```mermaid
+stateDiagram-v2
+    [*] --> Disabled: Default
+    Disabled --> Enabled: Toggle ON
+    Enabled --> InputReady: TD₁ Amount + TD Rate entered
+    InputReady --> Solving: Calculate clicked
+    Solving --> SolutionFound: Binary search converges
+    Solving --> NoSolution: TD rate too low
+    SolutionFound --> ResultsDisplayed: Show full breakdown
+    ResultsDisplayed --> AutoFill: Gross Loan fills main amount
+    AutoFill --> MainCalculated: appCalculate triggered
+```
+
+**Self-Sufficient Output Fields:**
+
+| Field | Description |
+|-------|-------------|
+| Gross Loan Amount | Total loan before deductions |
+| Admin Fees (deducted) | Fees subtracted from gross loan |
+| New TD (TD₂) | Net loan floored to nearest 1,000 |
+| Combined Monthly TD Interest | (TD₁ + TD₂) × rate/12 |
+| Loan Installment | Monthly payment amount |
+| Monthly Surplus | TD interest − installment |
+| Total TDs After Term | TD₁ + TD₂ |
+| Simple Interest Alternative | TD₁ + monthly interest × N |
+| Net Benefit | Strategy gain vs simple TD (color-coded) |
+| Effective Earning Rate | Annualized return vs simple TD rate |
+
+**Solver Guard:** `_fromSolver` flag prevents recursive loop between `updateSelfSufficient()` and `appCalculate()`.
+
 ## Language Detection Flow
 
 ```mermaid
@@ -261,4 +293,4 @@ The current implementation enforces states implicitly via:
 
 ---
 
-*Last updated: Version 1.12.23*
+*Last updated: Version 1.17.0*
