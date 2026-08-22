@@ -1,4 +1,4 @@
-# Loan Calculator Pro — Compliance Statement
+# Loan Calculator — Compliance Statement
 
 **Version:** 1.17.0 
 **Document Date:** 2026-02-13  
@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-Loan Calculator Pro is a **fully offline, local-only financial calculator** designed for accurate loan calculations, amortization schedules, and early settlement projections. This application operates entirely on the user's device without any external data transmission.
+Loan Calculator is a **fully offline, local-only financial calculator** designed for accurate loan calculations, amortization schedules, and early settlement projections. This application operates entirely on the user's device without any external data transmission.
 
 ---
 
