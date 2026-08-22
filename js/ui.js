@@ -34,7 +34,7 @@ const txt = {
         netLoanLabel: "Net Loan Amount",
         calculateBtn: "Calculate",
         computeButton: "CALCULATE",
-        scheduleButton: "Schedule",
+        scheduleButton: "Show Schedule",
         scheduleButtonHide: "Hide Schedule",
         exportPdfButton: "PDF/Print",
         exportXlsxButton: "Excel",
@@ -246,7 +246,7 @@ const txt = {
         netLoanLabel: "صافي قيمة القرض",
         calculateBtn: "احسب",
         computeButton: "احسب",
-        scheduleButton: "الجدول",
+        scheduleButton: "عرض الجدول",
         scheduleButtonHide: "إخفاء الجدول",
         exportPdfButton: "PDF/طباعة",
         exportXlsxButton: "Excel ملف",
@@ -853,6 +853,12 @@ function updateLangUI(lang) {
         else if (e.dataset.langKey === 'iosMsg') {
             const shareIcon = `<svg class="w-5 h-5 inline text-blue-400 mx-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>`;
             e.innerHTML = `${t(lang, 'iosInstallBody')} ${shareIcon} ${t(lang, 'iosInstallFoot')}`;
+        }
+        else if (e.dataset.langKey === 'scheduleButton') {
+            // Use correct key based on whether schedule is currently visible
+            const schedCont = document.getElementById('schedule-container');
+            const isShowing = schedCont && !schedCont.classList.contains('hidden');
+            e.textContent = t(lang, isShowing ? 'scheduleButtonHide' : 'scheduleButton');
         }
         else {
             e.textContent = t(lang, e.dataset.langKey);
@@ -1501,11 +1507,22 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
 
     if (autoOpen) {
         schedCont.classList.remove('hidden');
+        // Prepare for animation
+        schedCont.style.maxHeight = '0px';
+        schedCont.style.marginTop = '0px';
+        schedCont.style.borderWidth = '0px';
+        void schedCont.offsetHeight; // Force reflow
+
+        // Animate to exact content height and restore margins/borders
+        schedCont.style.maxHeight = schedCont.scrollHeight + 'px';
+        schedCont.style.marginTop = '';
+        schedCont.style.borderWidth = '';
+        schedCont.classList.remove('opacity-0');
+        schedCont.classList.add('opacity-100');
+        
         setTimeout(() => {
-            schedCont.classList.remove('max-h-0', 'opacity-0');
-            schedCont.classList.add('max-h-[5000px]', 'opacity-100');
-            schedCont.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50);
+            schedCont.style.maxHeight = 'none'; // Allow dynamic resizing
+        }, 300);
 
         // Register with BackHandler for Android back button support
         if (typeof BackHandler !== 'undefined') {
@@ -1524,9 +1541,32 @@ function closeScheduleUI() {
         document.activeElement.blur();
     }
 
-    schedCont.classList.remove('max-h-[5000px]', 'opacity-100');
-    schedCont.classList.add('max-h-0', 'opacity-0');
-    setTimeout(() => { schedCont.classList.add('hidden'); }, 500);
+    // Animate smoothly to 0
+    schedCont.style.maxHeight = schedCont.scrollHeight + 'px';
+    void schedCont.offsetHeight; // Force reflow
+
+    schedCont.style.maxHeight = '0px';
+    schedCont.style.marginTop = '0px';
+    schedCont.style.borderWidth = '0px';
+    schedCont.classList.remove('opacity-100');
+    schedCont.classList.add('opacity-0');
+    
+    setTimeout(() => { 
+        schedCont.classList.add('hidden');
+        schedCont.style.maxHeight = ''; // Clean up inline styles
+        schedCont.style.marginTop = '';
+        schedCont.style.borderWidth = '';
+    }, 300);
+
+    // Reset schedule button to "Show Schedule" state
+    const schedBtn = document.getElementById('schedule-button');
+    if (schedBtn) {
+        const lang = document.documentElement.lang || 'en';
+        const label = schedBtn.querySelector('[data-lang-key]');
+        if (label) label.textContent = t(lang, 'scheduleButton');
+        schedBtn.classList.remove('bg-cyan-100', 'dark:bg-cyan-900/30', 'text-cyan-700', 'dark:text-cyan-300', 'border', 'border-cyan-300', 'dark:border-cyan-700', 'hover:bg-cyan-200', 'dark:hover:bg-cyan-900/50');
+        schedBtn.classList.add('bg-cyan-600', 'hover:bg-cyan-700', 'text-white');
+    }
 
     // Unregister from BackHandler
     if (typeof BackHandler !== 'undefined') {

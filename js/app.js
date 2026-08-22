@@ -706,7 +706,14 @@
                 }
 
                 updateSummaryView(e.target.checked);
-                if (coreInputsFilled()) appCalculate();
+                
+                if (e.target.checked) {
+                    // When toggling ON: Do NOT recalculate. Close schedule if open so user doesn't see stale results.
+                    if (typeof closeScheduleUI === 'function') closeScheduleUI();
+                } else {
+                    // When toggling OFF: Recalculate immediately with basic terms.
+                    if (coreInputsFilled()) appCalculate();
+                }
             });
         }
 
@@ -741,6 +748,11 @@
             const schedCont = document.getElementById('schedule-container');
             if (schedCont.classList.contains('hidden')) {
                 if (typeof showScheduleUI === 'function') showScheduleUI(AppState.schedule, AppState.lang, true, isAdv);
+                // Update button to "Hide Schedule" state
+                const label = schedBtn.querySelector('[data-lang-key]');
+                if (label) label.textContent = t(AppState.lang, 'scheduleButtonHide');
+                schedBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700', 'text-white');
+                schedBtn.classList.add('bg-cyan-100', 'dark:bg-cyan-900/30', 'text-cyan-700', 'dark:text-cyan-300', 'border', 'border-cyan-300', 'dark:border-cyan-700', 'hover:bg-cyan-200', 'dark:hover:bg-cyan-900/50');
             } else {
                 if (typeof closeScheduleUI === 'function') closeScheduleUI();
             }
