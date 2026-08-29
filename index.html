@@ -2086,8 +2086,20 @@
         }
 
         /* ============================================= */
-        /* BOUNCY MODAL ANIMATION (mobile only)         */
+        /* MODAL ANIMATION & GESTURE CONTAINMENT        */
         /* ============================================= */
+
+        .modal {
+            overscroll-behavior-x: none !important;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+        }
+
+        .modal-container {
+            overscroll-behavior-x: none !important;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+        }
 
         @media (max-width: 767px) {
             .modal-container {

@@ -1057,6 +1057,78 @@ window.addEventListener('touchstart', (e) => {
 }, { passive: true });
 window.addEventListener('wheel', dismissStampTooltips, { passive: true });
 
+// Edge-swipe Predictive Back Interceptor
+let activeModalEdgeListeners = null;
+
+function attachModalEdgeGestureInterceptors(modal) {
+    if (activeModalEdgeListeners) return;
+
+    let startX = 0;
+    let startY = 0;
+    let isEdgeTouch = false;
+    const EDGE_SIZE = 36; // 36px threshold from display edges
+
+    const onTouchStart = (e) => {
+        if (e.touches.length !== 1) return;
+        const x = e.touches[0].clientX;
+        const y = e.touches[0].clientY;
+        const width = window.innerWidth || document.documentElement.clientWidth;
+
+        if (x <= EDGE_SIZE || x >= width - EDGE_SIZE) {
+            startX = x;
+            startY = y;
+            isEdgeTouch = true;
+        } else {
+            isEdgeTouch = false;
+        }
+    };
+
+    const onTouchMove = (e) => {
+        if (!isEdgeTouch || e.touches.length !== 1) return;
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const deltaX = Math.abs(currentX - startX);
+        const deltaY = Math.abs(currentY - startY);
+
+        // If horizontal motion detected originating from screen edge, prevent Chrome's root page slide
+        if (deltaX > 6 && deltaX > deltaY) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+        }
+    };
+
+    const onTouchEnd = (e) => {
+        if (!isEdgeTouch) return;
+        const endX = e.changedTouches[0]?.clientX || 0;
+        const deltaX = Math.abs(endX - startX);
+
+        if (deltaX > 35) {
+            // Horizontal swipe completed from edge -> cleanly dismiss the active modal
+            if (typeof haptic !== 'undefined') haptic('light');
+            toggleModal(modal);
+        }
+        isEdgeTouch = false;
+    };
+
+    window.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
+
+    activeModalEdgeListeners = () => {
+        window.removeEventListener('touchstart', onTouchStart, { capture: true });
+        window.removeEventListener('touchmove', onTouchMove, { capture: true });
+        window.removeEventListener('touchend', onTouchEnd, { capture: true });
+        activeModalEdgeListeners = null;
+    };
+}
+
+function removeModalEdgeGestureInterceptors() {
+    if (activeModalEdgeListeners) {
+        activeModalEdgeListeners();
+    }
+}
+
 function toggleModal(modal) {
     if (!modal) return;
     const isOpening = modal.classList.contains('pointer-events-none');
@@ -1078,12 +1150,14 @@ function toggleModal(modal) {
 
     if (isOpening) {
         ScrollLock.enable();
+        attachModalEdgeGestureInterceptors(modal);
 
         // Register with BackHandler for Android back button support
         if (typeof BackHandler !== 'undefined') {
             BackHandler.push(modalId, () => toggleModal(modal));
         }
     } else {
+        removeModalEdgeGestureInterceptors();
         modalTimer = setTimeout(() => {
             ScrollLock.disable();
         }, 300);
