@@ -548,15 +548,11 @@ const ScrollLock = (() => {
 // Debug mode flag - set to true during development
 const DEBUG_MODE = false;
 
-/* ================= ANDROID BACK BUTTON HANDLER ================= */
+/* ================= IN-APP MODAL HANDLER ================= */
 /**
- * Manages Android back button/gesture behavior for PWA modals.
- * Uses History API to intercept back navigation and close modals instead of exiting.
- * 
- * How it works:
- * 1. When a modal opens -> pushState adds a history entry
- * 2. When back button pressed -> popstate fires -> close the modal
- * 3. When modal closed normally -> history.back() removes the entry
+ * Manages in-app modal state and Escape key dismissal.
+ * Operates purely in-memory without mutating browser history (history.pushState),
+ * ensuring Chrome and Android OS never trigger the Predictive Back page-slide gesture.
  */
 const BackHandler = (() => {
     // Stack of currently open modal identifiers
@@ -565,14 +561,8 @@ const BackHandler = (() => {
     // Map of modal IDs to their close functions
     const closeHandlers = {};
 
-    // Flag to prevent recursive popstate handling
-    let isHandlingPopstate = false;
-
-    // Flag to ignore popstate events we trigger ourselves
-    let isIgnoringPopstate = false;
-
     /**
-     * Register a modal as open - pushes history state
+     * Register a modal as open
      * @param {string} modalId - Unique identifier for the modal
      * @param {function} closeHandler - Function to call to close this modal
      */
@@ -582,16 +572,11 @@ const BackHandler = (() => {
         modalStack.push(modalId);
         closeHandlers[modalId] = closeHandler;
 
-        // Push a new history state with HASH to prevent predictive back page preview
-        // Fragment changes are treated as same-document navigation
-        const hash = '#modal-' + modalId;
-        history.pushState({ modal: modalId }, '', hash);
-
-        if (DEBUG_MODE) console.log('BackHandler: pushed', modalId, 'stack:', [...modalStack]);
+        if (DEBUG_MODE) console.log('BackHandler: registered', modalId, 'stack:', [...modalStack]);
     }
 
     /**
-     * Unregister a modal when closed normally (not via back button)
+     * Unregister a modal when closed
      * @param {string} modalId - Unique identifier for the modal
      */
     function pop(modalId) {
@@ -601,14 +586,7 @@ const BackHandler = (() => {
         modalStack.splice(index, 1);
         delete closeHandlers[modalId];
 
-        // Go back in history to remove the state we pushed (only if not already handling popstate)
-        if (!isHandlingPopstate) {
-            // Set flag to ignore the resulting popstate event
-            isIgnoringPopstate = true;
-            history.back();
-        }
-
-        if (DEBUG_MODE) console.log('BackHandler: popped', modalId, 'stack:', [...modalStack]);
+        if (DEBUG_MODE) console.log('BackHandler: unregistered', modalId, 'stack:', [...modalStack]);
     }
 
     /**
@@ -621,53 +599,39 @@ const BackHandler = (() => {
     }
 
     /**
-     * Handle popstate event (back button pressed)
+     * Close topmost open modal
      */
-    function handlePopstate(e) {
-        // Ignore popstate events we triggered ourselves (from pop())
-        if (isIgnoringPopstate) {
-            isIgnoringPopstate = false;
-            return;
-        }
-
-        // If there's a modal in the stack, close it
+    function closeTopModal() {
         if (modalStack.length > 0) {
-            isHandlingPopstate = true;
-
             const modalId = modalStack.pop();
             const closeHandler = closeHandlers[modalId];
             delete closeHandlers[modalId];
 
-            if (DEBUG_MODE) console.log('BackHandler: popstate closing', modalId);
-
             if (closeHandler && typeof closeHandler === 'function') {
                 closeHandler();
             }
-
-            isHandlingPopstate = false;
         }
-        // If no modals open, let the default back behavior happen (exit app or navigate)
     }
 
     /**
-     * Initialize the back handler
+     * Initialize modal keyboard and state handlers
      */
     function init() {
-        // Set scroll restoration to manual to prevent browser from
-        // trying to restore position on back/forward, which might help
-        // reduce visual jumping during predictive scenarios.
-        if ('scrollRestoration' in history) {
-            history.scrollRestoration = 'manual';
-        }
+        // Handle Escape key to dismiss top modal
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalStack.length > 0) {
+                closeTopModal();
+            }
+        });
 
-        window.addEventListener('popstate', handlePopstate);
-        if (DEBUG_MODE) console.log('BackHandler: initialized');
+        if (DEBUG_MODE) console.log('BackHandler: initialized (in-memory)');
     }
 
     return {
         push,
         pop,
         isOpen,
+        closeTopModal,
         init
     };
 })();
@@ -1057,75 +1021,58 @@ window.addEventListener('touchstart', (e) => {
 }, { passive: true });
 window.addEventListener('wheel', dismissStampTooltips, { passive: true });
 
-// Edge-swipe Predictive Back Interceptor
-let activeModalEdgeListeners = null;
+// Mobile Swipe-Down to Dismiss for Modals
+let activeModalSwipeListeners = null;
 
-function attachModalEdgeGestureInterceptors(modal) {
-    if (activeModalEdgeListeners) return;
+function attachModalSwipeDismiss(modal) {
+    if (activeModalSwipeListeners) return;
 
-    let startX = 0;
+    const container = modal.querySelector('.modal-container');
+    if (!container) return;
+
     let startY = 0;
-    let isEdgeTouch = false;
-    const EDGE_SIZE = 36; // 36px threshold from display edges
+    let startX = 0;
+    let isTrackingSwipe = false;
 
     const onTouchStart = (e) => {
         if (e.touches.length !== 1) return;
-        const x = e.touches[0].clientX;
-        const y = e.touches[0].clientY;
-        const width = window.innerWidth || document.documentElement.clientWidth;
+        const scrollable = container.querySelector('.overflow-y-auto') || container;
+        // Only trigger pull-down if at top of scroll
+        if (scrollable && scrollable.scrollTop > 5) return;
 
-        if (x <= EDGE_SIZE || x >= width - EDGE_SIZE) {
-            startX = x;
-            startY = y;
-            isEdgeTouch = true;
-        } else {
-            isEdgeTouch = false;
-        }
-    };
-
-    const onTouchMove = (e) => {
-        if (!isEdgeTouch || e.touches.length !== 1) return;
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        const deltaX = Math.abs(currentX - startX);
-        const deltaY = Math.abs(currentY - startY);
-
-        // If horizontal motion detected originating from screen edge, prevent Chrome's root page slide
-        if (deltaX > 6 && deltaX > deltaY) {
-            if (e.cancelable) {
-                e.preventDefault();
-            }
-        }
+        startY = e.touches[0].clientY;
+        startX = e.touches[0].clientX;
+        isTrackingSwipe = true;
     };
 
     const onTouchEnd = (e) => {
-        if (!isEdgeTouch) return;
+        if (!isTrackingSwipe) return;
+        const endY = e.changedTouches[0]?.clientY || 0;
         const endX = e.changedTouches[0]?.clientX || 0;
+        const deltaY = endY - startY;
         const deltaX = Math.abs(endX - startX);
 
-        if (deltaX > 35) {
-            // Horizontal swipe completed from edge -> cleanly dismiss the active modal
+        // If pulled downward at least 60px and mostly vertical
+        if (deltaY > 60 && deltaY > deltaX * 1.5) {
             if (typeof haptic !== 'undefined') haptic('light');
             toggleModal(modal);
         }
-        isEdgeTouch = false;
+        isTrackingSwipe = false;
     };
 
-    window.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
-    window.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('touchend', onTouchEnd, { passive: true });
 
-    activeModalEdgeListeners = () => {
-        window.removeEventListener('touchstart', onTouchStart, { capture: true });
-        window.removeEventListener('touchmove', onTouchMove, { capture: true });
-        window.removeEventListener('touchend', onTouchEnd, { capture: true });
-        activeModalEdgeListeners = null;
+    activeModalSwipeListeners = () => {
+        container.removeEventListener('touchstart', onTouchStart);
+        container.removeEventListener('touchend', onTouchEnd);
+        activeModalSwipeListeners = null;
     };
 }
 
-function removeModalEdgeGestureInterceptors() {
-    if (activeModalEdgeListeners) {
-        activeModalEdgeListeners();
+function removeModalSwipeDismiss() {
+    if (activeModalSwipeListeners) {
+        activeModalSwipeListeners();
     }
 }
 
@@ -1150,19 +1097,19 @@ function toggleModal(modal) {
 
     if (isOpening) {
         ScrollLock.enable();
-        attachModalEdgeGestureInterceptors(modal);
+        attachModalSwipeDismiss(modal);
 
-        // Register with BackHandler for Android back button support
+        // Register with in-memory BackHandler
         if (typeof BackHandler !== 'undefined') {
             BackHandler.push(modalId, () => toggleModal(modal));
         }
     } else {
-        removeModalEdgeGestureInterceptors();
+        removeModalSwipeDismiss();
         modalTimer = setTimeout(() => {
             ScrollLock.disable();
         }, 300);
 
-        // Unregister from BackHandler
+        // Unregister from in-memory BackHandler
         if (typeof BackHandler !== 'undefined') {
             BackHandler.pop(modalId);
         }
