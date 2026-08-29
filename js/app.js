@@ -58,7 +58,7 @@
 
     // Multi-collateral system state
     let collaterals = [
-        { id: 1, amount: '', rate: '', period: '36' }
+        { id: 1, amount: '', rate: '', period: '' }
     ];
     let nextCollateralId = 2;
 
@@ -282,28 +282,28 @@
             const colLabel = `CD ${index + 1}`;
             
             row.innerHTML = `
-                <div class="col-span-2 text-xs font-bold text-gray-600 dark:text-gray-300 text-center">${colLabel}</div>
-                <div class="col-span-4">
-                    <div class="input-group py-1 px-1.5">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input" data-id="${col.id}" placeholder="100,000" value="${col.amount}">
+                <div class="col-span-2 flex items-center justify-center gap-1 text-[11px] font-bold text-gray-600 dark:text-gray-300">
+                    <span>${colLabel}</span>
+                    ${collaterals.length > 1 ? `
+                    <button type="button" class="col-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${col.id}" title="${t(AppState.lang, 'removeCollateralBtn')}" aria-label="${t(AppState.lang, 'removeCollateralBtn')}">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                    ` : ''}
+                </div>
+                <div class="col-span-5">
+                    <div class="input-group py-1 px-1">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center" data-id="${col.id}" placeholder="100,000" value="${col.amount}">
                     </div>
                 </div>
                 <div class="col-span-3">
-                    <div class="input-group py-1 px-1.5">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input" data-id="${col.id}" placeholder="19.0" value="${col.rate}">
+                    <div class="input-group py-1 px-1">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" placeholder="19.0" value="${col.rate}">
                     </div>
                 </div>
                 <div class="col-span-2">
-                    <div class="input-group py-1 px-1.5">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="text-input text-xs select-text col-period-input" data-id="${col.id}" placeholder="36" value="${col.period || '36'}">
+                    <div class="input-group py-1 px-1">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="text-input text-xs select-text col-period-input p-0 text-center" data-id="${col.id}" placeholder="36" value="${col.period || ''}">
                     </div>
-                </div>
-                <div class="col-span-1 flex justify-center">
-                    ${collaterals.length > 1 ? `
-                    <button type="button" class="col-remove-btn p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" data-id="${col.id}" title="${t(AppState.lang, 'removeCollateralBtn')}" aria-label="${t(AppState.lang, 'removeCollateralBtn')}">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                    ` : ''}
                 </div>
             `;
 
@@ -778,7 +778,7 @@
             addColBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
                 const newId = nextCollateralId++;
-                collaterals.push({ id: newId, amount: '', rate: '', period: '36' });
+                collaterals.push({ id: newId, amount: '', rate: '', period: '' });
                 renderCollaterals(newId);
             });
         }
@@ -1706,7 +1706,7 @@
 
         // Reset Loan Type to unsecured and Admin Fees to 3%
         setLoanType('unsecured');
-        collaterals = [{ id: 1, amount: '', rate: '', period: '36' }];
+        collaterals = [{ id: 1, amount: '', rate: '', period: '' }];
         nextCollateralId = 2;
         renderCollaterals();
 
