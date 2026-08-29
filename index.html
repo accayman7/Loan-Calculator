@@ -566,6 +566,48 @@
             background-color: #1f2937;
         }
 
+        /* Dynamic Item Animations */
+        @keyframes itemSlideIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-8px) scale(0.97);
+                max-height: 0;
+                margin-bottom: 0;
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                max-height: 300px;
+            }
+        }
+
+        @keyframes itemSlideOut {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                max-height: 300px;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-8px) scale(0.95);
+                max-height: 0;
+                margin-bottom: 0;
+                padding-top: 0;
+                padding-bottom: 0;
+                border-width: 0;
+            }
+        }
+
+        .item-enter {
+            animation: itemSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .item-exit {
+            animation: itemSlideOut 0.24s cubic-bezier(0.4, 0, 1, 1) forwards;
+            overflow: hidden !important;
+            pointer-events: none;
+        }
+
 
         .input-group.relative input {
             padding-right: 2.5rem !important;
@@ -2253,6 +2295,72 @@
                             <span data-lang-key="radioHint">Choose the value you want the calculator to solve</span>
                         </p>
 
+                        <!-- Loan Type Selector -->
+                        <div class="mb-3">
+                            <label class="field-label mb-1.5">
+                                <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                <span data-lang-key="loanTypeLabel">Loan Type</span>
+                            </label>
+                            <div class="grid grid-cols-2 gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <button type="button" id="loan-type-unsecured-btn" class="loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300" data-type="unsecured">
+                                    <span data-lang-key="loanTypeUnsecured">Unsecured Loan</span>
+                                </button>
+                                <button type="button" id="loan-type-secured-btn" class="loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" data-type="secured">
+                                    <span data-lang-key="loanTypeSecured">Secured Loan</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Collateral Details Section (Shown when Secured Loan is active) -->
+                        <div id="collateral-section" class="overflow-hidden transition-all duration-300 max-h-0 opacity-0 mb-3">
+                            <div class="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/50 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200" data-lang-key="collateralDetailsTitle">Collateral Details (CDs / Deposits)</span>
+                                    </div>
+                                    <button type="button" id="add-collateral-btn" class="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 py-1 px-2.5 rounded-lg bg-indigo-100/70 hover:bg-indigo-200/80 dark:bg-indigo-900/60 dark:hover:bg-indigo-900 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <span data-lang-key="addCollateralBtn">Add Collateral</span>
+                                    </button>
+                                </div>
+
+                                <!-- Column Headers -->
+                                <div class="grid grid-cols-12 gap-1.5 px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                    <div class="col-span-2 text-center" data-lang-key="colHeaderNum">#</div>
+                                    <div class="col-span-4" data-lang-key="colHeaderAmount">Amount</div>
+                                    <div class="col-span-3" data-lang-key="colHeaderRate">Rate %</div>
+                                    <div class="col-span-2" data-lang-key="colHeaderPeriod">Months</div>
+                                    <div class="col-span-1"></div>
+                                </div>
+
+                                <div id="collaterals-list" class="space-y-2">
+                                    <!-- Collateral rows dynamically rendered -->
+                                </div>
+
+                                <div class="pt-2 border-t border-indigo-200/60 dark:border-indigo-800/60 grid grid-cols-3 gap-2 text-center text-xs">
+                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg">
+                                        <span class="block text-[10px] text-gray-500 dark:text-gray-400 truncate" data-lang-key="totalCollateralLabel">Total Collateral</span>
+                                        <span id="summary-total-collateral" class="font-bold text-gray-800 dark:text-gray-200 select-text">-</span>
+                                    </div>
+                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg">
+                                        <span class="block text-[10px] text-gray-500 dark:text-gray-400 truncate" data-lang-key="maxLoanAllowedLabel">Max Loan (90%)</span>
+                                        <span id="summary-max-loan" class="font-bold text-indigo-600 dark:text-indigo-400 select-text">-</span>
+                                    </div>
+                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg">
+                                        <span class="block text-[10px] text-gray-500 dark:text-gray-400 truncate" data-lang-key="minLoanRateLabel">Min Rate (+2%)</span>
+                                        <span id="summary-min-rate" class="font-bold text-indigo-600 dark:text-indigo-400 select-text">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <label class="field-label">
                                 <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor"
@@ -2272,6 +2380,10 @@
                                     autocapitalize="off" spellcheck="false">
                             </div>
                             <p class="error-text hidden" id="error-amount" data-lang-key="invalidAmount">Please enter a valid amount.</p>
+                            <p class="text-xs text-amber-600 dark:text-amber-400 mt-1 hidden flex items-center gap-1 font-medium" id="warning-loan-amount">
+                                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                <span class="warning-text"></span>
+                            </p>
                         </div>
 
                         <div>
@@ -2293,9 +2405,13 @@
                                     autocapitalize="off" spellcheck="false">
                             </div>
                             <p class="error-text hidden" id="error-rate" data-lang-key="invalidRate">Please enter a valid rate.</p>
+                            <p class="text-xs text-amber-600 dark:text-amber-400 mt-1 hidden flex items-center gap-1 font-medium" id="warning-loan-rate">
+                                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                <span class="warning-text"></span>
+                            </p>
                         </div>
 
-                        <div>
+                        <div id="frequency-container" class="hidden">
                             <label class="field-label">
                                 <svg class="w-4 h-4 text-teal-500" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -2717,149 +2833,116 @@
 
                     <div id="self-sufficient-section"
                         class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
-                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3" data-lang-key="ssDescAdvanced">
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4 p-1">
+                            <p class="text-xs text-gray-500 dark:text-gray-400" data-lang-key="ssDescAdvanced">
                                 Calculate a self-paying loan backed by your CD.</p>
-                            <div class="grid grid-cols-2 gap-4 p-1">
-                                <div class="col-span-2">
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="ssBookingDateLabel" for="ss-booking-date-display">Booking Date:</label>
-                                    <div class="input-group relative">
-                                        <input type="text" inputmode="numeric" id="ss-booking-date-display"
-                                            class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
-                                            autocomplete="off">
-                                        <button type="button" id="ss-booking-date-picker-btn"
-                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
-                                            aria-label="Open date picker">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor"
-                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <input type="date" id="ss-booking-date-native"
-                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
-                                                tabindex="-1" aria-hidden="true">
-                                        </button>
+
+                            <!-- 1. Existing Certificates (CD1) -->
+                            <div class="p-3.5 bg-green-50/60 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-900/50 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                        </svg>
+                                        <span class="text-xs font-bold text-green-900 dark:text-green-200" data-lang-key="ssCd1SectionTitle">Existing Certificates (CD₁)</span>
                                     </div>
+                                    <button type="button" id="ss-add-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 py-1 px-2.5 rounded-lg bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                        <span data-lang-key="addCd1Btn">Add CD₁</span>
+                                    </button>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="ssCd1InterestDateLabel" for="ss-cd1-interest-date-display">CD₁ Next Interest Date:</label>
-                                    <div class="input-group relative">
-                                        <input type="text" inputmode="numeric" id="ss-cd1-interest-date-display"
-                                            class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
-                                            autocomplete="off">
-                                        <button type="button" id="ss-cd1-interest-date-picker-btn"
-                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
-                                            aria-label="Open date picker">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor"
-                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <input type="date" id="ss-cd1-interest-date-native"
-                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
-                                                tabindex="-1" aria-hidden="true">
-                                        </button>
+
+                                <div id="ss-cd1-list" class="space-y-2.5">
+                                    <!-- Dynamically rendered CD1 rows -->
+                                </div>
+                            </div>
+
+                            <!-- 2. New Certificate (CD2) -->
+                            <div class="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 space-y-3">
+                                <div class="flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200" data-lang-key="ssCd2SectionTitle">New Certificate (CD₂)</span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="td2RateLabel" for="td2-rate">CD₂ Rate (%):</label>
+                                        <div class="input-group" id="group-td2-rate">
+                                            <input type="text" inputmode="decimal" id="td2-rate" placeholder="19.0" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="ssCd2InterestDateLabel" for="ss-cd2-interest-date-display">CD₂ First Interest Date:</label>
-                                    <div class="input-group relative">
-                                        <input type="text" inputmode="numeric" id="ss-cd2-interest-date-display"
-                                            class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10"
-                                            autocomplete="off">
-                                        <button type="button" id="ss-cd2-interest-date-picker-btn"
-                                            class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"
-                                            aria-label="Open date picker">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor"
-                                                class="text-gray-400 pointer-events-none" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <input type="date" id="ss-cd2-interest-date-native"
-                                                class="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
-                                                tabindex="-1" aria-hidden="true">
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="tdAmountLabel">Your CD (CD₁):</label>
-                                    <div class="input-group" id="group-td-amount">
-                                        <input type="text" inputmode="decimal" id="td-amount" placeholder="Enter value"
-                                            class="text-input select-text" autocomplete="off" autocorrect="off"
-                                            autocapitalize="off" spellcheck="false">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="tdRateLabel">CD₁ Rate (%):</label>
-                                    <div class="input-group" id="group-td-rate">
-                                        <input type="text" inputmode="decimal" id="td-rate" placeholder="Enter value"
-                                            class="text-input select-text" autocomplete="off" autocorrect="off"
-                                            autocapitalize="off" spellcheck="false">
-                                    </div>
-                                    <p class="error-text hidden" id="error-td-rate" data-lang-key="maxRate">Max rate is 100%</p>
-                                </div>
-                                <div class="col-span-2">
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="td2RateLabel">CD₂ Rate (%):</label>
-                                    <div class="input-group" id="group-td2-rate">
-                                        <input type="text" inputmode="decimal" id="td2-rate" placeholder="Enter value"
-                                            class="text-input select-text" autocomplete="off" autocorrect="off"
-                                            autocapitalize="off" spellcheck="false">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="ssLoanRateLabel">Loan Rate (%):</label>
-                                    <div class="input-group" id="group-ss-loan-rate">
-                                        <input type="text" inputmode="decimal" id="ss-loan-rate"
-                                            placeholder="Enter value" class="text-input select-text" autocomplete="off"
-                                            autocorrect="off" autocapitalize="off" spellcheck="false">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="ssPeriodLabel">Period (months):</label>
-                                    <div class="input-group" id="group-ss-period">
-                                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="ss-loan-period"
-                                            placeholder="Enter value" class="text-input select-text" autocomplete="off"
-                                            autocorrect="off" autocapitalize="off" spellcheck="false">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="ssAdminFeesInputLabel">Admin Fees (%):</label>
-                                    <div class="input-group" id="group-ss-admin-fees">
-                                        <input type="text" inputmode="decimal" id="ss-admin-fees"
-                                            placeholder="Enter value" class="text-input select-text" autocomplete="off"
-                                            autocorrect="off" autocapitalize="off" spellcheck="false">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                                        data-lang-key="ssStampRateInputLabel">Stamp Rate (%):</label>
-                                    <div class="input-group" id="group-ss-stamp-rate">
-                                        <input type="text" inputmode="decimal" id="ss-stamp-rate"
-                                            placeholder="Enter value" class="text-input select-text" autocomplete="off"
-                                            autocorrect="off" autocapitalize="off" spellcheck="false">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssCd2InterestDateLabel" for="ss-cd2-interest-date-display">CD₂ First Interest Date:</label>
+                                        <div class="input-group relative">
+                                            <input type="text" inputmode="numeric" id="ss-cd2-interest-date-display" class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                                            <button type="button" id="ss-cd2-interest-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                <input type="date" id="ss-cd2-interest-date-native" class="absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" aria-hidden="true">
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="mt-4 flex justify-end p-1">
+
+                            <!-- 3. Loan Terms & Parameters -->
+                            <div class="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 space-y-3">
+                                <div class="flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200" data-lang-key="ssLoanTermsTitle">Loan Terms</span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssBookingDateLabel" for="ss-booking-date-display">Booking Date:</label>
+                                        <div class="input-group relative">
+                                            <input type="text" inputmode="numeric" id="ss-booking-date-display" class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                                            <button type="button" id="ss-booking-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                <input type="date" id="ss-booking-date-native" class="absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" aria-hidden="true">
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssLoanRateLabel" for="ss-loan-rate">Loan Rate (%):</label>
+                                        <div class="input-group" id="group-ss-loan-rate">
+                                            <input type="text" inputmode="decimal" id="ss-loan-rate" placeholder="21.0" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssPeriodLabel" for="ss-loan-period">Period (months):</label>
+                                        <div class="input-group" id="group-ss-period">
+                                            <input type="text" inputmode="numeric" pattern="[0-9]*" id="ss-loan-period" value="36" placeholder="36" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssAdminFeesInputLabel" for="ss-admin-fees">Admin Fees (%):</label>
+                                        <div class="input-group" id="group-ss-admin-fees">
+                                            <input type="text" inputmode="decimal" id="ss-admin-fees" value="1" placeholder="1" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssStampRateInputLabel" for="ss-stamp-rate">Stamp Rate (%):</label>
+                                        <div class="input-group" id="group-ss-stamp-rate">
+                                            <input type="text" inputmode="decimal" id="ss-stamp-rate" value="0.2" placeholder="0.2" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-2 p-1">
                                 <button type="button" id="self-sufficient-calc-btn"
-                                    class="w-full sm:w-auto px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all active:scale-95"
+                                    class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                                     data-lang-key="calculateBtn">
                                     Calculate
                                 </button>
                             </div>
-                            <p class="text-xs text-red-500 mt-2 hidden" id="error-self-sufficient"
+                            <p class="text-xs text-red-500 mt-1 px-1 hidden" id="error-self-sufficient"
                                 data-lang-key="errorCheckInputs">Please check input fields.</p>
                             <div id="self-sufficient-results"
                                 class="overflow-hidden transition-all duration-300 opacity-0" style="max-height:0">

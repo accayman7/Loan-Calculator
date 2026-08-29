@@ -579,6 +579,26 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
  */
 function solveTdLoan(td1, tdRate, loanRate, N, dates, stampRate, adminFees, td2Rate, freq, cd1AccrualDate, cd2AccrualDate) {
     if (!freq || freq < 1) freq = 1;
+
+    // Support multi-collateral array passed as td1
+    let totalCollateral = 0;
+    let totalMonthlyCollateralIncome = 0;
+    if (Array.isArray(td1)) {
+        td1.forEach(c => {
+            const a = safeParseFloat(c.amount) || 0;
+            const r = safeParseFloat(c.rate) || 0;
+            if (a > 0 && r > 0) {
+                totalCollateral += a;
+                totalMonthlyCollateralIncome += (a * r / 1200);
+            }
+        });
+        if (totalCollateral <= 0 || totalMonthlyCollateralIncome <= 0) {
+            return { valid: false };
+        }
+        tdRate = (totalMonthlyCollateralIncome * 1200) / totalCollateral;
+        td1 = totalCollateral;
+    }
+
     // Default td2Rate to tdRate if not provided
     if (td2Rate === undefined || td2Rate === null || isNaN(td2Rate)) td2Rate = tdRate;
     if (td1 <= 0 || tdRate <= 0 || loanRate <= 0 || N <= 0 || td2Rate <= 0) {
@@ -709,7 +729,10 @@ function solveTdLoan(td1, tdRate, loanRate, N, dates, stampRate, adminFees, td2R
                 m1_Payment: sched.m1_Payment,
                 firstInstBuffer: buffer,
                 availableCdInterest: availableCdInterest,
-                netLeftover: round2(netLoan - buffer - effectiveTd2)
+                netLeftover: round2(netLoan - buffer - effectiveTd2),
+                totalCollateral: td1,
+                maxAllowedLoan: round2(0.90 * td1),
+                exceedsCollateralLimit: grossLoan > (0.90 * td1 + 0.01)
             };
         }
     }

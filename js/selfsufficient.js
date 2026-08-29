@@ -77,13 +77,153 @@ function _ssParseNativeDate(isoStr) {
  * @param {Function} animateToggleBounce - bounce animation helper
  * @param {Function} appCalculateFn - the appCalculate function for use after solver
  */
+let ssCd1List = [
+    { id: 1, amount: '', rate: '', dateISO: '' }
+];
+let nextSsCd1Id = 2;
+let ssTd2RateManuallyEdited = false;
+let ssLoanRateManuallyEdited = false;
+
+function renderSsCd1List(newIdToAnimate = null) {
+    const listEl = document.getElementById('ss-cd1-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    ssCd1List.forEach((cd, index) => {
+        const card = document.createElement('div');
+        card.id = `ss-cd1-card-${cd.id}`;
+        card.className = `p-2.5 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-900/60 shadow-xs transition-all space-y-2 ${cd.id === newIdToAnimate ? 'item-enter' : ''}`;
+
+        const cdLabel = `CD₁ #${index + 1}`;
+
+        card.innerHTML = `
+            <div class="flex items-center justify-between pb-1 border-b border-gray-100 dark:border-gray-800">
+                <span class="text-xs font-bold text-green-800 dark:text-green-300">${cdLabel}</span>
+                ${ssCd1List.length > 1 ? `
+                <button type="button" class="ss-cd-remove-btn p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" data-id="${cd.id}" title="${t(_ssAppState?.lang || 'en', 'removeCollateralBtn')}" aria-label="${t(_ssAppState?.lang || 'en', 'removeCollateralBtn')}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+                ` : ''}
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <div class="sm:col-span-4">
+                    <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5" data-lang-key="colHeaderAmount">Amount</label>
+                    <div class="input-group py-1 px-2">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text ss-cd-amount" data-id="${cd.id}" placeholder="100,000" value="${cd.amount}">
+                    </div>
+                </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5" data-lang-key="colHeaderRate">Rate %</label>
+                    <div class="input-group py-1 px-2">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text ss-cd-rate" data-id="${cd.id}" placeholder="19.0" value="${cd.rate}">
+                    </div>
+                </div>
+                <div class="sm:col-span-5">
+                    <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5" data-lang-key="cdInterestDateShort">Next Interest Date</label>
+                    <div class="input-group relative py-1 px-2">
+                        <input type="text" inputmode="numeric" class="text-input text-xs select-text z-10 ss-cd-date-display" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                        <button type="button" class="ss-cd-picker-btn absolute end-1 top-1 bottom-1 w-7 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors" data-id="${cd.id}" aria-label="Open date picker">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <input type="date" class="ss-cd-date-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const amountInput = card.querySelector('.ss-cd-amount');
+        const rateInput = card.querySelector('.ss-cd-rate');
+        const dateDisplay = card.querySelector('.ss-cd-date-display');
+        const dateNative = card.querySelector('.ss-cd-date-native');
+        const pickerBtn = card.querySelector('.ss-cd-picker-btn');
+        const removeBtn = card.querySelector('.ss-cd-remove-btn');
+
+        // Seed date if available
+        if (cd.dateISO && dateNative) {
+            dateNative.value = cd.dateISO;
+            const p = cd.dateISO.split('-');
+            if (p.length === 3 && dateDisplay) {
+                dateDisplay.value = (typeof dateBuildValue === 'function')
+                    ? dateBuildValue(p[2], p[1], p[0], false)
+                    : `${p[2]}/${p[1]}/${p[0]}`;
+                dateDisplay.dataset.iso = cd.dateISO;
+            }
+        }
+
+        if (amountInput) {
+            amountInput.addEventListener('input', (e) => {
+                if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
+                cd.amount = e.target.value;
+            });
+        }
+
+        if (rateInput) {
+            rateInput.addEventListener('input', (e) => {
+                if (typeof validateRateInput === 'function') validateRateInput(e.target);
+                cd.rate = e.target.value;
+            });
+            rateInput.addEventListener('blur', (e) => {
+                if (typeof formatRateInputBlur === 'function') formatRateInputBlur(e.target);
+                cd.rate = e.target.value;
+            });
+        }
+
+        if (dateDisplay && dateNative && typeof initDateInput === 'function') {
+            initDateInput(dateDisplay, dateNative);
+            dateNative.addEventListener('change', () => {
+                cd.dateISO = dateNative.value;
+            });
+        }
+
+        if (pickerBtn && dateDisplay && dateNative) {
+            pickerBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                if (typeof openDatePicker === 'function') {
+                    openDatePicker(dateDisplay, _ssAppState?.lang || 'en', (selectedDate) => {
+                        if (selectedDate) {
+                            const y = selectedDate.getFullYear();
+                            const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                            const d = String(selectedDate.getDate()).padStart(2, '0');
+                            dateDisplay.value = (typeof dateBuildValue === 'function')
+                                ? dateBuildValue(d, m, String(y), false)
+                                : `${d}/${m}/${y}`;
+                            dateNative.value = `${y}-${m}-${d}`;
+                            cd.dateISO = dateNative.value;
+                        }
+                    });
+                } else {
+                    dateNative.showPicker();
+                }
+            });
+        }
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                card.classList.remove('item-enter');
+                card.classList.add('item-exit');
+                setTimeout(() => {
+                    ssCd1List = ssCd1List.filter(c => c.id !== cd.id);
+                    renderSsCd1List();
+                }, 240);
+            });
+        }
+
+        listEl.appendChild(card);
+    });
+}
+
+/**
+ * Initialize self-sufficient mode: wire toggle, calc button, auto-populate
+ * fields, and set defaults. Must be called once from app.js setupEventListeners.
+ */
 function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounce, appCalculateFn) {
     _ssAppState = appState;
     _ssDateInputs = dateInputs;
     _ssFormInputs = formInputs;
     _ssAppCalculate = appCalculateFn;
-
-    const tdRateInput = document.getElementById('td-rate');
 
     // --- Toggle expand/collapse ---
     const ssToggle = document.getElementById('self-sufficient-toggle');
@@ -97,6 +237,14 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
                 ssSection.classList.remove('max-h-0', 'opacity-0');
                 ssSection.style.maxHeight = '2400px';
                 ssSection.classList.add('opacity-100');
+
+                // Self-Sufficient mode is inherently a Secured Loan
+                if (typeof window.setLoanType === 'function') {
+                    window.setLoanType('secured');
+                } else {
+                    const securedBtn = document.getElementById('loan-type-secured-btn');
+                    if (securedBtn) securedBtn.click();
+                }
             } else {
                 ssSection.classList.add('max-h-0', 'opacity-0');
                 ssSection.style.maxHeight = '0';
@@ -114,32 +262,33 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
         });
     }
 
-    // --- Auto-populate TD₂ Rate from TD₁ Rate ---
-    const ssTd2RateInput = document.getElementById('td2-rate');
-    let td2RateManuallyEdited = false;
-    if (tdRateInput && ssTd2RateInput) {
-        tdRateInput.addEventListener('input', () => {
-            if (!td2RateManuallyEdited) {
-                ssTd2RateInput.value = tdRateInput.value;
-            }
-        });
-        ssTd2RateInput.addEventListener('input', () => {
-            td2RateManuallyEdited = true;
+    // --- Add CD1 Button ---
+    const addCd1Btn = document.getElementById('ss-add-cd-btn');
+    if (addCd1Btn) {
+        addCd1Btn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('light');
+            const bkISO = document.getElementById('ss-booking-date-native')?.value;
+            const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
+            const defaultDate = bkDate ? ssDefaultCdInterestDate(bkDate) : new Date();
+            const y = defaultDate.getFullYear();
+            const m = String(defaultDate.getMonth() + 1).padStart(2, '0');
+            const d = String(defaultDate.getDate()).padStart(2, '0');
+            
+            const newId = nextSsCd1Id++;
+            ssCd1List.push({ id: newId, amount: '', rate: '', dateISO: `${y}-${m}-${d}` });
+            renderSsCd1List(newId);
         });
     }
 
-    // --- Auto-populate SS Loan Rate = TD₁ Rate + 2% ---
-    const ssLoanRateInput = document.getElementById('ss-loan-rate');
-    let ssLoanRateManuallyEdited = false;
-    if (tdRateInput && ssLoanRateInput) {
-        tdRateInput.addEventListener('input', () => {
-            if (!ssLoanRateManuallyEdited) {
-                const tdVal = parseFloat(tdRateInput.value);
-                if (!isNaN(tdVal) && tdVal > 0) {
-                    ssLoanRateInput.value = String(tdVal + 2);
-                }
-            }
+    // Track manual edits on CD2 Rate and Loan Rate
+    const ssTd2RateInput = document.getElementById('td2-rate');
+    if (ssTd2RateInput) {
+        ssTd2RateInput.addEventListener('input', () => {
+            ssTd2RateManuallyEdited = true;
         });
+    }
+    const ssLoanRateInput = document.getElementById('ss-loan-rate');
+    if (ssLoanRateInput) {
         ssLoanRateInput.addEventListener('input', () => {
             ssLoanRateManuallyEdited = true;
         });
@@ -172,12 +321,10 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
         }
     }
 
-    // Wire the text input (DD/MM/YYYY parsing)
     if (ssBDDisplay && ssBDNative && typeof initDateInput === 'function') {
         initDateInput(ssBDDisplay, ssBDNative);
     }
 
-    // Wire calendar picker button
     const ssBDPickerBtn = document.getElementById('ss-booking-date-picker-btn');
     if (ssBDPickerBtn && ssBDDisplay && ssBDNative) {
         ssBDPickerBtn.addEventListener('click', () => {
@@ -201,99 +348,100 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
         });
     }
 
-    // --- CD₁ & CD₂ Interest Date fields ---
-    const ssCD1Display = document.getElementById('ss-cd1-interest-date-display');
-    const ssCD1Native  = document.getElementById('ss-cd1-interest-date-native');
+    // --- CD₂ Interest Date field ---
     const ssCD2Display = document.getElementById('ss-cd2-interest-date-display');
     const ssCD2Native  = document.getElementById('ss-cd2-interest-date-native');
 
-    // Helper: seed both CD interest dates from a given booking Date object
-    function seedCdDatesFromBooking(bkDate) {
+    function seedCd2DateFromBooking(bkDate) {
         const cdDate = ssDefaultCdInterestDate(bkDate);
-        if (ssCD1Native && !ssCD1Native.value) _ssSeedCdDateField(cdDate, ssCD1Native, ssCD1Display);
         if (ssCD2Native && !ssCD2Native.value) _ssSeedCdDateField(cdDate, ssCD2Native, ssCD2Display);
     }
 
-    // Seed on init from current booking date
     if (ssBDNative && ssBDNative.value) {
         const bd = _ssParseNativeDate(ssBDNative.value);
-        if (bd) seedCdDatesFromBooking(bd);
+        if (bd) seedCd2DateFromBooking(bd);
     }
 
-    // Re-seed (only if not manually edited) whenever booking date changes
     if (ssBDNative) {
         ssBDNative.addEventListener('change', () => {
             const bd = _ssParseNativeDate(ssBDNative.value);
             if (!bd) return;
-            // Always re-seed both CD dates when booking date changes
             const cdDate = ssDefaultCdInterestDate(bd);
-            _ssSeedCdDateField(cdDate, ssCD1Native, ssCD1Display);
             _ssSeedCdDateField(cdDate, ssCD2Native, ssCD2Display);
+
+            // Also re-seed unedited CD1 dates
+            const y = cdDate.getFullYear();
+            const m = String(cdDate.getMonth() + 1).padStart(2, '0');
+            const d = String(cdDate.getDate()).padStart(2, '0');
+            ssCd1List.forEach(c => {
+                if (!c.dateISO || c.dateISO === '') c.dateISO = `${y}-${m}-${d}`;
+            });
+            renderSsCd1List();
         });
     }
 
-    // Wire text inputs (DD/MM/YYYY parsing)
-    if (ssCD1Display && ssCD1Native && typeof initDateInput === 'function') initDateInput(ssCD1Display, ssCD1Native);
     if (ssCD2Display && ssCD2Native && typeof initDateInput === 'function') initDateInput(ssCD2Display, ssCD2Native);
 
-    // Wire picker buttons
-    function wirePickerBtn(btnId, displayEl, nativeEl) {
-        const btn = document.getElementById(btnId);
-        if (!btn || !displayEl || !nativeEl) return;
-        btn.addEventListener('click', () => {
+    const ssCD2PickerBtn = document.getElementById('ss-cd2-interest-date-picker-btn');
+    if (ssCD2PickerBtn && ssCD2Display && ssCD2Native) {
+        ssCD2PickerBtn.addEventListener('click', () => {
             if (typeof haptic !== 'undefined') haptic('light');
             if (typeof openDatePicker === 'function') {
-                openDatePicker(displayEl, _ssAppState.lang, (selectedDate) => {
+                openDatePicker(ssCD2Display, _ssAppState.lang, (selectedDate) => {
                     if (selectedDate) {
                         const y = selectedDate.getFullYear();
                         const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
                         const d = String(selectedDate.getDate()).padStart(2, '0');
-                        displayEl.value = (typeof dateBuildValue === 'function')
+                        ssCD2Display.value = (typeof dateBuildValue === 'function')
                             ? dateBuildValue(d, m, String(y), false)
                             : `${d}/${m}/${y}`;
-                        nativeEl.value = `${y}-${m}-${d}`;
-                        nativeEl.dispatchEvent(new Event('change'));
+                        ssCD2Native.value = `${y}-${m}-${d}`;
+                        ssCD2Native.dispatchEvent(new Event('change'));
                     }
                 });
             } else {
-                nativeEl.showPicker();
+                ssCD2Native.showPicker();
             }
         });
     }
-    wirePickerBtn('ss-booking-date-picker-btn', ssBDDisplay, ssBDNative);
-    wirePickerBtn('ss-cd1-interest-date-picker-btn', ssCD1Display, ssCD1Native);
-    wirePickerBtn('ss-cd2-interest-date-picker-btn', ssCD2Display, ssCD2Native);
+
+    // Initial render of CD1 list with default date
+    const initialBkDate = (ssBDNative && ssBDNative.value) ? _ssParseNativeDate(ssBDNative.value) : new Date();
+    const initialCdDate = initialBkDate ? ssDefaultCdInterestDate(initialBkDate) : new Date();
+    const iy = initialCdDate.getFullYear();
+    const im = String(initialCdDate.getMonth() + 1).padStart(2, '0');
+    const id = String(initialCdDate.getDate()).padStart(2, '0');
+    ssCd1List[0].dateISO = `${iy}-${im}-${id}`;
+    renderSsCd1List();
 }
 
 /**
  * Core self-sufficient calculation and UI update.
- * Called on calc button press and after main appCalculate.
- *
- * @param {boolean} showError - Whether to show error messages
  */
 function updateSelfSufficient(showError = false) {
     if (!document.getElementById('self-sufficient-toggle').checked) return;
-    // Skip if called from appCalculate triggered by the solver (prevents hiding results)
     if (updateSelfSufficient._fromSolver) return;
 
     const ssResults = document.getElementById('self-sufficient-results');
     const ssError = document.getElementById('error-self-sufficient');
-    const tdRateInput = document.getElementById('td-rate');
-    const tdAmountInput = document.getElementById('td-amount');
     const td2RateInput = document.getElementById('td2-rate');
     const ssLoanRateInput = document.getElementById('ss-loan-rate');
     const ssLoanPeriodInput = document.getElementById('ss-loan-period');
 
-    const tdR = safeParseFloat(tdRateInput.value);
-    const td1 = safeParseFloat(tdAmountInput.value);
-    const td2R = safeParseFloat(td2RateInput.value);
+    const td2R = safeParseFloat(td2RateInput?.value);
+    const loanRate = safeParseFloat(ssLoanRateInput?.value);
+    const loanPeriod = parseInt(ssLoanPeriodInput?.value);
 
-    // 1. Read loan parameters from self-sufficient local fields
-    const loanRate = safeParseFloat(ssLoanRateInput.value);
-    const loanPeriod = parseInt(ssLoanPeriodInput.value);
+    // 1. Validate CD1 collaterals
+    const validCd1s = ssCd1List
+        .map(c => ({
+            amount: safeParseFloat(c.amount) || 0,
+            rate: safeParseFloat(c.rate) || 0,
+            date: c.dateISO ? _ssParseNativeDate(c.dateISO) : null
+        }))
+        .filter(c => c.amount > 0 && c.rate > 0);
 
-    // 2. Validate loan rate & period
-    if (isNaN(loanRate) || loanRate <= 0 || isNaN(loanPeriod) || loanPeriod <= 0) {
+    if (validCd1s.length === 0 || isNaN(loanRate) || loanRate <= 0 || isNaN(loanPeriod) || loanPeriod <= 0 || isNaN(td2R) || td2R <= 0) {
         if (ssResults) {
             ssResults.classList.add('opacity-0');
             ssResults.classList.remove('opacity-100');
@@ -306,49 +454,17 @@ function updateSelfSufficient(showError = false) {
         return;
     }
 
-    // 3. Check TD rates
-    if (tdRateInput.value === '' || tdR <= 0 || td2RateInput.value === '' || td2R <= 0) {
-        if (ssResults) {
-            ssResults.classList.add('opacity-0');
-            ssResults.classList.remove('opacity-100');
-            ssResults.style.maxHeight = '0';
-        }
-        if (showError && ssError) {
-            ssError.textContent = t(_ssAppState.lang, 'errorCheckInputs');
-            ssError.classList.remove('hidden');
-        }
-        return;
-    }
+    const maxCd1Rate = Math.max(...validCd1s.map(c => c.rate));
 
-    // 4. Check TD amount (required for solver)
-    if (tdAmountInput.value === '' || isNaN(td1) || td1 <= 0) {
-        if (ssResults) {
-            ssResults.classList.add('opacity-0');
-            ssResults.classList.remove('opacity-100');
-            ssResults.style.maxHeight = '0';
-        }
-        if (showError && ssError) {
-            ssError.textContent = t(_ssAppState.lang, 'ssErrorTdRequired');
-            ssError.classList.remove('hidden');
-        }
-        return;
-    }
-
-    // 5. Build dates - always use advanced (real dates) for accurate results
+    // 2. Build dates
     const isAdvanced = true;
-
-    // Booking date: prefer SS-local field, then main startNative, then today
     let bookingDate = new Date();
     const ssBDNative = document.getElementById('ss-booking-date-native');
     if (ssBDNative && ssBDNative.value) {
         const parts = ssBDNative.value.split('-');
         bookingDate = new Date(parts[0], parts[1] - 1, parts[2]);
-    } else if (_ssDateInputs.startNative.value) {
-        const parts = _ssDateInputs.startNative.value.split('-');
-        bookingDate = new Date(parts[0], parts[1] - 1, parts[2]);
     }
 
-    // 1st installment date: use main firstNative if set, else 5th of 2nd month after booking
     let m1_Date;
     if (_ssDateInputs.firstNative.value) {
         const parts = _ssDateInputs.firstNative.value.split('-');
@@ -359,20 +475,22 @@ function updateSelfSufficient(showError = false) {
 
     const stampRate = parseFloat(document.getElementById('ss-stamp-rate').value) || 0;
     const adminFees = parseFloat(document.getElementById('ss-admin-fees').value) || 0;
-    const freq = parseInt(document.getElementById('installment-freq').value) || 1;
+    const freq = parseInt(document.getElementById('installment-freq')?.value) || 1;
 
-    // 6. Call solver
+    // 3. Call solver with multi-CD1 array
     if (typeof solveTdLoan !== 'function') {
         console.error('solveTdLoan not found');
         return;
     }
 
+    const cd1FirstDate = validCd1s[0]?.date || null;
+    const cd2FirstDate = _ssParseNativeDate(document.getElementById('ss-cd2-interest-date-native')?.value);
+
     const solution = solveTdLoan(
-        td1, tdR, loanRate, loanPeriod,
+        validCd1s, maxCd1Rate, loanRate, loanPeriod,
         { bookingDate, m1_Date, isAdvanced },
         stampRate, adminFees, td2R, freq,
-        _ssParseNativeDate(document.getElementById('ss-cd1-interest-date-native')?.value),
-        _ssParseNativeDate(document.getElementById('ss-cd2-interest-date-native')?.value)
+        cd1FirstDate, cd2FirstDate
     );
 
     if (!solution.valid) {
@@ -388,7 +506,20 @@ function updateSelfSufficient(showError = false) {
         return;
     }
 
-    // 7. Display results
+    if (solution.exceedsCollateralLimit) {
+        if (ssResults) {
+            ssResults.classList.add('opacity-0');
+            ssResults.classList.remove('opacity-100');
+            ssResults.style.maxHeight = '0';
+        }
+        if (showError && ssError) {
+            ssError.textContent = t(_ssAppState.lang, 'ssErrorExceeds90Collateral');
+            ssError.classList.remove('hidden');
+        }
+        return;
+    }
+
+    // 4. Display results
     if (ssResults) {
         ssResults.classList.remove('opacity-0');
         ssResults.classList.add('opacity-100');
@@ -400,7 +531,6 @@ function updateSelfSufficient(showError = false) {
     document.getElementById('ss-td2-display').textContent = fmt(solution.td2);
     document.getElementById('ss-admin-fees-display').textContent = fmt(solution.adminFeesAmount);
 
-    // CD interest received before first installment
     const cdBeforeM1El = document.getElementById('ss-cd-interest-before-m1-display');
     if (cdBeforeM1El) cdBeforeM1El.textContent = fmt(solution.availableCdInterest || 0);
 
@@ -411,7 +541,6 @@ function updateSelfSufficient(showError = false) {
     surplusEl.textContent = fmt(solution.monthlySurplus);
     surplusEl.className = `font-bold select-text ${solution.monthlySurplus >= 0 ? 'text-green-600' : 'text-red-600'}`;
 
-    // First Installment Reserve (buffer held from loan to cover month 1 extra)
     const bufferRow = document.getElementById('ss-first-inst-buffer-row');
     const bufferDisplay = document.getElementById('ss-first-inst-buffer-display');
     if (bufferRow && bufferDisplay) {
@@ -425,7 +554,6 @@ function updateSelfSufficient(showError = false) {
         }
     }
 
-    // Net Leftover: cash remaining after admin fees, buffer, and CD₂ are deducted
     const leftoverRow = document.getElementById('ss-net-leftover-row');
     const leftoverDisplay = document.getElementById('ss-net-leftover-display');
     if (leftoverRow && leftoverDisplay) {
@@ -439,9 +567,7 @@ function updateSelfSufficient(showError = false) {
         }
     }
 
-    // Total stamp cost over the loan term
     document.getElementById('ss-total-stamp-display').textContent = fmt(solution.totalStamp);
-
     document.getElementById('ss-total-tds-display').textContent = fmt(solution.totalTdsAtEnd);
     document.getElementById('ss-simple-alt-display').textContent = fmt(solution.simpleInterestAlt);
 
@@ -449,20 +575,14 @@ function updateSelfSufficient(showError = false) {
     benefitEl.textContent = fmt(solution.netBenefit);
     benefitEl.className = `font-bold text-base select-text ${solution.netBenefit >= 0 ? 'text-green-600' : 'text-red-600'}`;
 
-    // Show effective rate vs simple TD rate
     const vsLabel = _ssAppState.lang === 'ar' ? 'مقابل' : 'vs';
-    document.getElementById('ss-effective-rate-display').textContent = solution.effectiveRate.toFixed(2) + '%  (' + vsLabel + ' ' + tdR.toFixed(2) + '%)';
+    document.getElementById('ss-effective-rate-display').textContent = solution.effectiveRate.toFixed(2) + '%  (' + vsLabel + ' ' + maxCd1Rate.toFixed(2) + '%)';
 
-    // 8. Auto-fill gross loan into main calculator and trigger full calculation
-    //    Only when the user explicitly clicks the SS Calculate button (showError=true).
-    //    When called passively from appCalculate (showError=false), skip auto-fill
-    //    so manually-edited loan details are not overwritten.
+    // 5. Auto-fill gross loan into main calculator when user clicked SS Calculate button
     if (showError) {
         _ssFormInputs.rate.value = String(loanRate);
         _ssFormInputs.period.value = String(loanPeriod);
 
-        // Sync SS booking date → main Start Date so the full amortization
-        // schedule uses the correct booking date (triggers firstNative auto-update)
         const ssBDNativeSync = document.getElementById('ss-booking-date-native');
         if (ssBDNativeSync && ssBDNativeSync.value && _ssDateInputs.startNative) {
             _ssDateInputs.startNative.value = ssBDNativeSync.value;
@@ -473,17 +593,12 @@ function updateSelfSufficient(showError = false) {
             _ssFormInputs.amount.value = String(solution.grossLoan);
             if (typeof formatCurrencyInput === 'function') formatCurrencyInput(_ssFormInputs.amount);
         }
-        // Trigger main calculation with guard to prevent recursive SS update
-        // Must set _fromSolver BEFORE advToggle dispatch, because the toggle's
-        // change handler calls appCalculate() synchronously
         updateSelfSufficient._fromSolver = true;
         try {
-            // Also sync admin fees and stamp rate to main calculator
             const mainAdminFees = document.getElementById('admin-fees');
             const mainStampRate = document.getElementById('stamp-rate');
             if (mainAdminFees) mainAdminFees.value = adminFees > 0 ? String(adminFees) : '';
             if (mainStampRate) mainStampRate.value = stampRate > 0 ? String(stampRate) : '';
-            // Enable advanced options so main calculator uses same dates/fees
             const advToggle = document.getElementById('advanced-toggle');
             if (advToggle && !advToggle.checked) {
                 advToggle.checked = true;
@@ -494,66 +609,18 @@ function updateSelfSufficient(showError = false) {
             updateSelfSufficient._fromSolver = false;
         }
 
-        // After appCalculate fills the main form inputs, the browser may scroll
-        // to the focused loan-amount field (top of page). Restore focus to the
-        // SS results panel so the user stays where they were on mobile.
-        //
-        // When the soft keyboard was open, it dismisses on calculate and causes
-        // a visualViewport resize. If we scroll before the keyboard is fully gone
-        // the viewport is still compressed and scrollIntoView lands in the middle.
-        // Strategy: if keyboard is visible, debounce on visualViewport resize events
-        // and scroll only once the keyboard has fully closed (resize settles).
         if (ssResults) {
             const doScroll = () => {
-                // Compute clearance: fixed nav height + 8px gap.
-                // If the success toast is currently visible, extend the offset
-                // so the results appear below it rather than behind it.
                 const navEl = document.querySelector('nav');
                 const navH  = navEl ? navEl.offsetHeight : 0;
-
                 const toastEl = document.getElementById('message-box');
-                const toastVisible = toastEl &&
-                    !toastEl.classList.contains('hidden') &&
-                    toastEl.classList.contains('opacity-100');
-                const toastBottom = toastVisible
-                    ? toastEl.getBoundingClientRect().bottom + 8
-                    : 0;
-
+                const toastVisible = toastEl && !toastEl.classList.contains('hidden') && toastEl.classList.contains('opacity-100');
+                const toastBottom = toastVisible ? toastEl.getBoundingClientRect().bottom + 8 : 0;
                 const clearance = Math.max(navH + 8, toastBottom);
                 const top = ssResults.getBoundingClientRect().top + window.scrollY - clearance;
                 window.scrollTo({ top, behavior: 'smooth' });
             };
-
-            const vv = window.visualViewport;
-            const keyboardHeight = vv ? (window.innerHeight - vv.height) : 0;
-
-            if (vv && keyboardHeight > 100) {
-                // Keyboard is open — wait for it to fully close before scrolling.
-                // visualViewport fires resize continuously as the keyboard animates.
-                // We debounce with 80 ms to catch the "settled" moment.
-                let debounceTimer;
-                const onVVResize = () => {
-                    clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(() => {
-                        vv.removeEventListener('resize', onVVResize);
-                        doScroll();
-                    }, 80);
-                };
-                vv.addEventListener('resize', onVVResize);
-
-                // Safety: scroll unconditionally after 750 ms in case
-                // the resize event never fires (e.g. keyboard already gone).
-                setTimeout(() => {
-                    vv.removeEventListener('resize', onVVResize);
-                    clearTimeout(debounceTimer);
-                    doScroll();
-                }, 750);
-            } else {
-                // No keyboard visible (desktop or mobile without keyboard).
-                // Use a 300 ms delay instead of requestAnimationFrame so we fire
-                // AFTER appCalculate's async smooth-scroll to the summary section.
-                setTimeout(doScroll, 300);
-            }
+            setTimeout(doScroll, 300);
         }
     }
 }
@@ -563,27 +630,50 @@ function updateSelfSufficient(showError = false) {
  * Called from resetApp in app.js.
  */
 function resetSelfSufficient() {
-    document.getElementById('td-rate').value = '';
-    document.getElementById('td-amount').value = '';
-    document.getElementById('td2-rate').value = '';
-    document.getElementById('ss-loan-rate').value = '';
-    document.getElementById('ss-loan-period').value = '36';
-    document.getElementById('ss-admin-fees').value = '1';
-    document.getElementById('ss-stamp-rate').value = '0.2';
+    const ssTd2RateInput = document.getElementById('td2-rate');
+    const ssLoanRateInput = document.getElementById('ss-loan-rate');
+    const ssLoanPeriodInput = document.getElementById('ss-loan-period');
+    const ssAdminFeesInput = document.getElementById('ss-admin-fees');
+    const ssStampRateInput = document.getElementById('ss-stamp-rate');
 
-    // Clear SS booking date — will be re-seeded with today on next initSelfSufficient call
+    if (ssTd2RateInput) ssTd2RateInput.value = '';
+    if (ssLoanRateInput) ssLoanRateInput.value = '';
+    if (ssLoanPeriodInput) ssLoanPeriodInput.value = '36';
+    if (ssAdminFeesInput) ssAdminFeesInput.value = '1';
+    if (ssStampRateInput) ssStampRateInput.value = '0.2';
+
+    ssTd2RateManuallyEdited = false;
+    ssLoanRateManuallyEdited = false;
+
+    // Re-seed SS booking date with today
     const ssBDNative  = document.getElementById('ss-booking-date-native');
     const ssBDDisplay = document.getElementById('ss-booking-date-display');
-    if (ssBDNative)  ssBDNative.value  = '';
-    if (ssBDDisplay) ssBDDisplay.value = '';
+    const today = new Date();
+    const ty = today.getFullYear();
+    const tm = String(today.getMonth() + 1).padStart(2, '0');
+    const td = String(today.getDate()).padStart(2, '0');
+    const todayISO = `${ty}-${tm}-${td}`;
+    if (ssBDNative)  ssBDNative.value  = todayISO;
+    if (ssBDDisplay) {
+        ssBDDisplay.value = (typeof dateBuildValue === 'function')
+            ? dateBuildValue(td, tm, String(ty), false)
+            : `${td}/${tm}/${ty}`;
+        ssBDDisplay.dataset.iso = todayISO;
+    }
 
-    // Clear CD interest date fields
-    ['ss-cd1-interest-date-native', 'ss-cd2-interest-date-native'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.value = '';
-    });
-    ['ss-cd1-interest-date-display', 'ss-cd2-interest-date-display'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.value = '';
-    });
+    // Re-seed CD2 interest date field from today's booking date
+    const cdDate = ssDefaultCdInterestDate(today);
+    const cy = cdDate.getFullYear();
+    const cm = String(cdDate.getMonth() + 1).padStart(2, '0');
+    const cd = String(cdDate.getDate()).padStart(2, '0');
+    _ssSeedCdDateField(cdDate, document.getElementById('ss-cd2-interest-date-native'), document.getElementById('ss-cd2-interest-date-display'));
+
+    // Reset CD1 list to 1 empty item seeded with default date
+    ssCd1List = [
+        { id: 1, amount: '', rate: '', dateISO: `${cy}-${cm}-${cd}` }
+    ];
+    nextSsCd1Id = 2;
+    renderSsCd1List();
 
     document.getElementById('self-sufficient-toggle').checked = false;
     document.getElementById('self-sufficient-toggle').dispatchEvent(new Event('change'));

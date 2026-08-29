@@ -49,11 +49,24 @@
     // --- Local State & Utils ---
     const AppState = {
         activeKey: 'installment', // Default
+        loanType: 'unsecured',
         lang: 'en',
         theme: 'system',
         lastRes: {},
         schedule: []
     };
+
+    // Multi-collateral system state
+    let collaterals = [
+        { id: 1, amount: '', rate: '', period: '36' }
+    ];
+    let nextCollateralId = 2;
+
+    window.getCollaterals = () => collaterals.map(c => ({
+        amount: safeParseFloat(c.amount) || 0,
+        rate: safeParseFloat(c.rate) || 0,
+        period: parseInt(c.period) || 36
+    }));
 
 
     // Use global fmt from logic.js if available, else fallback
@@ -182,6 +195,7 @@
         // 7. Setup Event Listeners
         setupEventListeners();
         setupMobileKeyboard();
+        setLoanType('unsecured');
 
         // 8. Initialize Gestures
         if (typeof initSwipeToClose === 'function') initSwipeToClose();
@@ -196,6 +210,238 @@
     });
 
     // --- Helper Logic ---
+
+    function setLoanType(type) {
+        AppState.loanType = type;
+        const unsecuredBtn = document.getElementById('loan-type-unsecured-btn');
+        const securedBtn = document.getElementById('loan-type-secured-btn');
+        const collateralSection = document.getElementById('collateral-section');
+        const adminFeesInput = document.getElementById('admin-fees');
+        const freqContainer = document.getElementById('frequency-container');
+        const freqSel = document.getElementById('installment-freq');
+
+        if (type === 'secured') {
+            if (unsecuredBtn) {
+                unsecuredBtn.className = 'loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+            }
+            if (securedBtn) {
+                securedBtn.className = 'loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
+            }
+            if (collateralSection) {
+                collateralSection.classList.remove('max-h-0', 'opacity-0');
+                collateralSection.style.maxHeight = '1200px';
+                collateralSection.classList.add('opacity-100');
+            }
+            if (freqContainer) {
+                freqContainer.classList.remove('hidden');
+            }
+            if (adminFeesInput) {
+                adminFeesInput.value = '1';
+            }
+            renderCollaterals();
+        } else {
+            if (unsecuredBtn) {
+                unsecuredBtn.className = 'loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
+            }
+            if (securedBtn) {
+                securedBtn.className = 'loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+            }
+            if (collateralSection) {
+                collateralSection.classList.add('max-h-0', 'opacity-0');
+                collateralSection.style.maxHeight = '0';
+                collateralSection.classList.remove('opacity-100');
+            }
+            if (freqContainer) {
+                freqContainer.classList.add('hidden');
+            }
+            if (freqSel && freqSel.value !== '1') {
+                freqSel.value = '1';
+                freqSel.dispatchEvent(new Event('change'));
+            }
+            if (adminFeesInput) {
+                adminFeesInput.value = '3';
+            }
+            const wAmount = document.getElementById('warning-loan-amount');
+            const wRate = document.getElementById('warning-loan-rate');
+            if (wAmount) wAmount.classList.add('hidden');
+            if (wRate) wRate.classList.add('hidden');
+        }
+    }
+    window.setLoanType = setLoanType;
+
+    function renderCollaterals(newIdToAnimate = null) {
+        const listEl = document.getElementById('collaterals-list');
+        if (!listEl) return;
+
+        listEl.innerHTML = '';
+        collaterals.forEach((col, index) => {
+            const row = document.createElement('div');
+            row.id = `col-row-${col.id}`;
+            row.className = `grid grid-cols-12 gap-1.5 items-center p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 transition-all ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
+            
+            const colLabel = `CD ${index + 1}`;
+            
+            row.innerHTML = `
+                <div class="col-span-2 text-xs font-bold text-gray-600 dark:text-gray-300 text-center">${colLabel}</div>
+                <div class="col-span-4">
+                    <div class="input-group py-1 px-1.5">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input" data-id="${col.id}" placeholder="100,000" value="${col.amount}">
+                    </div>
+                </div>
+                <div class="col-span-3">
+                    <div class="input-group py-1 px-1.5">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input" data-id="${col.id}" placeholder="19.0" value="${col.rate}">
+                    </div>
+                </div>
+                <div class="col-span-2">
+                    <div class="input-group py-1 px-1.5">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="text-input text-xs select-text col-period-input" data-id="${col.id}" placeholder="36" value="${col.period || '36'}">
+                    </div>
+                </div>
+                <div class="col-span-1 flex justify-center">
+                    ${collaterals.length > 1 ? `
+                    <button type="button" class="col-remove-btn p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" data-id="${col.id}" title="${t(AppState.lang, 'removeCollateralBtn')}" aria-label="${t(AppState.lang, 'removeCollateralBtn')}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                    ` : ''}
+                </div>
+            `;
+
+            const amountInput = row.querySelector('.col-amount-input');
+            const rateInput = row.querySelector('.col-rate-input');
+            const periodInput = row.querySelector('.col-period-input');
+            const removeBtn = row.querySelector('.col-remove-btn');
+
+            if (amountInput) {
+                amountInput.addEventListener('input', (e) => {
+                    if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
+                    col.amount = e.target.value;
+                    recalcCollateralMetrics();
+                });
+            }
+
+            if (rateInput) {
+                rateInput.addEventListener('input', (e) => {
+                    if (typeof validateRateInput === 'function') validateRateInput(e.target);
+                    col.rate = e.target.value;
+                    recalcCollateralMetrics(true);
+                });
+                rateInput.addEventListener('blur', (e) => {
+                    if (typeof formatRateInputBlur === 'function') formatRateInputBlur(e.target);
+                    col.rate = e.target.value;
+                    recalcCollateralMetrics();
+                });
+            }
+
+            if (periodInput) {
+                periodInput.addEventListener('input', (e) => {
+                    if (typeof validatePeriodInput === 'function') validatePeriodInput(e.target);
+                    col.period = e.target.value;
+                });
+            }
+
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    if (typeof haptic !== 'undefined') haptic('light');
+                    row.classList.remove('item-enter');
+                    row.classList.add('item-exit');
+                    setTimeout(() => {
+                        collaterals = collaterals.filter(c => c.id !== col.id);
+                        renderCollaterals();
+                        recalcCollateralMetrics();
+                    }, 240);
+                });
+            }
+
+            listEl.appendChild(row);
+        });
+
+        recalcCollateralMetrics();
+    }
+
+    function recalcCollateralMetrics(autoFillRate = false) {
+        if (AppState.loanType !== 'secured') return;
+
+        let totalCollateral = 0;
+        let maxRate = 0;
+
+        collaterals.forEach(c => {
+            const a = safeParseFloat(c.amount) || 0;
+            const r = safeParseFloat(c.rate) || 0;
+            if (a > 0) totalCollateral += a;
+            if (r > maxRate) maxRate = r;
+        });
+
+        const maxLoan = totalCollateral * 0.90;
+        const minRate = maxRate > 0 ? maxRate + 2 : 0;
+
+        const totalColEl = document.getElementById('summary-total-collateral');
+        const maxLoanEl = document.getElementById('summary-max-loan');
+        const minRateEl = document.getElementById('summary-min-rate');
+
+        if (totalColEl) totalColEl.textContent = totalCollateral > 0 ? displayFmt(totalCollateral) : '-';
+        if (maxLoanEl) maxLoanEl.textContent = maxLoan > 0 ? displayFmt(maxLoan) : '-';
+        if (minRateEl) minRateEl.textContent = minRate > 0 ? minRate.toFixed(2) + '%' : '-';
+
+        // Auto-set loan rate if requested or if rate is empty
+        if (autoFillRate && minRate > 0 && formInputs.rate) {
+            formInputs.rate.value = minRate.toFixed(2);
+            validateInput('rate');
+        }
+
+        updateCollateralWarnings();
+    }
+
+    function updateCollateralWarnings() {
+        const wAmount = document.getElementById('warning-loan-amount');
+        const wRate = document.getElementById('warning-loan-rate');
+
+        if (AppState.loanType !== 'secured') {
+            if (wAmount) wAmount.classList.add('hidden');
+            if (wRate) wRate.classList.add('hidden');
+            return;
+        }
+
+        let totalCollateral = 0;
+        let maxRate = 0;
+
+        collaterals.forEach(c => {
+            const a = safeParseFloat(c.amount) || 0;
+            const r = safeParseFloat(c.rate) || 0;
+            if (a > 0) totalCollateral += a;
+            if (r > maxRate) maxRate = r;
+        });
+
+        const maxAllowedLoan = totalCollateral * 0.90;
+        const minRequiredRate = maxRate > 0 ? maxRate + 2 : 0;
+
+        const enteredAmount = safeParseFloat(formInputs.amount?.value) || 0;
+        const enteredRate = safeParseFloat(formInputs.rate?.value) || 0;
+
+        if (wAmount) {
+            if (totalCollateral > 0 && enteredAmount > maxAllowedLoan) {
+                const span = wAmount.querySelector('.warning-text');
+                if (span) {
+                    span.textContent = t(AppState.lang, 'warningExceeds90Collateral').replace('{max}', displayFmt(maxAllowedLoan));
+                }
+                wAmount.classList.remove('hidden');
+            } else {
+                wAmount.classList.add('hidden');
+            }
+        }
+
+        if (wRate) {
+            if (maxRate > 0 && enteredRate > 0 && enteredRate < minRequiredRate) {
+                const span = wRate.querySelector('.warning-text');
+                if (span) {
+                    span.textContent = t(AppState.lang, 'warningBelowMinRate').replace('{min}', minRequiredRate.toFixed(2));
+                }
+                wRate.classList.remove('hidden');
+            } else {
+                wRate.classList.add('hidden');
+            }
+        }
+    }
 
     function coreInputsFilled() {
         return CORE_KEYS
@@ -512,6 +758,30 @@
         });
 
         // 3. Inputs Logic & Radio Buttons
+        const unsecuredBtn = document.getElementById('loan-type-unsecured-btn');
+        const securedBtn = document.getElementById('loan-type-secured-btn');
+        if (unsecuredBtn) {
+            unsecuredBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                setLoanType('unsecured');
+            });
+        }
+        if (securedBtn) {
+            securedBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                setLoanType('secured');
+            });
+        }
+
+        const addColBtn = document.getElementById('add-collateral-btn');
+        if (addColBtn) {
+            addColBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                const newId = nextCollateralId++;
+                collaterals.push({ id: newId, amount: '', rate: '', period: '36' });
+                renderCollaterals(newId);
+            });
+        }
 
         // --- RADIO BUTTON LISTENER ---
         document.querySelectorAll('input[name="calc-target"]').forEach(radio => {
@@ -1070,6 +1340,8 @@
         }
 
         // REFRESH DYNAMIC VALUES
+        renderCollaterals();
+        updateCollateralWarnings();
         if (AppState.lastRes.P) {
             const freq = AppState.lastRes.freq || 1;
             document.getElementById('summary-period').textContent = AppState.lastRes.N;
@@ -1080,30 +1352,37 @@
         }
     }
 
-    function validateInput(key) {
+    function validateInput(key, showEmptyError = false) {
         if (key === AppState.activeKey) return true;
         if (!formInputs[key]) return true;
 
         let valStr = formInputs[key].value;
         let val = safeParseFloat(valStr);
 
-        let errMsg = "Invalid value";
+        let errMsg = AppState.lang === 'ar' ? 'قيمة غير صالحة' : 'Invalid value';
         let isValid = true;
 
-        if (isNaN(val) || val < 0) isValid = false;
-
-        if (key === 'amount') {
+        if (valStr.trim() === '') {
+            isValid = false;
+            if (key === 'amount') errMsg = t(AppState.lang, 'invalidAmount');
+            else if (key === 'rate') errMsg = t(AppState.lang, 'invalidRate');
+            else if (key === 'period') errMsg = t(AppState.lang, 'invalidPeriod');
+            else errMsg = t(AppState.lang, 'invalidValue');
+        } else if (isNaN(val) || val <= 0) {
+            isValid = false;
+            if (key === 'amount') errMsg = t(AppState.lang, 'invalidAmount');
+            else if (key === 'rate') errMsg = t(AppState.lang, 'invalidRate');
+            else if (key === 'period') errMsg = t(AppState.lang, 'invalidPeriod');
+            else errMsg = t(AppState.lang, 'invalidValue');
+        } else if (key === 'amount') {
             if (valStr.includes('.') || (val % 1 !== 0)) {
                 isValid = false;
                 errMsg = AppState.lang === 'ar' ? 'أرقام صحيحة فقط' : 'Whole numbers only';
-            }
-            // Max limit to prevent overflow
-            if (val > 999999999999) {
+            } else if (val > 999999999999) {
                 isValid = false;
                 errMsg = AppState.lang === 'ar' ? 'القيمة كبيرة جداً' : 'Value too large';
             }
         } else if (key === 'installment') {
-            // Installments can have decimals (cents), but check max
             if (val > 999999999) {
                 isValid = false;
                 errMsg = AppState.lang === 'ar' ? 'القيمة كبيرة جداً' : 'Value too large';
@@ -1114,7 +1393,6 @@
                 errMsg = AppState.lang === 'ar' ? 'الحد الأقصى 100%' : 'Max rate is 100%';
             }
         } else if (key === 'period') {
-            if (val === 0) isValid = false;
             if (val > 600) {
                 isValid = false;
                 errMsg = AppState.lang === 'ar' ? 'الحد الأقصى 600 شهر' : 'Max 600 months';
@@ -1122,7 +1400,7 @@
         }
 
         if (inputGroups[key] && errorLabels[key]) {
-            if (!isValid && valStr !== '') {
+            if (!isValid && (valStr.trim() !== '' || showEmptyError)) {
                 inputGroups[key].classList.add('error-state');
                 errorLabels[key].textContent = errMsg;
                 errorLabels[key].classList.remove('hidden');
@@ -1131,6 +1409,8 @@
                 errorLabels[key].classList.add('hidden');
             }
         }
+
+        updateCollateralWarnings();
         return isValid;
     }
 
@@ -1168,7 +1448,7 @@
         let isValid = true;
         CORE_KEYS.forEach(key => {
             if (key === AppState.activeKey) return;
-            if (!validateInput(key)) isValid = false;
+            if (!validateInput(key, true)) isValid = false;
         });
 
         if (!isValid) {
@@ -1424,7 +1704,11 @@
 
         updateSummaryView(false);
 
-        document.getElementById('admin-fees').value = '';
+        // Reset Loan Type to unsecured and Admin Fees to 3%
+        setLoanType('unsecured');
+        collaterals = [{ id: 1, amount: '', rate: '', period: '36' }];
+        nextCollateralId = 2;
+        renderCollaterals();
 
         // Reset stamp rate
         const stampRateInput = document.getElementById('stamp-rate');
@@ -1449,6 +1733,11 @@
 
         Object.values(errorLabels).forEach(e => e.classList.add('hidden'));
         Object.values(inputGroups).forEach(g => g.classList.remove('error-state'));
+
+        const wAmount = document.getElementById('warning-loan-amount');
+        const wRate = document.getElementById('warning-loan-rate');
+        if (wAmount) wAmount.classList.add('hidden');
+        if (wRate) wRate.classList.add('hidden');
 
         if (typeof chartInst !== 'undefined' && chartInst) { chartInst.destroy(); chartInst = null; }
         document.getElementById('chart-empty-state').classList.remove('hidden');
@@ -1589,6 +1878,15 @@
                                 advancedToggle.dispatchEvent(new Event('change'));
                             }
 
+                            // Restore Loan Type & Collaterals
+                            if (item.values && item.values.loanType) {
+                                setLoanType(item.values.loanType);
+                                if (item.values.collaterals && Array.isArray(item.values.collaterals)) {
+                                    collaterals = item.values.collaterals;
+                                    renderCollaterals();
+                                }
+                            }
+
                             if (typeof toggleModal === 'function') toggleModal(historyModal);
                             appCalculate();
                         }
@@ -1615,6 +1913,8 @@
                         installment: formInputs.installment.value,
                         freq: document.getElementById('installment-freq')?.value || '1',
                         startDate: dateInputs.startNative.value,
+                        loanType: AppState.loanType,
+                        collaterals: collaterals,
                         // Advanced options
                         isAdvanced: isAdvanced,
                         firstInstDate: dateInputs.firstNative?.value || '',

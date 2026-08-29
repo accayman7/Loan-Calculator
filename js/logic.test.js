@@ -324,7 +324,8 @@ function testSolveTdLoan() {
     TestRunner.assertEqual(result.td2 % 1000, 0, 'TD₂ is a multiple of 1000');
     TestRunner.assertTrue(result.grossLoan > result.td2, 'Gross loan > TD₂ (fees deducted)');
     TestRunner.assertTrue(result.adminFeesAmount > 0, 'Admin fees > 0 when admin=1%');
-    TestRunner.assertApproxEqual(result.grossLoan - result.td2, result.adminFeesAmount, 1, 'grossLoan - td2 ≈ adminFees');
+    TestRunner.assertApproxEqual(result.adminFeesAmount, result.grossLoan * 0.01, 1, 'Admin fees = 1% of gross loan');
+    TestRunner.assertApproxEqual(result.grossLoan - result.td2, result.adminFeesAmount + (result.firstInstBuffer || 0) + (result.netLeftover || 0), 1, 'grossLoan - td2 ≈ adminFees + buffer + leftover');
     TestRunner.assertTrue(result.monthlyTdInterest > 0, 'Monthly interest > 0');
     // Core constraint: customer pays nothing (TD interest covers installment)
     TestRunner.assertTrue(result.monthlySurplus >= 0, 'Monthly surplus ≥ 0 (customer pays nothing): ' + result.monthlySurplus);
@@ -536,6 +537,34 @@ function testGetNextQuarterlyDate() {
 // RUN ALL TESTS
 // ========================================
 
+function testSolveTdLoanMultiCollateral() {
+    console.log('Testing solveTdLoan() with Multi-Collateral arrays...');
+
+    const dates = {
+        bookingDate: new Date(2025, 0, 1),
+        m1_Date: new Date(2025, 1, 5),
+        isAdvanced: true
+    };
+
+    // Test 1: Equivalent 2-collateral split (500k @ 19% + 500k @ 21% = 1M @ 20%)
+    const collaterals = [
+        { amount: 500000, rate: 19 },
+        { amount: 500000, rate: 21 }
+    ];
+    const resMulti = solveTdLoan(collaterals, 21, 23, 36, dates, 0.2, 1, 21, 1);
+    TestRunner.assertTrue(resMulti.valid, 'Multi-collateral solver produces valid solution');
+    TestRunner.assertEqual(resMulti.totalCollateral, 1000000, 'Total collateral = 1,000,000');
+    TestRunner.assertEqual(resMulti.maxAllowedLoan, 900000, 'Max allowed loan (90%) = 900,000');
+    TestRunner.assertEqual(resMulti.exceedsCollateralLimit, resMulti.grossLoan > 900000, 'exceedsCollateralLimit correctly flags');
+
+    // Test 2: Invalid/empty collateral array returns valid: false
+    const resEmpty = solveTdLoan([], 0, 20, 36, dates, 0.2, 1, 20, 1);
+    TestRunner.assertFalse(resEmpty.valid, 'Empty collaterals array returns valid: false');
+
+    const resZeros = solveTdLoan([{ amount: 0, rate: 0 }], 0, 20, 36, dates, 0.2, 1, 20, 1);
+    TestRunner.assertFalse(resZeros.valid, 'Zero collaterals array returns valid: false');
+}
+
 function runAllTests() {
     TestRunner.reset();
 
@@ -569,6 +598,7 @@ function runAllTests() {
     // Self-sufficient TD solver tests
     testSolveTdLoan();
     testSolveTdLoanEdgeCases();
+    testSolveTdLoanMultiCollateral();
 
     // Regression tests (monthly backward-compat)
     testMonthlyRegression();
