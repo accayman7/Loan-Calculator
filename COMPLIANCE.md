@@ -1,6 +1,6 @@
 # Loan Calculator — Compliance Statement
 
-**Version:** 2.0.0  
+**Version:** 2.0.1  
 **Document Date:** 2026-08-29  
 **Application Type:** Progressive Web Application (PWA)
 

@@ -348,12 +348,14 @@ function validateDateInputAndSync(input, nativeInput, errorCallback, silent = fa
     // Also respect the input-specific min/max (e.g. first installment >= booking date)
     if (nativeInput.min && iso < nativeInput.min) {
         input.classList.add('text-red-500');
-        if (errorCallback && !silent) errorCallback(t(lang, 'errorFirstInstBeforeBooking'));
+        const errKey = nativeInput.dataset.minErrorKey || 'errorFirstInstBeforeBooking';
+        if (errorCallback && !silent) errorCallback(t(lang, errKey));
         return false;
     }
     if (nativeInput.max && iso > nativeInput.max) {
         input.classList.add('text-red-500');
-        if (errorCallback && !silent) errorCallback(t(lang, 'errorDateOutOfRange'));
+        const errKey = nativeInput.dataset.maxErrorKey || 'errorDateOutOfRange';
+        if (errorCallback && !silent) errorCallback(t(lang, errKey));
         return false;
     }
 

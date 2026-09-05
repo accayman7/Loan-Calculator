@@ -13,6 +13,87 @@ let _esFormInputs = null;
 let _esFormatDate = null;
 
 /**
+ * Helper to get the active loan period (start date and maturity date).
+ * @returns {{ startDate: Date, endDate: Date }|null}
+ */
+function getLoanPeriod() {
+    if (!_esAppState || !_esAppState.schedule || _esAppState.schedule.length === 0) {
+        return null;
+    }
+    const schedule = _esAppState.schedule;
+    let startDate = null;
+
+    // 1. Try reading start date from start-date-native or AppState.lastRes
+    const startNative = document.getElementById('start-date-native');
+    if (startNative && startNative.value) {
+        const parts = startNative.value.split('-').map(Number);
+        if (parts.length === 3) startDate = new Date(parts[0], parts[1] - 1, parts[2]);
+    } else if (_esAppState.lastRes && _esAppState.lastRes.startDate) {
+        const parts = _esAppState.lastRes.startDate.split('-').map(Number);
+        if (parts.length === 3) startDate = new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    if (!startDate && schedule[0]?.rawDate) {
+        const freq = _esAppState.lastRes?.freq || 1;
+        startDate = new Date(schedule[0].rawDate);
+        startDate.setMonth(startDate.getMonth() - freq);
+    }
+
+    const endDate = schedule[schedule.length - 1].rawDate;
+
+    return { startDate, endDate };
+}
+
+function dateToISOString(d) {
+    if (!d || !(d instanceof Date) || isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+/**
+ * Configure settlement date input min/max constraints and default values based on loan period.
+ */
+function syncEarlySettlementConstraints() {
+    const settlementDateNative = document.getElementById('settlement-date-native');
+    const settlementDateDisplay = document.getElementById('settlement-date-display');
+    if (!settlementDateNative) return;
+
+    const period = getLoanPeriod();
+    if (!period) return;
+
+    const startISO = dateToISOString(period.startDate);
+    // Early settlement must occur before final installment maturity
+    const maxSettlementDate = new Date(period.endDate.getFullYear(), period.endDate.getMonth(), period.endDate.getDate() - 1);
+    const validMax = maxSettlementDate >= period.startDate ? maxSettlementDate : period.endDate;
+    const endISO = dateToISOString(validMax);
+
+    settlementDateNative.min = startISO;
+    settlementDateNative.max = endISO;
+    settlementDateNative.dataset.minErrorKey = 'errorSettlementDateOutOfRange';
+    settlementDateNative.dataset.maxErrorKey = 'errorSettlementDateOutOfRange';
+
+    const curVal = settlementDateNative.value;
+    if (!curVal || curVal < startISO || curVal > endISO) {
+        const today = new Date();
+        const todayISO = dateToISOString(today);
+        let defaultDate = today;
+        if (todayISO < startISO || todayISO > endISO) {
+            defaultDate = period.startDate;
+        }
+
+        settlementDateNative.value = dateToISOString(defaultDate);
+        if (settlementDateDisplay && typeof _esFormatDate === 'function') {
+            settlementDateDisplay.value = _esFormatDate(defaultDate);
+            settlementDateDisplay.dataset.iso = settlementDateNative.value;
+            settlementDateDisplay.classList.remove('text-red-500');
+        }
+    }
+}
+window.syncEarlySettlementConstraints = syncEarlySettlementConstraints;
+
+/**
  * Initialize early settlement mode: wire toggle, date picker, fee input,
  * and calc button. Must be called once from app.js setupEventListeners.
  *
@@ -48,12 +129,8 @@ function initEarlySettlement(appState, formInputs, animateToggleBounce, formatDa
                 const esError = document.getElementById('error-early-settlement');
                 if (esError) esError.classList.add('hidden');
 
-                // Set default settlement date to today if empty
-                if (settlementDateNative && !settlementDateNative.value) {
-                    settlementDateNative.valueAsDate = new Date();
-                    if (settlementDateDisplay) settlementDateDisplay.value = formatDateFn(new Date());
-                }
-
+                // Sync loan period constraints and default date
+                syncEarlySettlementConstraints();
             } else {
                 earlySettlementSection.classList.add('max-h-0', 'opacity-0');
                 earlySettlementSection.style.maxHeight = '0';
@@ -64,6 +141,8 @@ function initEarlySettlement(appState, formInputs, animateToggleBounce, formatDa
 
     // --- Initialize settlement date input ---
     if (settlementDateDisplay && settlementDateNative) {
+        syncEarlySettlementConstraints();
+
         if (typeof initDateInput === 'function') {
             initDateInput(settlementDateDisplay, settlementDateNative);
         }
@@ -72,8 +151,15 @@ function initEarlySettlement(appState, formInputs, animateToggleBounce, formatDa
         if (settlementDatePickerBtn) {
             settlementDatePickerBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
+                const period = getLoanPeriod();
+                const options = {};
+                if (period) {
+                    options.minDate = period.startDate;
+                    const maxSettlementDate = new Date(period.endDate.getFullYear(), period.endDate.getMonth(), period.endDate.getDate() - 1);
+                    options.maxDate = maxSettlementDate >= period.startDate ? maxSettlementDate : period.endDate;
+                }
                 if (typeof openDatePicker === 'function') {
-                    openDatePicker(settlementDateDisplay, _esAppState.lang, (selectedDate) => {
+                    openDatePicker(settlementDateDisplay, _esAppState?.lang || 'en', (selectedDate) => {
                         if (selectedDate) {
                             settlementDateDisplay.value = formatDateFn(selectedDate);
                             const y = selectedDate.getFullYear();
@@ -82,7 +168,7 @@ function initEarlySettlement(appState, formInputs, animateToggleBounce, formatDa
                             settlementDateNative.value = `${y}-${m}-${d}`;
                             settlementDateNative.dispatchEvent(new Event('change'));
                         }
-                    });
+                    }, options);
                 } else {
                     settlementDateNative.showPicker();
                 }
@@ -158,8 +244,27 @@ function updateEarlySettlement(showError = false) {
 
     if (errorEl) errorEl.classList.add('hidden');
 
-    const [y, m, d] = settlementDateNative.value.split('-');
-    const settlementDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+    const [y, m, d] = settlementDateNative.value.split('-').map(Number);
+    const settlementDate = new Date(y, m - 1, d);
+
+    // 3. Validate settlement date is strictly within the loan period
+    const period = getLoanPeriod();
+    if (period) {
+        const toDateNum = (dt) => dt.getFullYear() * 10000 + (dt.getMonth() + 1) * 100 + dt.getDate();
+        const sNum = toDateNum(settlementDate);
+        const startNum = toDateNum(period.startDate);
+        const endNum = toDateNum(period.endDate);
+
+        if (sNum < startNum || sNum >= endNum) {
+            resultsPanel.classList.add('opacity-0', 'max-h-0');
+            resultsPanel.classList.remove('opacity-100', 'max-h-96');
+            if (errorEl && showError) {
+                errorEl.textContent = t(_esAppState.lang, 'errorSettlementDateOutOfRange');
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+    }
 
     // Get fee percentage
     const feePercentage = parseFloat((settlementFeeInput?.value || '0').replace(/,/g, '')) || 0;
@@ -177,11 +282,15 @@ function updateEarlySettlement(showError = false) {
         return;
     }
 
-    const result = calculateEarlySettlement(_esAppState.schedule, settlementDate, feePercentage, annualRate, stampRate);
+    const result = calculateEarlySettlement(_esAppState.schedule, settlementDate, feePercentage, annualRate, stampRate, period ? period.startDate : null);
 
     if (!result.valid) {
         resultsPanel.classList.add('opacity-0', 'max-h-0');
         resultsPanel.classList.remove('opacity-100', 'max-h-96');
+        if (errorEl && showError) {
+            errorEl.textContent = t(_esAppState.lang, 'errorSettlementDateOutOfRange');
+            errorEl.classList.remove('hidden');
+        }
         return;
     }
 

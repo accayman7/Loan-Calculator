@@ -12,9 +12,13 @@ const PRE_CACHE = [
   './icon.png',
   './chart.js',
   './tailwind.js',
+  './js/version.js',
   './js/logic.js',
   './js/ui.js',
+  './js/dateinput.js',
   './js/datepicker.js',
+  './js/earlysettlement.js',
+  './js/selfsufficient.js',
   './js/app.js',
   './xlsx.mini.min.js'
 ];

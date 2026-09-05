@@ -1532,6 +1532,10 @@
             const schedResult = generateSchedule({ P, R, N, M }, { bookingDate, m1_Date, isAdvanced }, stampRate, freq);
 
             AppState.schedule = schedResult.schedule;
+            if (AppState.schedule && AppState.schedule.length > 0) {
+                AppState.schedule.startDate = bookingDate;
+                AppState.schedule.endDate = schedResult.schedule[schedResult.schedule.length - 1].rawDate;
+            }
             const totalActualInterest = schedResult.totalActualInterest;
             const totalStamp = schedResult.totalStamp || 0;
             const finalTotalPayment = P + totalActualInterest;
@@ -1684,6 +1688,10 @@
             if (esError) esError.classList.add('hidden');
             const ssError = document.getElementById('error-self-sufficient');
             if (ssError) ssError.classList.add('hidden');
+
+            if (typeof syncEarlySettlementConstraints === 'function') {
+                syncEarlySettlementConstraints();
+            }
         } else {
             showToast(t(AppState.lang, 'errorCalculationFailed'), 'error');
             updateSubsidiaryErrors();

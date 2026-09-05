@@ -304,6 +304,35 @@ function testEarlySettlementEdgeCases() {
     // Null schedule
     const result2 = calculateEarlySettlement(null, new Date(), 3, 12, 0);
     TestRunner.assertFalse(result2.valid, 'Null schedule is invalid');
+
+    // Date out of loan period (before start date and on/after maturity)
+    const loanData = { P: 100000, R: 12, N: 12, M: 8884.88 };
+    const dates = {
+        bookingDate: new Date(2024, 0, 15),
+        m1_Date: new Date(2024, 1, 15),
+        isAdvanced: false
+    };
+    const { schedule } = generateSchedule(loanData, dates, 0);
+
+    // Settlement before loan booking date
+    const beforeStart = new Date(2024, 0, 10);
+    const resBefore = calculateEarlySettlement(schedule, beforeStart, 3, 12, 0, dates.bookingDate);
+    TestRunner.assertFalse(resBefore.valid, 'Settlement before loan booking date is invalid');
+
+    // Settlement on final installment maturity date
+    const maturityDate = schedule[schedule.length - 1].rawDate;
+    const resOnMaturity = calculateEarlySettlement(schedule, maturityDate, 3, 12, 0, dates.bookingDate);
+    TestRunner.assertFalse(resOnMaturity.valid, 'Settlement on final installment date is invalid');
+
+    // Settlement after final installment maturity date
+    const afterMaturity = new Date(maturityDate.getFullYear() + 1, 0, 1);
+    const resAfter = calculateEarlySettlement(schedule, afterMaturity, 3, 12, 0, dates.bookingDate);
+    TestRunner.assertFalse(resAfter.valid, 'Settlement after loan maturity date is invalid');
+
+    // Settlement within valid loan period (before maturity)
+    const validDate = new Date(2024, 5, 10);
+    const resValid = calculateEarlySettlement(schedule, validDate, 3, 12, 0, dates.bookingDate);
+    TestRunner.assertTrue(resValid.valid, 'Settlement within loan period is valid');
 }
 
 function testSolveTdLoan() {

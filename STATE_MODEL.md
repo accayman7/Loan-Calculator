@@ -2,7 +2,7 @@
 
 This document describes the application state flow and data architecture for the Loan Calculator PWA.
 
-**Version:** 2.0.0  
+**Version:** 2.0.1  
 **Last Updated:** 2026-08-29
 
 ---
@@ -234,8 +234,8 @@ The calculation engine is verified by a 100% offline unit test suite in `js/logi
 | **Dates & Day Count** | 13 | `days360`, `getQuarterKey`, calendar boundaries |
 | **Core Loan Calculations** | 25 | Installments, Loan Amount, Period, Rate, Invalid cases |
 | **Amortization Schedules** | 18 | Monthly schedules, advanced dates, quarterly stamp |
-| **Early Settlement** | 14 | Settlement balances, penalty fees, accrued interest |
+| **Early Settlement** | 18 | Settlement balances, penalty fees, accrued interest, date period validation |
 | **Self-Sufficient TD Solver** | 20 | Single & Multi-CD₁ solving, limits, reinvestment |
 | **Monthly Backward-Compat** | 12 | Regression verification for existing standard loans |
 | **Quarterly Schedules** | 16 | Quarterly steps, broken quarters, 30/360 amortization |
-| **Total Automated Assertions** | **139** | **100% Passing (0 Failures)** |
+| **Total Automated Assertions** | **143** | **100% Passing (0 Failures)** |

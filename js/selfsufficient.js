@@ -105,9 +105,9 @@ function renderSsCd1List(newIdToAnimate = null) {
                 </button>
                 ` : ''}
             </div>
-            <div class="col-span-3">
+            <div class="col-span-4">
                 <div class="input-group py-1 px-1">
-                    <input type="text" inputmode="decimal" class="text-input text-xs select-text ss-cd-amount p-0 text-center" data-id="${cd.id}" placeholder="100,000" value="${cd.amount}">
+                    <input type="text" inputmode="decimal" class="text-input text-[11px] sm:text-xs select-text ss-cd-amount p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="100,000" value="${cd.amount}">
                 </div>
             </div>
             <div class="col-span-2">
@@ -115,9 +115,9 @@ function renderSsCd1List(newIdToAnimate = null) {
                     <input type="text" inputmode="decimal" class="text-input text-xs select-text ss-cd-rate p-0 text-center" data-id="${cd.id}" placeholder="19.0" value="${cd.rate}">
                 </div>
             </div>
-            <div class="col-span-5">
+            <div class="col-span-4">
                 <div class="input-group relative py-1 px-1">
-                    <input type="text" inputmode="numeric" class="text-input text-xs select-text z-10 ss-cd-date-display p-0 text-center" style="padding-right: 22px !important; padding-left: 2px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                    <input type="text" inputmode="numeric" class="text-input text-[11px] sm:text-xs select-text z-10 ss-cd-date-display p-0 text-center" style="padding-inline-end: 22px !important; padding-inline-start: 2px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
                     <button type="button" class="ss-cd-picker-btn absolute end-0.5 top-0.5 bottom-0.5 w-6 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors" data-id="${cd.id}" aria-label="Open date picker">
                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -135,6 +135,14 @@ function renderSsCd1List(newIdToAnimate = null) {
         const pickerBtn = row.querySelector('.ss-cd-picker-btn');
         const removeBtn = row.querySelector('.ss-cd-remove-btn');
 
+        const adjustAmountFontSize = (input) => {
+            if (!input) return;
+            const len = input.value.length;
+            if (len >= 12) input.style.fontSize = '10px';
+            else if (len >= 10) input.style.fontSize = '11px';
+            else input.style.fontSize = '';
+        };
+
         // Seed date if available
         if (cd.dateISO && dateNative) {
             dateNative.value = cd.dateISO;
@@ -148,8 +156,10 @@ function renderSsCd1List(newIdToAnimate = null) {
         }
 
         if (amountInput) {
+            adjustAmountFontSize(amountInput);
             amountInput.addEventListener('input', (e) => {
                 if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
+                adjustAmountFontSize(e.target);
                 cd.amount = e.target.value;
             });
         }

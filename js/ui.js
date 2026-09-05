@@ -150,6 +150,7 @@ const txt = {
         errorDateDoesNotExist: "Date does not exist",
         errorFirstInstBeforeBooking: "First installment date cannot be before the booking date",
         errorLoanNotCalculated: "Please calculate loan details first.",
+        errorSettlementDateOutOfRange: "Settlement date must be within the loan period.",
 
         // Offline & Compliance
         offlineMode: "Offline",
@@ -227,7 +228,7 @@ const txt = {
         collateralPeriodLabel: "Period (months)",
         totalCollateralLabel: "Total Collateral:",
         maxLoanAllowedLabel: "Max Loan (90%):",
-        minLoanRateLabel: "Min Loan Rate (+2%):",
+        minLoanRateLabel: "Min Rate (+2%):",
         warningExceeds90Collateral: "Loan amount exceeds 90% of total collateral ({max})",
         warningBelowMinRate: "Loan rate is below minimum required ({min}%)",
         ssErrorExceeds90Collateral: "Generated loan amount exceeds 90% of total collateral.",
@@ -393,6 +394,7 @@ const txt = {
         errorDateDoesNotExist: "التاريخ غير موجود",
         errorFirstInstBeforeBooking: "تاريخ أول قسط لا يمكن أن يسبق تاريخ المنح",
         errorLoanNotCalculated: "يرجى حساب تفاصيل القرض أولاً.",
+        errorSettlementDateOutOfRange: "يجب أن يكون تاريخ السداد المبكر خلال فترة القرض.",
 
         // Offline & Compliance
         offlineMode: "غير متصل",

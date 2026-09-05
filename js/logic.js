@@ -438,7 +438,7 @@ function generateSchedule(loanData, dates, stampRate = 0, freq = 1) {
  * @param {number} [stampRate=0] - Quarterly stamp rate percentage
  * @returns {Object} Settlement breakdown with totals
  */
-function calculateEarlySettlement(schedule, settlementDate, feePercentage, annualRate, stampRate = 0) {
+function calculateEarlySettlement(schedule, settlementDate, feePercentage, annualRate, stampRate = 0, loanStartDate = null) {
     if (!schedule || schedule.length === 0 || !settlementDate) {
         return { valid: false };
     }
@@ -448,6 +448,19 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
     };
 
     const settlementNum = toDateNum(settlementDate);
+
+    // Validate against loan start date if provided (or attached to schedule)
+    const start = loanStartDate || schedule.startDate || null;
+    if (start && settlementNum < toDateNum(start)) {
+        return { valid: false, error: 'out_of_period' };
+    }
+
+    // Early settlement must occur before final installment maturity
+    const finalInstallmentNum = toDateNum(schedule[schedule.length - 1].rawDate);
+    if (settlementNum >= finalInstallmentNum) {
+        return { valid: false, error: 'out_of_period', message: 'Loan fully paid' };
+    }
+
     let lastPaidIndex = -1;
 
     for (let i = 0; i < schedule.length; i++) {
@@ -465,8 +478,6 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
         lastPaidDate = null;
         nextInstallmentDate = schedule[0].rawDate;
         nextInstallmentInterest = schedule[0].int;
-    } else if (lastPaidIndex === schedule.length - 1) {
-        return { valid: true, principalBalance: 0, fee: 0, accruedInterest: 0, settlementStamp: 0, totalSettlement: 0, daysElapsed: 0, lastPaidInstallment: lastPaidIndex + 1, message: 'Loan fully paid' };
     } else {
         principalBalance = schedule[lastPaidIndex].rem;
         lastPaidDate = schedule[lastPaidIndex].rawDate;
