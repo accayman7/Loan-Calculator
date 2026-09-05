@@ -92,12 +92,12 @@ function renderSsCd1List(newIdToAnimate = null) {
     ssCd1List.forEach((cd, index) => {
         const row = document.createElement('div');
         row.id = `ss-cd1-card-${cd.id}`;
-        row.className = `grid grid-cols-12 gap-1.5 items-center p-2 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-900/60 transition-all ${cd.id === newIdToAnimate ? 'item-enter' : ''}`;
+        row.className = `ss-cd-row p-2 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-900/60 transition-all ${cd.id === newIdToAnimate ? 'item-enter' : ''}`;
 
         const cdLabel = `CD₁ #${index + 1}`;
 
         row.innerHTML = `
-            <div class="col-span-2 flex items-center justify-center gap-1 text-[11px] font-bold text-green-800 dark:text-green-300 text-center">
+            <div class="flex items-center justify-center gap-1 text-[11px] font-bold text-green-800 dark:text-green-300 text-center">
                 <span>${cdLabel}</span>
                 ${ssCd1List.length > 1 ? `
                 <button type="button" class="ss-cd-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${cd.id}" title="${t(_ssAppState?.lang || 'en', 'removeCollateralBtn')}" aria-label="${t(_ssAppState?.lang || 'en', 'removeCollateralBtn')}">
@@ -105,21 +105,21 @@ function renderSsCd1List(newIdToAnimate = null) {
                 </button>
                 ` : ''}
             </div>
-            <div class="col-span-4">
+            <div>
                 <div class="input-group py-1 px-1">
-                    <input type="text" inputmode="decimal" class="text-input text-[11px] sm:text-xs select-text ss-cd-amount p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="100,000" value="${cd.amount}">
+                    <input type="text" inputmode="decimal" class="text-input select-text ss-cd-amount p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="100,000" value="${cd.amount}">
                 </div>
             </div>
-            <div class="col-span-2">
+            <div>
                 <div class="input-group py-1 px-1">
-                    <input type="text" inputmode="decimal" class="text-input text-xs select-text ss-cd-rate p-0 text-center" data-id="${cd.id}" placeholder="19.0" value="${cd.rate}">
+                    <input type="text" inputmode="decimal" class="text-input select-text ss-cd-rate p-0 text-center" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="19.0" value="${cd.rate}">
                 </div>
             </div>
-            <div class="col-span-4">
-                <div class="input-group relative py-1 px-1">
-                    <input type="text" inputmode="numeric" class="text-input text-[11px] sm:text-xs select-text z-10 ss-cd-date-display p-0 text-center" style="padding-inline-end: 22px !important; padding-inline-start: 2px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
-                    <button type="button" class="ss-cd-picker-btn absolute end-0.5 top-0.5 bottom-0.5 w-6 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors" data-id="${cd.id}" aria-label="Open date picker">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
+            <div>
+                <div class="input-group py-1 px-1 flex items-center gap-0.5">
+                    <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                    <button type="button" class="ss-cd-picker-btn flex-shrink-0 w-4.5 h-4.5 p-0.5 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open date picker">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <input type="date" class="ss-cd-date-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
@@ -139,8 +139,7 @@ function renderSsCd1List(newIdToAnimate = null) {
             if (!input) return;
             const len = input.value.length;
             if (len >= 12) input.style.fontSize = '10px';
-            else if (len >= 10) input.style.fontSize = '11px';
-            else input.style.fontSize = '';
+            else input.style.fontSize = '11px';
         };
 
         // Seed date if available

@@ -468,6 +468,14 @@
             color: #ffffff;
         }
 
+        /* Self-Sufficient CD1 Table Layout: custom fractional columns for perfect mobile fit */
+        .ss-cd-row {
+            display: grid;
+            grid-template-columns: minmax(38px, 1.1fr) minmax(72px, 2.3fr) minmax(34px, 1.1fr) minmax(102px, 3.5fr);
+            gap: 0.375rem;
+            align-items: center;
+        }
+
         /* Radio Cell - container for radio button in input-group */
         .radio-cell {
             display: flex;
@@ -2866,11 +2874,11 @@
                                 </div>
 
                                 <!-- Column Headers -->
-                                <div class="grid grid-cols-12 gap-1.5 px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                                    <div class="col-span-2 text-center" data-lang-key="colHeaderNum">#</div>
-                                    <div class="col-span-4 text-center" data-lang-key="colHeaderAmount">Amount</div>
-                                    <div class="col-span-2 text-center" data-lang-key="colHeaderRate">Rate %</div>
-                                    <div class="col-span-4 text-center" data-lang-key="cdInterestDateShort">Next Interest Date</div>
+                                <div class="ss-cd-row px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 text-center">
+                                    <div data-lang-key="colHeaderNum">#</div>
+                                    <div data-lang-key="colHeaderAmount">Amount</div>
+                                    <div data-lang-key="colHeaderRate">Rate %</div>
+                                    <div data-lang-key="cdInterestDateShort">Next Interest Date</div>
                                 </div>
 
                                 <div id="ss-cd1-list" class="space-y-2">
