@@ -103,16 +103,20 @@ function renderSsCd1List(newIdToAnimate = null) {
                 <button type="button" class="ss-cd-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${cd.id}" title="${t(_ssAppState?.lang || 'en', 'removeCollateralBtn')}" aria-label="${t(_ssAppState?.lang || 'en', 'removeCollateralBtn')}">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
-                ` : ''}
+                ` : `
+                <button type="button" class="ss-cd-clear-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 p-0.5 rounded transition-colors" data-id="${cd.id}" title="${t(_ssAppState?.lang || 'en', 'clearCollateralBtn')}" aria-label="${t(_ssAppState?.lang || 'en', 'clearCollateralBtn')}">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+                `}
             </div>
             <div>
                 <div class="input-group py-1 px-1">
-                    <input type="text" inputmode="decimal" class="text-input select-text ss-cd-amount p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="100,000" value="${cd.amount}">
+                    <input type="text" inputmode="decimal" class="text-input select-text ss-cd-amount p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="100,000">
                 </div>
             </div>
             <div>
                 <div class="input-group py-1 px-1">
-                    <input type="text" inputmode="decimal" class="text-input select-text ss-cd-rate p-0 text-center" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="19.0" value="${cd.rate}">
+                    <input type="text" inputmode="decimal" class="text-input select-text ss-cd-rate p-0 text-center" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="19.0">
                 </div>
             </div>
             <div>
@@ -134,6 +138,10 @@ function renderSsCd1List(newIdToAnimate = null) {
         const dateNative = row.querySelector('.ss-cd-date-native');
         const pickerBtn = row.querySelector('.ss-cd-picker-btn');
         const removeBtn = row.querySelector('.ss-cd-remove-btn');
+        const clearBtn = row.querySelector('.ss-cd-clear-btn');
+
+        if (amountInput) amountInput.value = cd.amount || '';
+        if (rateInput) rateInput.value = cd.rate || '';
 
         const adjustAmountFontSize = (input) => {
             if (!input) return;
@@ -215,6 +223,20 @@ function renderSsCd1List(newIdToAnimate = null) {
             });
         }
 
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                cd.amount = '';
+                cd.rate = '';
+                cd.dateISO = '';
+                if (amountInput) { amountInput.value = ''; adjustAmountFontSize(amountInput); }
+                if (rateInput) rateInput.value = '';
+                if (dateDisplay) { dateDisplay.value = ''; dateDisplay.dataset.iso = ''; }
+                if (dateNative) dateNative.value = '';
+                if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
+            });
+        }
+
         listEl.appendChild(row);
     });
 }
@@ -281,6 +303,25 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
             const newId = nextSsCd1Id++;
             ssCd1List.push({ id: newId, amount: '', rate: '', dateISO: `${y}-${m}-${d}` });
             renderSsCd1List(newId);
+        });
+    }
+
+    // --- Clear All CD1 Button ---
+    const clearCd1Btn = document.getElementById('ss-clear-cd-btn');
+    if (clearCd1Btn) {
+        clearCd1Btn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('medium');
+            const bkISO = document.getElementById('ss-booking-date-native')?.value;
+            const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
+            const defaultDate = bkDate ? ssDefaultCdInterestDate(bkDate) : new Date();
+            const y = defaultDate.getFullYear();
+            const m = String(defaultDate.getMonth() + 1).padStart(2, '0');
+            const d = String(defaultDate.getDate()).padStart(2, '0');
+
+            ssCd1List = [{ id: 1, amount: '', rate: '', dateISO: `${y}-${m}-${d}` }];
+            nextSsCd1Id = 2;
+            renderSsCd1List();
+            if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
         });
     }
 

@@ -239,6 +239,8 @@
                 adminFeesInput.value = '1';
             }
             renderCollaterals();
+            updateCollateralCashflow();
+            updateSelfCoveringChip();
         } else {
             if (unsecuredBtn) {
                 unsecuredBtn.className = 'loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
@@ -251,6 +253,8 @@
                 collateralSection.style.maxHeight = '0';
                 collateralSection.classList.remove('opacity-100');
             }
+            const cashflowCard = document.getElementById('collateral-cashflow-card');
+            if (cashflowCard) cashflowCard.classList.add('hidden');
             if (freqContainer) {
                 freqContainer.classList.add('hidden');
             }
@@ -288,21 +292,25 @@
                     <button type="button" class="col-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${col.id}" title="${t(AppState.lang, 'removeCollateralBtn')}" aria-label="${t(AppState.lang, 'removeCollateralBtn')}">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
-                    ` : ''}
+                    ` : `
+                    <button type="button" class="col-clear-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 p-0.5 rounded transition-colors" data-id="${col.id}" title="${t(AppState.lang, 'clearCollateralBtn')}" aria-label="${t(AppState.lang, 'clearCollateralBtn')}">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                    `}
                 </div>
                 <div class="col-span-5">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center" data-id="${col.id}" placeholder="100,000" value="${col.amount}">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center" data-id="${col.id}" placeholder="100,000">
                     </div>
                 </div>
                 <div class="col-span-3">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" placeholder="19.0" value="${col.rate}">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" placeholder="19.0">
                     </div>
                 </div>
                 <div class="col-span-2">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="text-input text-xs select-text col-period-input p-0 text-center" data-id="${col.id}" placeholder="36" value="${col.period || ''}">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="text-input text-xs select-text col-period-input p-0 text-center" data-id="${col.id}" placeholder="36">
                     </div>
                 </div>
             `;
@@ -311,6 +319,11 @@
             const rateInput = row.querySelector('.col-rate-input');
             const periodInput = row.querySelector('.col-period-input');
             const removeBtn = row.querySelector('.col-remove-btn');
+            const clearBtn = row.querySelector('.col-clear-btn');
+
+            if (amountInput) amountInput.value = col.amount || '';
+            if (rateInput) rateInput.value = col.rate || '';
+            if (periodInput) periodInput.value = col.period || '';
 
             if (amountInput) {
                 amountInput.addEventListener('input', (e) => {
@@ -353,6 +366,19 @@
                 });
             }
 
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    if (typeof haptic !== 'undefined') haptic('light');
+                    col.amount = '';
+                    col.rate = '';
+                    col.period = '';
+                    if (amountInput) amountInput.value = '';
+                    if (rateInput) rateInput.value = '';
+                    if (periodInput) periodInput.value = '';
+                    recalcCollateralMetrics();
+                });
+            }
+
             listEl.appendChild(row);
         });
 
@@ -390,6 +416,8 @@
         }
 
         updateCollateralWarnings();
+        updateCollateralCashflow();
+        updateSelfCoveringChip();
     }
 
     function updateCollateralWarnings() {
@@ -441,6 +469,168 @@
                 wRate.classList.add('hidden');
             }
         }
+    }
+
+    function updateCollateralCashflow() {
+        const card = document.getElementById('collateral-cashflow-card');
+        if (!card) return;
+
+        if (AppState.loanType !== 'secured') {
+            card.classList.add('hidden');
+            return;
+        }
+
+        let totalMonthlyCdReturn = 0;
+        let hasCollateral = false;
+        collaterals.forEach(c => {
+            const a = safeParseFloat(c.amount) || 0;
+            const r = safeParseFloat(c.rate) || 0;
+            if (a > 0 && r > 0) {
+                totalMonthlyCdReturn += (a * r) / 1200;
+                hasCollateral = true;
+            }
+        });
+
+        // Get calculated or entered installment
+        const lastM = AppState.lastRes?.M || safeParseFloat(formInputs.installment?.value) || 0;
+        const freq = AppState.lastRes?.freq || (document.getElementById('installment-freq')?.value === '3' ? 3 : 1);
+        const monthlyInstallment = freq === 3 ? (lastM / 3) : lastM;
+
+        if (!hasCollateral || monthlyInstallment <= 0) {
+            card.classList.add('hidden');
+            return;
+        }
+
+        const netDiff = totalMonthlyCdReturn - monthlyInstallment;
+        const isSurplus = netDiff >= 0;
+
+        const cdReturnEl = document.getElementById('cashflow-cd-return');
+        const loanInstEl = document.getElementById('cashflow-loan-inst');
+        const netDiffEl = document.getElementById('cashflow-net-diff');
+        const badgeEl = document.getElementById('cashflow-badge');
+        const diffBoxEl = document.getElementById('cashflow-diff-box');
+        const explainEl = document.getElementById('cashflow-explain');
+
+        if (cdReturnEl) cdReturnEl.textContent = '+' + displayFmt(totalMonthlyCdReturn);
+        if (loanInstEl) loanInstEl.textContent = '-' + displayFmt(monthlyInstallment);
+        if (netDiffEl) {
+            netDiffEl.textContent = (isSurplus ? '+' : '') + displayFmt(netDiff);
+            netDiffEl.className = isSurplus
+                ? 'font-black text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm select-text'
+                : 'font-black text-rose-700 dark:text-rose-400 text-xs sm:text-sm select-text';
+        }
+
+        if (diffBoxEl) {
+            diffBoxEl.className = isSurplus
+                ? 'bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]'
+                : 'bg-rose-50/80 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]';
+        }
+
+        if (badgeEl) {
+            badgeEl.textContent = isSurplus ? t(AppState.lang, 'cashflowSurplusBadge') : t(AppState.lang, 'cashflowDeficitBadge');
+            badgeEl.className = isSurplus
+                ? 'text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
+                : 'text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300';
+        }
+
+        if (explainEl) {
+            explainEl.textContent = isSurplus
+                ? t(AppState.lang, 'cashflowSurplusExplain')
+                : t(AppState.lang, 'cashflowDeficitExplain');
+        }
+
+        // Self-covering reference loan amount
+        const selfRow = document.getElementById('cashflow-self-covering-row');
+        const selfAmtEl = document.getElementById('cashflow-self-covering-amount');
+        const selfP = calculateSelfCoveringLoanAmount();
+        if (selfRow && selfAmtEl && selfP > 0) {
+            selfAmtEl.textContent = selfP.toLocaleString('en-US') + ' EGP';
+            selfRow.classList.remove('hidden');
+        } else if (selfRow) {
+            selfRow.classList.add('hidden');
+        }
+
+        card.classList.remove('hidden');
+    }
+
+    /**
+     * Calculates the loan amount P (integer) at which CDs' periodic interest
+     * exactly covers the loan installment — i.e. the net cashflow is zero.
+     * Returns 0 if data is insufficient or calculation is infeasible.
+     */
+    function calculateSelfCoveringLoanAmount() {
+        if (AppState.loanType !== 'secured') return 0;
+
+        let totalMonthlyCdReturn = 0;
+        collaterals.forEach(c => {
+            const a = safeParseFloat(c.amount) || 0;
+            const r = safeParseFloat(c.rate) || 0;
+            if (a > 0 && r > 0) totalMonthlyCdReturn += (a * r) / 1200;
+        });
+        if (totalMonthlyCdReturn <= 0) return 0;
+
+        const rateVal = safeParseFloat(formInputs.rate?.value);
+        const periodVal = parseInt(formInputs.period?.value);
+        const freqVal = document.getElementById('installment-freq')?.value === '3' ? 3 : 1;
+
+        if (isNaN(rateVal) || rateVal < 0 || isNaN(periodVal) || periodVal <= 0) return 0;
+
+        const mTarget = totalMonthlyCdReturn * freqVal; // periodic CD return
+        const i = (rateVal / 100) * (freqVal / 12);    // periodic loan rate
+
+        const pExact = (i === 0)
+            ? (mTarget * periodVal)
+            : (mTarget * (Math.pow(1 + i, periodVal) - 1) / (i * Math.pow(1 + i, periodVal)));
+
+        return (!isFinite(pExact) || pExact <= 0) ? 0 : Math.round(pExact);
+    }
+
+    /**
+     * Shows or hides the helper chip below the Loan Amount input that
+     * advertises the 100%-covered loan amount.
+     */
+    function updateSelfCoveringChip() {
+        const chipContainer = document.getElementById('self-covering-chip-container');
+        const chipVal = document.getElementById('self-covering-chip-val');
+        if (!chipContainer || !chipVal) return;
+
+        if (AppState.loanType !== 'secured') {
+            chipContainer.classList.add('hidden');
+            return;
+        }
+
+        const p = calculateSelfCoveringLoanAmount();
+        if (p > 0) {
+            chipVal.textContent = p.toLocaleString('en-US') + ' EGP';
+            chipContainer.classList.remove('hidden');
+        } else {
+            chipContainer.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Applies the 100%-self-covering loan amount to the Loan Amount input
+     * and triggers recalculation.
+     */
+    function applySelfCoveringLoanAmount() {
+        const p = calculateSelfCoveringLoanAmount();
+        if (p <= 0 || !formInputs.amount) return;
+
+        if (typeof haptic !== 'undefined') haptic('medium');
+
+        // Format like the currency input normally formats values
+        formInputs.amount.value = p.toLocaleString('en-US');
+        formInputs.amount.dispatchEvent(new Event('input', { bubbles: true }));
+        validateInput('amount');
+
+        // Switch calc target to installment (standard mode)
+        const instRadio = document.querySelector('input[name="calc-target"][value="installment"]');
+        if (instRadio && !instRadio.checked) {
+            instRadio.checked = true;
+            instRadio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        if (coreInputsFilled()) appCalculate();
     }
 
     function coreInputsFilled() {
@@ -583,10 +773,9 @@
         }
     }
 
-    // --- Event Listeners Setup ---
-    function setupEventListeners() {
+    // --- Event Listeners Setup (Modularized) ---
 
-        // 1. Theme Menu Logic
+    function setupThemeListeners() {
         const themeBtn = document.getElementById('theme-toggle');
         const themeMenu = document.getElementById('theme-menu');
         const themeOptions = document.querySelectorAll('.theme-option');
@@ -616,8 +805,6 @@
             });
         }
 
-
-
         themeOptions.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const newTheme = btn.dataset.themeValue;
@@ -643,78 +830,46 @@
                 const isNewDark = newTheme === 'dark' || (newTheme === 'system' && sysDark);
                 const isReverse = isCurrentDark && !isNewDark;
 
-                // Use View Transitions API when available (modern browsers), fall back to crossfade (iOS Safari)
-                if (!document.startViewTransition) {
-                    // iOS-style gradual crossfade without blink
-                    const overlay = document.createElement('div');
-                    const oldBg = isCurrentDark ? '#020617' : '#f9fafb';
-                    overlay.style.cssText = `
-                        position: fixed;
-                        inset: 0;
-                        z-index: ${Z_INDEX.OVERLAY};
-                        pointer-events: none;
-                        background: ${oldBg};
-                        opacity: 1;
-                        transition: opacity 0.5s ease-in-out;
-                    `;
-
-                    // Step 1: Add overlay FIRST
-                    document.body.appendChild(overlay);
-                    void overlay.offsetHeight; // Force paint
-
-                    // Step 2: Disable all CSS transitions temporarily
-                    document.body.classList.add('preload');
-
-                    // Step 3: Change theme instantly (no visible transition due to preload)
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !document.startViewTransition) {
                     performUpdate();
+                    return;
+                }
 
-                    // Step 4: Force repaint of new theme
-                    void document.body.offsetHeight;
+                try {
+                    let rect = themeBtn ? themeBtn.getBoundingClientRect() : { left: window.innerWidth / 2, top: 0, width: 0, height: 0 };
+                    let x = e.clientX || (rect.left + rect.width / 2);
+                    let y = e.clientY || (rect.top + rect.height / 2);
 
-                    // Step 5: Re-enable transitions
-                    document.body.classList.remove('preload');
+                    const right = window.innerWidth - x;
+                    const bottom = window.innerHeight - y;
+                    const maxRadius = Math.hypot(Math.max(x, right), Math.max(y, bottom));
 
-                    // Step 6: Fade out overlay to reveal new theme
-                    requestAnimationFrame(() => {
-                        overlay.style.opacity = '0';
-                        overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
-                    });
-                } else {
-                    try {
-                        // Use theme toggle button center as origin for consistent animation
-                        const themeBtn = document.getElementById('theme-toggle');
-                        const rect = themeBtn.getBoundingClientRect();
-                        const x = rect.left + rect.width / 2;
-                        const y = rect.top + rect.height / 2;
-                        const endRadius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-
-                        const transition = document.startViewTransition(() => performUpdate());
-
-                        transition.ready.then(() => {
-                            const keyframes = isReverse
-                                ? [{ clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }, { clipPath: `circle(0px at ${x}px ${y}px)` }]
-                                : [{ clipPath: `circle(0px at ${x}px ${y}px)` }, { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }];
-
-                            document.documentElement.animate(keyframes, {
-                                duration: 400, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards',
-                                pseudoElement: isReverse ? '::view-transition-old(root)' : '::view-transition-new(root)'
-                            });
-                        });
-
-                        transition.finished.then(() => {
-                            document.documentElement.classList.remove('reverse-transition');
-                        });
-
-                        if (isReverse) document.documentElement.classList.add('reverse-transition');
-
-                    } catch (err) {
-                        performUpdate();
+                    document.documentElement.style.setProperty('--vt-x', `${x}px`);
+                    document.documentElement.style.setProperty('--vt-y', `${y}px`);
+                    document.documentElement.style.setProperty('--vt-radius', `${maxRadius}px`);
+                    document.documentElement.classList.remove('vt-reverse');
+                    if (isReverse) {
+                        document.documentElement.classList.add('vt-reverse');
                     }
+
+                    const transition = document.startViewTransition(() => {
+                        performUpdate();
+                    });
+
+                    transition.finished.finally(() => {
+                        document.documentElement.classList.remove('vt-reverse');
+                        document.documentElement.style.removeProperty('--vt-x');
+                        document.documentElement.style.removeProperty('--vt-y');
+                        document.documentElement.style.removeProperty('--vt-radius');
+                    });
+                } catch (err) {
+                    performUpdate();
                 }
             });
         });
+    }
 
-        // 2. Language Menu Logic
+    function setupLanguageListeners() {
         const langBtn = document.getElementById('lang-toggle');
         const langMenu = document.getElementById('lang-menu');
         const langOptions = document.querySelectorAll('.lang-option');
@@ -726,6 +881,7 @@
                 if (typeof haptic !== 'undefined') haptic('light');
 
                 // Close theme menu if open
+                const themeMenu = document.getElementById('theme-menu');
                 if (isMenuOpen(themeMenu)) closeMenu(themeMenu);
 
                 if (!isMenuOpen(langMenu)) {
@@ -756,8 +912,9 @@
                 closeMenu(langMenu);
             });
         });
+    }
 
-        // 3. Inputs Logic & Radio Buttons
+    function setupCalculationTargetListeners() {
         const unsecuredBtn = document.getElementById('loan-type-unsecured-btn');
         const securedBtn = document.getElementById('loan-type-secured-btn');
         if (unsecuredBtn) {
@@ -781,6 +938,27 @@
                 collaterals.push({ id: newId, amount: '', rate: '', period: '' });
                 renderCollaterals(newId);
             });
+        }
+
+        const clearColBtn = document.getElementById('clear-collateral-btn');
+        if (clearColBtn) {
+            clearColBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('medium');
+                collaterals = [{ id: 1, amount: '', rate: '', period: '' }];
+                nextCollateralId = 2;
+                renderCollaterals();
+                recalcCollateralMetrics();
+            });
+        }
+
+        // Self-covering loan amount buttons
+        const applySelfBtn = document.getElementById('apply-self-covering-btn');
+        if (applySelfBtn) {
+            applySelfBtn.addEventListener('click', () => applySelfCoveringLoanAmount());
+        }
+        const selfChip = document.getElementById('self-covering-chip');
+        if (selfChip) {
+            selfChip.addEventListener('click', () => applySelfCoveringLoanAmount());
         }
 
         // --- RADIO BUTTON LISTENER ---
@@ -807,6 +985,8 @@
                     if (typeof validateRateInput === 'function') validateRateInput(input);
                 }
                 validateInput(key);
+                // Refresh chip when rate or period changes (self-covering formula depends on them)
+                if (key === 'rate' || key === 'period') updateSelfCoveringChip();
             });
 
             input.addEventListener('blur', () => {
@@ -863,8 +1043,9 @@
             });
             stampRateInput.addEventListener('blur', () => { if (typeof formatRateInputBlur === 'function') formatRateInputBlur(stampRateInput); });
         }
+    }
 
-        // Dates - Initialize using new best-practice date input system
+    function setupDateInputListeners() {
         if (dateInputs.startDisplay && dateInputs.startNative) {
             if (typeof initDateInput === 'function') {
                 initDateInput(dateInputs.startDisplay, dateInputs.startNative);
@@ -948,8 +1129,9 @@
                 });
             }
         }
+    }
 
-        // Toggles
+    function setupModeToggleListeners() {
         const advToggle = document.getElementById('advanced-toggle');
         if (advToggle) {
             advToggle.addEventListener('change', (e) => {
@@ -996,61 +1178,9 @@
         if (typeof initEarlySettlement === 'function') {
             initEarlySettlement(AppState, formInputs, animateToggleBounce, formatDate);
         }
+    }
 
-        // Main Buttons
-        const calcBtn = document.getElementById('calculate-button');
-        if (calcBtn) calcBtn.addEventListener('click', () => {
-            if (typeof haptic !== 'undefined') haptic('light');
-            appCalculate();
-        });
-
-        const resetBtn = document.getElementById('reset-button');
-        if (resetBtn) resetBtn.addEventListener('click', () => {
-            if (typeof haptic !== 'undefined') haptic('heavy');
-            resetApp();
-        });
-
-        // Schedule & Export
-        const schedBtn = document.getElementById('schedule-button');
-        if (schedBtn) schedBtn.addEventListener('click', () => {
-            if (typeof haptic !== 'undefined') haptic('light');
-            const isAdv = document.getElementById('advanced-toggle')?.checked;
-            const schedCont = document.getElementById('schedule-container');
-            if (schedCont.classList.contains('hidden')) {
-                if (typeof showScheduleUI === 'function') showScheduleUI(AppState.schedule, AppState.lang, true, isAdv);
-                // Update button to "Hide Schedule" state
-                const label = schedBtn.querySelector('[data-lang-key]');
-                if (label) label.textContent = t(AppState.lang, 'scheduleButtonHide');
-                schedBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700', 'text-white');
-                schedBtn.classList.add('bg-cyan-100', 'dark:bg-cyan-900/30', 'text-cyan-700', 'dark:text-cyan-300', 'border', 'border-cyan-300', 'dark:border-cyan-700', 'hover:bg-cyan-200', 'dark:hover:bg-cyan-900/50');
-            } else {
-                if (typeof closeScheduleUI === 'function') closeScheduleUI();
-            }
-        });
-
-        const closeSchedBtn = document.getElementById('close-schedule-btn');
-        if (closeSchedBtn) closeSchedBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); if (typeof closeScheduleUI === 'function') closeScheduleUI(); });
-
-        const pdfBtn = document.getElementById('export-pdf-button');
-        if (pdfBtn) pdfBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('medium'); printReport(); });
-
-        const xlsxBtn = document.getElementById('export-xlsx-button');
-        if (xlsxBtn) xlsxBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('medium'); exportExcel(); });
-
-        // Modals
-        setupModalListeners();
-
-        // Updates
-        const updateBtn = document.getElementById('force-update-btn');
-        if (updateBtn) updateBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); checkUpdates(); });
-
-        // Install
-        setupInstallListeners();
-
-        // Keyboard
-        document.addEventListener('keydown', handleKeyboard);
-
-        // Frequency selector — update labels and first installment date dynamically
+    function setupFrequencyListeners() {
         const freqSelect = document.getElementById('installment-freq');
         if (freqSelect) {
             let _savedFirstInstDate = { native: '', display: '' }; // saved monthly date
@@ -1250,6 +1380,61 @@
                 updateFreqRadios(val);
             });
         }
+    }
+
+    function setupActionButtonsListeners() {
+        // Main Buttons
+        const calcBtn = document.getElementById('calculate-button');
+        if (calcBtn) calcBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('light');
+            appCalculate();
+        });
+
+        const resetBtn = document.getElementById('reset-button');
+        if (resetBtn) resetBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('heavy');
+            resetApp();
+        });
+
+        // Schedule & Export
+        const schedBtn = document.getElementById('schedule-button');
+        if (schedBtn) schedBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('light');
+            const isAdv = document.getElementById('advanced-toggle')?.checked;
+            const schedCont = document.getElementById('schedule-container');
+            if (schedCont.classList.contains('hidden')) {
+                if (typeof showScheduleUI === 'function') showScheduleUI(AppState.schedule, AppState.lang, true, isAdv);
+                // Update button to "Hide Schedule" state
+                const label = schedBtn.querySelector('[data-lang-key]');
+                if (label) label.textContent = t(AppState.lang, 'scheduleButtonHide');
+                schedBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700', 'text-white');
+                schedBtn.classList.add('bg-cyan-100', 'dark:bg-cyan-900/30', 'text-cyan-700', 'dark:text-cyan-300', 'border', 'border-cyan-300', 'dark:border-cyan-700', 'hover:bg-cyan-200', 'dark:hover:bg-cyan-900/50');
+            } else {
+                if (typeof closeScheduleUI === 'function') closeScheduleUI();
+            }
+        });
+
+        const closeSchedBtn = document.getElementById('close-schedule-btn');
+        if (closeSchedBtn) closeSchedBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); if (typeof closeScheduleUI === 'function') closeScheduleUI(); });
+
+        const pdfBtn = document.getElementById('export-pdf-button');
+        if (pdfBtn) pdfBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('medium'); printReport(); });
+
+        const xlsxBtn = document.getElementById('export-xlsx-button');
+        if (xlsxBtn) xlsxBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('medium'); exportExcel(); });
+
+        // Modals
+        setupModalListeners();
+
+        // Updates
+        const updateBtn = document.getElementById('force-update-btn');
+        if (updateBtn) updateBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); checkUpdates(); });
+
+        // Install
+        setupInstallListeners();
+
+        // Keyboard
+        document.addEventListener('keydown', handleKeyboard);
 
         // Copy Summary Listener
         const copySummaryBtn = document.getElementById('copy-summary-btn');
@@ -1307,6 +1492,16 @@
                 }
             });
         }
+    }
+
+    function setupEventListeners() {
+        setupThemeListeners();
+        setupLanguageListeners();
+        setupCalculationTargetListeners();
+        setupDateInputListeners();
+        setupModeToggleListeners();
+        setupFrequencyListeners();
+        setupActionButtonsListeners();
     }
 
     // --- Core Logic Wrappers ---
@@ -1611,6 +1806,8 @@
             }
 
             updateSelfSufficient(false);
+            updateCollateralCashflow();
+            updateSelfCoveringChip();
 
             // Generate and display Calculation Fingerprint
             if (typeof generateFingerprint === 'function') {
@@ -2246,7 +2443,7 @@
             const assumptionsData = [
                 [],
                 [t(l, 'assumptionsTitle')],
-                [l === 'ar' ? '• طريقة الفائدة: رصيد متناقص (قسطي)' : '• Interest Method: Reducing Balance (Annuity)'],
+                [l === 'ar' ? '• طريقة احتساب الفائدة: الرصيد المتناقص (الأقساط المتساوية)' : '• Interest Calculation Method: Reducing Balance (Annuity)'],
                 [l === 'ar' ? '• حساب الأيام: 30/360 (US/NASD)' : '• Day Count: 30/360 (US/NASD)'],
                 [l === 'ar' ? '• التقريب: منزلتان عشريتان لكل قسط' : '• Rounding: 2 decimal places per installment'],
                 [l === 'ar' ? '• الدمغة: ربع سنوية على أعلى رصيد مستحق' : '• Stamp: Quarterly on highest principal balance'],

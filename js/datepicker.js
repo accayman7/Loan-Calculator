@@ -153,8 +153,11 @@
         return getDayNamesShort(currentLang)[dayIndex];
     }
 
-    // #2: Strict date validation - prevents JS Date rollover bugs
+    // #2: Strict date validation - delegates to shared dateIsValidZeroBased
     function isValidDate(year, month, day) {
+        if (typeof dateIsValidZeroBased === 'function') {
+            return dateIsValidZeroBased(year, month, day);
+        }
         const date = new Date(year, month, day);
         return date.getFullYear() === year &&
             date.getMonth() === month &&
@@ -1089,57 +1092,7 @@
         if (typeof haptic !== 'undefined') haptic('light');
     }
 
-    function openDesktopCalendar(inputEl, lang, callback, options = {}) {
-        if (isPickerOpen) {
-            console.warn('DatePicker: Already open');
-            return;
-        }
-
-        currentLang = lang || 'en';
-        onConfirmCallback = callback;
-        launcherElement = inputEl;
-
-        // #3 & #4: Normalize constraints to midnight, support Date or string
-        minDate = normalizeConstraint(options.minDate);
-        maxDate = normalizeConstraint(options.maxDate);
-
-        let parsedDate = parseDDMMYYYYStrict(inputEl?.value);
-        selectedDate = parsedDate || new Date();
-        selectedDate = clampDateToRange(selectedDate);
-
-        desktopViewYear = selectedDate.getFullYear();
-        desktopViewMonth = selectedDate.getMonth();
-        desktopActiveCellDate = new Date(selectedDate);
-
-        if (!desktopModal) {
-            desktopModal = createDesktopCalendarModal();
-        } else {
-            // Update text for current language (keep LTR layout always)
-            document.getElementById('desktop-calendar-title').textContent = getTranslation('selectDate');
-            document.getElementById('desktop-cal-today').textContent = getTranslation('todayDate');
-            document.getElementById('desktop-cal-cancel').textContent = getTranslation('cancelDate');
-            document.getElementById('desktop-cal-confirm').textContent = getTranslation('confirmDate');
-            // Keep dir="ltr" for consistent layout
-        }
-
-        const inputField = document.getElementById('desktop-calendar-input');
-        // Set initial value as plain DD/MM/YYYY (initDateInput not yet called)
-        // but pre-populate dataset.iso so arrow keys work right after open.
-        inputField.value = formatDDMMYYYY(selectedDate);
-        {
-            const _y = selectedDate.getFullYear();
-            const _m = String(selectedDate.getMonth() + 1).padStart(2, '0');
-            const _d = String(selectedDate.getDate()).padStart(2, '0');
-            inputField.dataset.iso = `${_y}-${_m}-${_d}`;
-        }
-        document.getElementById('desktop-calendar-error').textContent = '';
-
-        renderDesktopCalendar(); // Initial render, no animation
-
-        desktopAbortController = new AbortController();
-        const signal = desktopAbortController.signal;
-        const isRTL = currentLang === 'ar';
-
+    function attachDesktopCalendarListeners(inputField, signal) {
         desktopModal.addEventListener('click', (e) => {
             if (e.target === desktopModal) {
                 closeDesktopCalendar(false);
@@ -1243,8 +1196,6 @@
             document.getElementById('desktop-calendar-error').textContent = '';
             renderDesktopCalendar('none'); // No animation for 'today' button
         }, { signal });
-
-
 
         // Mousewheel navigation for calendar grid
         let mousewheelTimeout = null;
@@ -1491,7 +1442,6 @@
                     closeDesktopCalendar(true);
                 }
             }
-            // Escape handled by modal-level handler below
         }, { signal });
 
         // #1: Modal-level keydown handler for Escape + Tab focus trap
@@ -1524,6 +1474,59 @@
                 }
             }
         }, { signal });
+    }
+
+    function openDesktopCalendar(inputEl, lang, callback, options = {}) {
+        if (isPickerOpen) {
+            console.warn('DatePicker: Already open');
+            return;
+        }
+
+        currentLang = lang || 'en';
+        onConfirmCallback = callback;
+        launcherElement = inputEl;
+
+        // #3 & #4: Normalize constraints to midnight, support Date or string
+        minDate = normalizeConstraint(options.minDate);
+        maxDate = normalizeConstraint(options.maxDate);
+
+        let parsedDate = parseDDMMYYYYStrict(inputEl?.value);
+        selectedDate = parsedDate || new Date();
+        selectedDate = clampDateToRange(selectedDate);
+
+        desktopViewYear = selectedDate.getFullYear();
+        desktopViewMonth = selectedDate.getMonth();
+        desktopActiveCellDate = new Date(selectedDate);
+
+        if (!desktopModal) {
+            desktopModal = createDesktopCalendarModal();
+        } else {
+            // Update text for current language (keep LTR layout always)
+            document.getElementById('desktop-calendar-title').textContent = getTranslation('selectDate');
+            document.getElementById('desktop-cal-today').textContent = getTranslation('todayDate');
+            document.getElementById('desktop-cal-cancel').textContent = getTranslation('cancelDate');
+            document.getElementById('desktop-cal-confirm').textContent = getTranslation('confirmDate');
+            // Keep dir="ltr" for consistent layout
+        }
+
+        const inputField = document.getElementById('desktop-calendar-input');
+        // Set initial value as plain DD/MM/YYYY (initDateInput not yet called)
+        // but pre-populate dataset.iso so arrow keys work right after open.
+        inputField.value = formatDDMMYYYY(selectedDate);
+        {
+            const _y = selectedDate.getFullYear();
+            const _m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const _d = String(selectedDate.getDate()).padStart(2, '0');
+            inputField.dataset.iso = `${_y}-${_m}-${_d}`;
+        }
+        document.getElementById('desktop-calendar-error').textContent = '';
+
+        renderDesktopCalendar(); // Initial render, no animation
+
+        desktopAbortController = new AbortController();
+        const signal = desktopAbortController.signal;
+
+        attachDesktopCalendarListeners(inputField, signal);
 
         if (typeof ScrollLock !== 'undefined') ScrollLock.enable();
         else document.body.classList.add('scroll-lock');

@@ -298,6 +298,36 @@ function calculateLoan(inputs, activeKey, freq) {
 }
 
 /**
+ * Calculates quarterly stamp duty charge for a schedule installment period (in piastres)
+ * @param {Object} params
+ * @returns {{stampChargeInt: number, hasStamp: boolean}}
+ */
+function calculatePeriodStampDutyInt({ currentDate, prevDate, openingBalInt, stampRate, quarterHighestPrincipalInt, processedQuarters }) {
+    if (stampRate <= 0) return { stampChargeInt: 0, hasStamp: false };
+
+    const currentQuarter = getQuarterKey(currentDate);
+
+    // Track highest principal for current quarter
+    if (!quarterHighestPrincipalInt[currentQuarter] || openingBalInt > quarterHighestPrincipalInt[currentQuarter]) {
+        quarterHighestPrincipalInt[currentQuarter] = openingBalInt;
+    }
+
+    // Check if a quarter-end falls within this installment period
+    const prevQuarter = getQuarterKey(prevDate);
+    const quarterEnd = getQuarterEndDate(prevDate);
+
+    // If the previous period's quarter-end is on or before current date, and we haven't processed it
+    if (!processedQuarters.has(prevQuarter) && quarterEnd <= currentDate) {
+        const highestPrincipalInt = quarterHighestPrincipalInt[prevQuarter] || openingBalInt;
+        const stampChargeInt = roundInt(highestPrincipalInt * (stampRate / 100) / 4);
+        processedQuarters.add(prevQuarter);
+        return { stampChargeInt, hasStamp: true };
+    }
+
+    return { stampChargeInt: 0, hasStamp: false };
+}
+
+/**
  * Generates amortization schedule with optional stamp duty calculation
  * Uses INTEGER MATH internally (piastres) for precision
  * @param {Object} loanData - Loan parameters {P, R, N, M}
@@ -375,35 +405,19 @@ function generateSchedule(loanData, dates, stampRate = 0, freq = 1) {
 
         totalActualInterestInt += inteInt;
 
-        // --- Stamp Calculation Logic (in piastres) ---
-        let stampChargeInt = 0;
-        let hasStamp = false;
+        // Determine previous date (booking date for m=1, previous installment date otherwise)
+        const prevDate = m === 1 ? bookingDate : schedule[m - 2].rawDate;
 
-        if (stampRate > 0) {
-            const currentQuarter = getQuarterKey(currentDate);
-
-            // Track highest principal for current quarter
-            if (!quarterHighestPrincipalInt[currentQuarter] || openingBalInt > quarterHighestPrincipalInt[currentQuarter]) {
-                quarterHighestPrincipalInt[currentQuarter] = openingBalInt;
-            }
-
-            // Determine previous date (booking date for m=1, previous installment date otherwise)
-            const prevDate = m === 1 ? bookingDate : schedule[m - 2].rawDate;
-
-            // Check if a quarter-end falls within this installment period
-            const prevQuarter = getQuarterKey(prevDate);
-            const quarterEnd = getQuarterEndDate(prevDate);
-
-            // If the previous period's quarter-end is on or before current date, and we haven't processed it
-            if (!processedQuarters.has(prevQuarter) && quarterEnd <= currentDate) {
-                // Calculate stamp based on highest principal in that quarter
-                const highestPrincipalInt = quarterHighestPrincipalInt[prevQuarter] || openingBalInt;
-                stampChargeInt = roundInt(highestPrincipalInt * (stampRate / 100) / 4);
-                totalStampInt += stampChargeInt;
-                hasStamp = true;
-                processedQuarters.add(prevQuarter);
-            }
-        }
+        // Calculate stamp duty for period
+        const { stampChargeInt, hasStamp } = calculatePeriodStampDutyInt({
+            currentDate,
+            prevDate,
+            openingBalInt,
+            stampRate,
+            quarterHighestPrincipalInt,
+            processedQuarters
+        });
+        totalStampInt += stampChargeInt;
 
         // === CONVERT BACK TO CURRENCY FOR OUTPUT ===
         schedule.push({
@@ -426,6 +440,41 @@ function generateSchedule(loanData, dates, stampRate = 0, freq = 1) {
         m1_Payment: toCurrency(m1_PaymentInt),
         totalStamp: toCurrency(totalStampInt)
     };
+}
+
+/**
+ * Calculates early settlement stamp duty (in piastres) based on the highest balance in the quarter
+ * @param {Array} schedule - Amortization schedule array
+ * @param {Date} settlementDate - Date of early settlement
+ * @param {number} principalBalanceInt - Balance in piastres
+ * @param {number} stampRate - Quarterly stamp rate percentage
+ * @returns {number} Settlement stamp in piastres
+ */
+function calculateSettlementStampInt(schedule, settlementDate, principalBalanceInt, stampRate) {
+    if (stampRate <= 0 || principalBalanceInt <= 0) return 0;
+
+    const settlementQuarter = getQuarterKey(settlementDate);
+    let highestPrincipalInQuarterInt = principalBalanceInt;
+
+    for (let i = 0; i < schedule.length; i++) {
+        const entryQuarter = getQuarterKey(schedule[i].rawDate);
+        if (entryQuarter === settlementQuarter) {
+            const entryBalInt = toPiastres(schedule[i].bal);
+            if (entryBalInt > highestPrincipalInQuarterInt) {
+                highestPrincipalInQuarterInt = entryBalInt;
+            }
+        }
+    }
+
+    // Also include opening balance of loan if it is in the same quarter
+    if (schedule.length > 0 && getQuarterKey(schedule[0].rawDate) === settlementQuarter) {
+        const firstBalInt = toPiastres(schedule[0].bal);
+        if (firstBalInt > highestPrincipalInQuarterInt) {
+            highestPrincipalInQuarterInt = firstBalInt;
+        }
+    }
+
+    return roundInt(highestPrincipalInQuarterInt * (stampRate / 100) / 4);
 }
 
 /**
@@ -507,34 +556,7 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
     }
 
     // Calculate settlement stamp (quarter's stamp based on HIGHEST principal in the quarter)
-    let settlementStampInt = 0;
-    if (stampRate > 0 && principalBalanceInt > 0) {
-        // Determine the quarter of the settlement date
-        const settlementQuarter = getQuarterKey(settlementDate);
-
-        // Find the highest principal balance in that quarter from the schedule (in piastres)
-        let highestPrincipalInQuarterInt = principalBalanceInt; // Default to current
-
-        for (let i = 0; i < schedule.length; i++) {
-            const entryQuarter = getQuarterKey(schedule[i].rawDate);
-            if (entryQuarter === settlementQuarter) {
-                const entryBalInt = toPiastres(schedule[i].bal);
-                if (entryBalInt > highestPrincipalInQuarterInt) {
-                    highestPrincipalInQuarterInt = entryBalInt;
-                }
-            }
-        }
-
-        // Also include the opening balance of the loan if it's in the same quarter
-        if (schedule.length > 0 && getQuarterKey(schedule[0].rawDate) === settlementQuarter) {
-            const firstBalInt = toPiastres(schedule[0].bal);
-            if (firstBalInt > highestPrincipalInQuarterInt) {
-                highestPrincipalInQuarterInt = firstBalInt;
-            }
-        }
-
-        settlementStampInt = roundInt(highestPrincipalInQuarterInt * (stampRate / 100) / 4);
-    }
+    const settlementStampInt = calculateSettlementStampInt(schedule, settlementDate, principalBalanceInt, stampRate);
 
     // Total settlement in piastres (integer addition - no float errors!)
     const totalSettlementInt = principalBalanceInt + feeInt + accruedInterestInt + settlementStampInt;
@@ -584,6 +606,108 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
  * @returns {Object} Solution with {valid, grossLoan, td2, monthlyTdInterest, totalTdInterest,
  *                    totalLoanCost, totalTdsAtEnd, simpleInterestAlt, netBenefit, adminFeesAmount, ...}
  */
+/**
+ * Evaluates a candidate td2 amount for the self-sufficient loan solution
+ * @param {number} td2 - Candidate TD2 amount
+ * @param {Object} params - Context and rate parameters
+ * @returns {Object|null} Solution object if valid, null otherwise
+ */
+function evaluateTdLoanCandidate(td2, params) {
+    const {
+        td1,
+        monthlyTd1Rate,
+        monthlyTd2Rate,
+        loanRate,
+        N,
+        dates,
+        stampRate,
+        adminFees,
+        feeFactor,
+        freq,
+        cd1AccrualDate,
+        cd2AccrualDate
+    } = params;
+
+    const grossLoan = feeFactor > 0 ? Math.ceil(td2 / feeFactor) : td2;
+    const netLoan = grossLoan * feeFactor;
+    if (Math.floor(netLoan / 1000) * 1000 < td2) return null;
+
+    const loanCalc = calculateLoan({ amount: String(grossLoan), rate: String(loanRate), period: String(N) }, 'installment', freq);
+    if (!loanCalc.valid) return null;
+
+    // Run full amortization schedule for buffer and stamp calculation
+    const sched = generateSchedule(
+        { P: grossLoan, R: loanRate, N: N, M: loanCalc.M },
+        dates, stampRate, freq
+    );
+
+    // --- Two-pass buffer calculation ---
+    const oldBuffer = Math.max(0, round2(sched.m1_Payment - loanCalc.M));
+    const initEffectiveTd2 = Math.floor((netLoan - oldBuffer) / 1000) * 1000;
+
+    const cd1Payments = countCdPaymentsBeforeM1(cd1AccrualDate, dates.m1_Date);
+    const cd2Payments = countCdPaymentsBeforeM1(cd2AccrualDate, dates.m1_Date);
+    const cd1InterestBefore = td1 * monthlyTd1Rate * cd1Payments;
+    const cd2InterestBefore = initEffectiveTd2 > 0 ? initEffectiveTd2 * monthlyTd2Rate * cd2Payments : 0;
+    const availableCdInterest = round2(cd1InterestBefore + cd2InterestBefore);
+
+    const buffer = Math.max(0, round2(sched.m1_Payment - availableCdInterest));
+    const effectiveTd2 = Math.floor((netLoan - buffer) / 1000) * 1000;
+    if (effectiveTd2 <= 0) return null;
+
+    const periodicTdInterest = ((td1 * monthlyTd1Rate) + (effectiveTd2 * monthlyTd2Rate)) * freq;
+
+    let totalLoanCost = 0;
+    const actualPeriods = sched.schedule.length;
+    for (let j = 0; j < actualPeriods; j++) {
+        const entry = sched.schedule[j];
+        totalLoanCost += entry.int + entry.prin + entry.stamp;
+    }
+
+    const totalTdIncome = periodicTdInterest * actualPeriods;
+
+    if (periodicTdInterest >= loanCalc.M && totalTdIncome + buffer >= totalLoanCost) {
+        const adminFeesAmount = round2(grossLoan * adminFees / 100);
+        const periodicTdInterestR = round2(periodicTdInterest);
+        const totalTdInterest = round2(periodicTdInterestR * actualPeriods);
+        const totalLoanCostR = round2(totalLoanCost);
+        const totalTdsAtEnd = td1 + effectiveTd2;
+        const actualMonths = actualPeriods * freq;
+        const simpleInterestAlt = round2(td1 + (td1 * monthlyTd1Rate * actualMonths));
+        const netBenefit = round2(totalTdsAtEnd - simpleInterestAlt);
+        const monthlySurplus = round2(periodicTdInterestR - loanCalc.M);
+        const years = actualMonths / 12;
+        const effectiveRate = years > 0 ? round2((effectiveTd2 / td1) / years * 100) : 0;
+
+        return {
+            valid: true,
+            grossLoan: grossLoan,
+            td2: effectiveTd2,
+            monthlyTdInterest: periodicTdInterestR,
+            installment: round2(loanCalc.M),
+            monthlySurplus: monthlySurplus,
+            totalTdInterest: totalTdInterest,
+            totalLoanCost: totalLoanCostR,
+            totalTdsAtEnd: totalTdsAtEnd,
+            simpleInterestAlt: simpleInterestAlt,
+            netBenefit: netBenefit,
+            effectiveRate: effectiveRate,
+            adminFeesAmount: adminFeesAmount,
+            totalStamp: sched.totalStamp || 0,
+            actualMonths: actualMonths,
+            m1_Payment: sched.m1_Payment,
+            firstInstBuffer: buffer,
+            availableCdInterest: availableCdInterest,
+            netLeftover: round2(netLoan - buffer - effectiveTd2),
+            totalCollateral: td1,
+            maxAllowedLoan: round2(0.90 * td1),
+            exceedsCollateralLimit: grossLoan > (0.90 * td1 + 0.01)
+        };
+    }
+
+    return null;
+}
+
 /**
  * @param {Date|null} [cd1AccrualDate] - Next CD₁ interest payment date (used for accurate buffer)
  * @param {Date|null} [cd2AccrualDate] - First CD₂ interest payment date (used for accurate buffer)
@@ -647,105 +771,25 @@ function solveTdLoan(td1, tdRate, loanRate, N, dates, stampRate, adminFees, td2R
         return { valid: false };
     }
 
+    const candidateParams = {
+        td1,
+        monthlyTd1Rate,
+        monthlyTd2Rate,
+        loanRate,
+        N,
+        dates,
+        stampRate,
+        adminFees,
+        feeFactor,
+        freq,
+        cd1AccrualDate,
+        cd2AccrualDate
+    };
+
     // --- Step 3: Iterate td2 downward until conditions are met ---
-    // Approach B: for each candidate grossLoan, hold back buffer = (m1_Payment - M)
-    // from the net loan proceeds. The remaining net goes into TD₂ (effectiveTd2).
-    // Month 1: client uses TD interest + buffer to pay the larger first installment.
-    // Months 2-N: client uses TD interest alone (positive surplus guaranteed).
-    //
-    // Acceptance:
-    //   1. periodicTdInterest(effectiveTd2) >= M   — monthly surplus positive
-    //   2. totalTdIncome + buffer >= totalLoanCost  — full term coverage
     for (; td2 >= 1000; td2 -= 1000) {
-        // Derive grossLoan from td2 (same as original algorithm)
-        const grossLoan = feeFactor > 0 ? Math.ceil(td2 / feeFactor) : td2;
-        const netLoan = grossLoan * feeFactor;
-        if (Math.floor(netLoan / 1000) * 1000 < td2) continue;
-
-        const loanCalc = calculateLoan({ amount: String(grossLoan), rate: String(loanRate), period: String(N) }, 'installment', freq);
-        if (!loanCalc.valid) continue;
-
-        // Run full amortization schedule for buffer and stamp calculation
-        const sched = generateSchedule(
-            { P: grossLoan, R: loanRate, N: N, M: loanCalc.M },
-            dates, stampRate, freq
-        );
-
-        // --- Two-pass buffer calculation ---
-        // Pass 1: estimate effectiveTd2 with the old simple upper-bound buffer
-        //         so we can calculate how much CD₂ interest arrives before m1.
-        const oldBuffer = Math.max(0, round2(sched.m1_Payment - loanCalc.M));
-        const initEffectiveTd2 = Math.floor((netLoan - oldBuffer) / 1000) * 1000;
-
-        // Pass 2: count actual CD interest payments received before the first installment
-        const cd1Payments = countCdPaymentsBeforeM1(cd1AccrualDate, dates.m1_Date);
-        const cd2Payments = countCdPaymentsBeforeM1(cd2AccrualDate, dates.m1_Date);
-        const cd1InterestBefore = td1 * monthlyTd1Rate * cd1Payments;
-        const cd2InterestBefore = initEffectiveTd2 > 0 ? initEffectiveTd2 * monthlyTd2Rate * cd2Payments : 0;
-        const availableCdInterest = round2(cd1InterestBefore + cd2InterestBefore);
-
-        // Accurate buffer: how much extra must be held back from loan proceeds
-        // after subtracting the CD interest already collected before m1.
-        const buffer = Math.max(0, round2(sched.m1_Payment - availableCdInterest));
-
-        // Effective TD₂: net loan minus the buffer reserve (rounded down to nearest 1000)
-        const effectiveTd2 = Math.floor((netLoan - buffer) / 1000) * 1000;
-        if (effectiveTd2 <= 0) continue;
-
-        // TD interest computed with effectiveTd2 (actual amount deposited into TD₂)
-        const periodicTdInterest = ((td1 * monthlyTd1Rate) + (effectiveTd2 * monthlyTd2Rate)) * freq;
-
-        // Total loan cost = all installments + all stamp charges
-        let totalLoanCost = 0;
-        const actualPeriods = sched.schedule.length;
-        for (let j = 0; j < actualPeriods; j++) {
-            const entry = sched.schedule[j];
-            totalLoanCost += entry.int + entry.prin + entry.stamp;
-        }
-
-        // Total TD income over the loan term
-        const totalTdIncome = periodicTdInterest * actualPeriods;
-
-        if (periodicTdInterest >= loanCalc.M && totalTdIncome + buffer >= totalLoanCost) {
-            // Found solution — client needs zero deposit!
-            const adminFeesAmount = round2(grossLoan * adminFees / 100);
-            const periodicTdInterestR = round2(periodicTdInterest);
-            const totalTdInterest = round2(periodicTdInterestR * actualPeriods);
-            const totalLoanCostR = round2(totalLoanCost);
-            const totalTdsAtEnd = td1 + effectiveTd2;
-            const actualMonths = actualPeriods * freq;
-            const simpleInterestAlt = round2(td1 + (td1 * monthlyTd1Rate * actualMonths));
-            const netBenefit = round2(totalTdsAtEnd - simpleInterestAlt);
-            // Surplus = guaranteed minimum (months 2-N use regular installment)
-            const monthlySurplus = round2(periodicTdInterestR - loanCalc.M);
-            const years = actualMonths / 12;
-            const effectiveRate = years > 0 ? round2((effectiveTd2 / td1) / years * 100) : 0;
-
-            return {
-                valid: true,
-                grossLoan: grossLoan,
-                td2: effectiveTd2,
-                monthlyTdInterest: periodicTdInterestR,
-                installment: round2(loanCalc.M),
-                monthlySurplus: monthlySurplus,
-                totalTdInterest: totalTdInterest,
-                totalLoanCost: totalLoanCostR,
-                totalTdsAtEnd: totalTdsAtEnd,
-                simpleInterestAlt: simpleInterestAlt,
-                netBenefit: netBenefit,
-                effectiveRate: effectiveRate,
-                adminFeesAmount: adminFeesAmount,
-                totalStamp: sched.totalStamp || 0,
-                actualMonths: actualMonths,
-                m1_Payment: sched.m1_Payment,
-                firstInstBuffer: buffer,
-                availableCdInterest: availableCdInterest,
-                netLeftover: round2(netLoan - buffer - effectiveTd2),
-                totalCollateral: td1,
-                maxAllowedLoan: round2(0.90 * td1),
-                exceedsCollateralLimit: grossLoan > (0.90 * td1 + 0.01)
-            };
-        }
+        const result = evaluateTdLoanCandidate(td2, candidateParams);
+        if (result && result.valid) return result;
     }
 
     return { valid: false };

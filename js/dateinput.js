@@ -19,6 +19,10 @@ const DATE_CONFIG = {
 
 /* --- Date Helpers --- */
 
+/**
+ * Validate date with 1-based month (1 = January)
+ * Prevents JavaScript Date rollover bugs.
+ */
 function dateIsValid(d, m, y) {
     const date = new Date(y, m - 1, d);
     return (
@@ -26,6 +30,14 @@ function dateIsValid(d, m, y) {
         date.getMonth() === m - 1 &&
         date.getDate() === d
     );
+}
+
+/**
+ * Validate date with 0-based month (0 = January)
+ * Prevents JavaScript Date rollover bugs.
+ */
+function dateIsValidZeroBased(year, month, day) {
+    return dateIsValid(day, month + 1, year);
 }
 
 function dateToISO(d, m, y) {

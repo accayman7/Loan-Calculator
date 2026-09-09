@@ -304,12 +304,14 @@
         }
 
         /* Right-aligned tooltips - anchor from right edge */
+        .info-icon.tooltip-end::after,
         .text-end .info-icon::after {
             left: auto;
             right: 0;
             transform: translateX(0);
         }
 
+        .info-icon.tooltip-end::before,
         .text-end .info-icon::before {
             left: auto;
             right: 8px;
@@ -332,12 +334,14 @@
             text-align: right;
         }
 
+        [dir="rtl"] .info-icon.tooltip-end::after,
         [dir="rtl"] .text-end .info-icon::after {
             left: 0;
             right: auto;
             transform: translateX(0);
         }
 
+        [dir="rtl"] .info-icon.tooltip-end::before,
         [dir="rtl"] .text-end .info-icon::before {
             left: 8px;
             right: auto;
@@ -2336,19 +2340,25 @@
                         <!-- Dynamic Collateral Details Section (Shown when Secured Loan is active) -->
                         <div id="collateral-section" class="overflow-hidden transition-all duration-300 max-h-0 opacity-0 mb-3">
                             <div class="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/50 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-1.5">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-1.5 min-w-0">
                                         <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                         </svg>
-                                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200" data-lang-key="collateralDetailsTitle">Collateral Details (CDs / Deposits)</span>
+                                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200 whitespace-nowrap" data-lang-key="collateralDetailsTitle">Collateral Details</span>
                                     </div>
-                                    <button type="button" id="add-collateral-btn" class="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 py-1 px-2.5 rounded-lg bg-indigo-100/70 hover:bg-indigo-200/80 dark:bg-indigo-900/60 dark:hover:bg-indigo-900 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        <span data-lang-key="addCollateralBtn">Add Collateral</span>
-                                    </button>
+                                    <div class="flex items-center gap-1 flex-shrink-0">
+                                        <button type="button" id="clear-collateral-btn" class="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 py-1 px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap" title="Clear all collateral" aria-label="Clear all collateral">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            <span data-lang-key="clearAllBtn">Clear All</span>
+                                        </button>
+                                        <button type="button" id="add-collateral-btn" class="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 py-1 px-2.5 rounded-lg bg-indigo-100/70 hover:bg-indigo-200/80 dark:bg-indigo-900/60 dark:hover:bg-indigo-900 transition-colors whitespace-nowrap">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            <span data-lang-key="addCollateralBtn">Add Collateral</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- Column Headers -->
@@ -2373,8 +2383,56 @@
                                         <span id="summary-max-loan" class="font-bold text-indigo-600 dark:text-indigo-400 select-text">-</span>
                                     </div>
                                     <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px]">
-                                        <span class="block text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="minLoanRateLabel">Min Rate (+2%)</span>
+                                        <div class="flex items-center justify-center gap-1">
+                                            <span class="block text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="minLoanRateLabel">Min Rate (+2%)</span>
+                                            <span class="info-icon tooltip-end text-[9px]" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="minLoanRateTooltip" data-tooltip="Minimum Loan Rate: By banking regulations, loan interest must be at least 2% higher than your highest collateral CD rate.">ℹ</span>
+                                        </div>
                                         <span id="summary-min-rate" class="font-bold text-indigo-600 dark:text-indigo-400 select-text">-</span>
+                                    </div>
+                                </div>
+
+                                <!-- Net Cashflow Comparison (CDs Return vs. Loan Installment) -->
+                                <div id="collateral-cashflow-card" class="hidden overflow-hidden p-2.5 bg-gradient-to-r from-indigo-900/10 via-emerald-900/10 to-indigo-900/10 dark:from-indigo-950/40 dark:via-emerald-950/30 dark:to-indigo-950/40 rounded-xl border border-indigo-200/80 dark:border-indigo-800/80 transition-all duration-300">
+                                    <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-indigo-200/60 dark:border-indigo-800/60">
+                                        <div class="flex items-center gap-1.5 min-w-0">
+                                            <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                                            </svg>
+                                            <span class="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate" data-lang-key="netCashflowLabel">Net Cashflow</span>
+                                        </div>
+                                        <span id="cashflow-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                                            Surplus
+                                        </span>
+                                    </div>
+
+                                    <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
+                                        <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]">
+                                            <span class="block text-[9px] sm:text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="cdMonthlyReturnLabel">Monthly CD Returns</span>
+                                            <span id="cashflow-cd-return" class="font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm select-text">+0.00</span>
+                                        </div>
+                                        <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]">
+                                            <span class="block text-[9px] sm:text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="loanInstallmentMonthlyLabel">Monthly Installment</span>
+                                            <span id="cashflow-loan-inst" class="font-bold text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm select-text">-0.00</span>
+                                        </div>
+                                        <div id="cashflow-diff-box" class="bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]">
+                                            <span class="block text-[9px] sm:text-[10px] leading-tight text-gray-600 dark:text-gray-300 font-medium break-words" data-lang-key="netCashflowLabel">Net Difference</span>
+                                            <span id="cashflow-net-diff" class="font-black text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm select-text">+0.00</span>
+                                        </div>
+                                    </div>
+                                    <p id="cashflow-explain" class="text-[10px] text-gray-500 dark:text-gray-400 text-center mt-1.5 leading-snug"></p>
+
+                                    <!-- Reference Self-Covering Loan Amount (Option A) -->
+                                    <div id="cashflow-self-covering-row" class="hidden mt-2 pt-2 border-t border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-1.5 min-w-0">
+                                            <span class="text-xs flex-shrink-0">⚖️</span>
+                                            <div class="min-w-0">
+                                                <span class="text-[10px] text-gray-500 dark:text-gray-400 block leading-tight truncate" data-lang-key="selfCoveringLoanLabel">100% Self-Covering Loan</span>
+                                                <span id="cashflow-self-covering-amount" class="font-bold text-gray-900 dark:text-white text-xs sm:text-sm select-text">-</span>
+                                            </div>
+                                        </div>
+                                        <button type="button" id="apply-self-covering-btn" class="flex-shrink-0 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 py-1 px-2.5 rounded-lg bg-indigo-100/70 hover:bg-indigo-200/80 dark:bg-indigo-900/60 dark:hover:bg-indigo-900 transition-colors whitespace-nowrap" data-lang-key="applyLoanAmountBtn">
+                                            Use Value
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -2397,6 +2455,14 @@
                                 <input type="text" inputmode="decimal" id="loan-amount" data-key="amount"
                                     class="text-input select-text" autocomplete="off" autocorrect="off"
                                     autocapitalize="off" spellcheck="false">
+                            </div>
+                            <!-- Option C: Quick-Fill Helper Chip -->
+                            <div id="self-covering-chip-container" class="hidden mt-1.5 flex items-center justify-start">
+                                <button type="button" id="self-covering-chip" class="inline-flex items-center gap-1 py-0.5 px-2 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/70 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 transition-colors text-[10px] font-medium cursor-pointer" title="Click to apply 100% covered loan amount">
+                                    <span>💡</span>
+                                    <span data-lang-key="selfCoveringChipLabel">100% covered by CDs:</span>
+                                    <span id="self-covering-chip-val" class="font-bold">-</span>
+                                </button>
                             </div>
                             <p class="error-text hidden" id="error-amount" data-lang-key="invalidAmount">Please enter a valid amount.</p>
                             <p class="text-xs text-amber-600 dark:text-amber-400 mt-1 hidden flex items-center gap-1 font-medium" id="warning-loan-amount">
@@ -2867,10 +2933,16 @@
                                         </svg>
                                         <span class="text-xs font-bold text-green-900 dark:text-green-200" data-lang-key="ssCd1SectionTitle">Existing Certificates (CD₁)</span>
                                     </div>
-                                    <button type="button" id="ss-add-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 py-1 px-2.5 rounded-lg bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                        <span data-lang-key="addCd1Btn">Add CD₁</span>
-                                    </button>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" id="ss-clear-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 py-1 px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Clear all CD₁" aria-label="Clear all CD₁">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            <span data-lang-key="clearAllBtn">Clear All</span>
+                                        </button>
+                                        <button type="button" id="ss-add-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 py-1 px-2.5 rounded-lg bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                            <span data-lang-key="addCd1Btn">Add CD₁</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- Column Headers -->
@@ -3292,30 +3364,23 @@
                 <!-- Assumptions Panel -->
                 <div id="assumptions-panel"
                     class="mt-4 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5"
-                        data-lang-key="assumptionsTitle">
-                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        Calculation Assumptions
+                        <span data-lang-key="assumptionsTitle">Calculation Assumptions</span>
                     </h4>
                     <div
                         class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
-                        <span data-lang-key="assumptionInterestMethod">• Interest Method: Reducing Balance
-                            (Annuity)</span>
+                        <span data-lang-key="assumptionInterestMethod">• Interest Calculation Method: Reducing Balance (Annuity)</span>
                         <span data-lang-key="assumptionDayCount">• Day Count: 30/360 (US/NASD)</span>
                         <span data-lang-key="assumptionRounding">• Rounding: 2 decimal places per installment</span>
-                        <span data-lang-key="assumptionStampLogic">• Stamp: Quarterly on highest principal
-                            balance</span>
-                        <span data-lang-key="assumptionFeesLogic" class="sm:col-span-2">• Fees: Deducted upfront, not
-                            amortized</span>
+                        <span data-lang-key="assumptionStampLogic">• Stamp: Quarterly on highest principal balance</span>
+                        <span data-lang-key="assumptionFeesLogic" class="sm:col-span-2">• Fees: Deducted upfront, not amortized</span>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 text-center leading-relaxed"
-                        data-lang-key="assumptionsDisclaimer">
-                        This calculator provides estimates only. Results should not be considered final loan approval.
-                        Actual terms may vary.
-                    </p>
+                        data-lang-key="assumptionsDisclaimer">This calculator provides estimates only. Results should not be considered final loan approval. Actual terms may vary.</p>
                 </div>
             </div>
         </form>

@@ -105,6 +105,89 @@ function testToNum() {
     TestRunner.assertEqual(toNum(42), 42, 'toNum(42) = 42 (number passthrough)');
 }
 
+function testRoundInt() {
+    console.log('Testing roundInt()...');
+
+    TestRunner.assertEqual(roundInt(1.4), 1, 'roundInt(1.4) = 1');
+    TestRunner.assertEqual(roundInt(1.5), 2, 'roundInt(1.5) = 2 (rounds half up)');
+    TestRunner.assertEqual(roundInt(1.6), 2, 'roundInt(1.6) = 2');
+    TestRunner.assertEqual(roundInt(0), 0, 'roundInt(0) = 0');
+    TestRunner.assertEqual(roundInt(-1.4), -1, 'roundInt(-1.4) = -1');
+    TestRunner.assertEqual(roundInt(-1.6), -2, 'roundInt(-1.6) = -2');
+    TestRunner.assertEqual(roundInt(10050.49), 10050, 'roundInt(10050.49) = 10050');
+}
+
+function testFmt() {
+    console.log('Testing fmt()...');
+
+    TestRunner.assertEqual(fmt(1000), '1,000.00', 'fmt(1000) = "1,000.00"');
+    TestRunner.assertEqual(fmt(1234567.89), '1,234,567.89', 'fmt(1234567.89) = "1,234,567.89"');
+    TestRunner.assertEqual(fmt(0), '0.00', 'fmt(0) = "0.00"');
+    TestRunner.assertEqual(fmt(NaN), '0.00', 'fmt(NaN) = "0.00"');
+    TestRunner.assertEqual(fmt(Infinity), '0.00', 'fmt(Infinity) = "0.00"');
+    TestRunner.assertEqual(fmt(-Infinity), '0.00', 'fmt(-Infinity) = "0.00"');
+    TestRunner.assertEqual(fmt(100.5), '100.50', 'fmt(100.5) = "100.50" (pads 2 decimals)');
+}
+
+function testSafeParseFloat() {
+    console.log('Testing safeParseFloat()...');
+
+    TestRunner.assertEqual(safeParseFloat('1,000.50'), 1000.5, 'safeParseFloat("1,000.50") = 1000.5');
+    TestRunner.assertEqual(safeParseFloat('1234.56'), 1234.56, 'safeParseFloat("1234.56") = 1234.56');
+    TestRunner.assertEqual(safeParseFloat(42), 42, 'safeParseFloat(42) = 42');
+    TestRunner.assertTrue(Number.isNaN(safeParseFloat('abc')), 'safeParseFloat("abc") returns NaN');
+    TestRunner.assertTrue(Number.isNaN(safeParseFloat('')), 'safeParseFloat("") returns NaN');
+    TestRunner.assertTrue(Number.isNaN(safeParseFloat(undefined)), 'safeParseFloat(undefined) returns NaN');
+}
+
+function testGetFormattedDate() {
+    console.log('Testing getFormattedDate()...');
+
+    TestRunner.assertEqual(getFormattedDate(new Date(2026, 0, 15)), '15/01/2026', 'getFormattedDate(2026-01-15) = "15/01/2026"');
+    TestRunner.assertEqual(getFormattedDate(new Date(2026, 4, 5)), '05/05/2026', 'getFormattedDate(2026-05-05) pads single digits');
+    TestRunner.assertEqual(getFormattedDate(new Date(2024, 1, 29)), '29/02/2024', 'getFormattedDate handles leap day');
+    TestRunner.assertEqual(getFormattedDate(null), '', 'getFormattedDate(null) = ""');
+    TestRunner.assertEqual(getFormattedDate(undefined), '', 'getFormattedDate(undefined) = ""');
+    TestRunner.assertEqual(getFormattedDate(new Date('invalid')), '', 'getFormattedDate(invalid date) = ""');
+}
+
+function testGetQuarterEndDate() {
+    console.log('Testing getQuarterEndDate()...');
+
+    const q1End = getQuarterEndDate(new Date(2026, 0, 15));
+    TestRunner.assertTrue(q1End.getFullYear() === 2026 && q1End.getMonth() === 2 && q1End.getDate() === 31, 'Q1 ends March 31');
+
+    const q2End = getQuarterEndDate(new Date(2026, 4, 10));
+    TestRunner.assertTrue(q2End.getFullYear() === 2026 && q2End.getMonth() === 5 && q2End.getDate() === 30, 'Q2 ends June 30');
+
+    const q3End = getQuarterEndDate(new Date(2026, 7, 20));
+    TestRunner.assertTrue(q3End.getFullYear() === 2026 && q3End.getMonth() === 8 && q3End.getDate() === 30, 'Q3 ends September 30');
+
+    const q4End = getQuarterEndDate(new Date(2026, 10, 5));
+    TestRunner.assertTrue(q4End.getFullYear() === 2026 && q4End.getMonth() === 11 && q4End.getDate() === 31, 'Q4 ends December 31');
+}
+
+function testCountCdPaymentsBeforeM1() {
+    console.log('Testing countCdPaymentsBeforeM1()...');
+
+    TestRunner.assertEqual(countCdPaymentsBeforeM1(null, null), 0, 'Null inputs return 0');
+    TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 2, 10), new Date(2026, 1, 10)), 0, 'Accrual after M1 returns 0');
+    TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 1, 10), new Date(2026, 1, 10)), 1, 'Same date returns 1 payment');
+    TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 0, 10), new Date(2026, 2, 15)), 3, 'Jan 10 to Mar 15 returns 3 payments');
+    TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 0, 20), new Date(2026, 1, 15)), 1, 'Jan 20 to Feb 15 returns 1 payment');
+}
+
+function testQuarterEndInRange() {
+    console.log('Testing quarterEndInRange()...');
+
+    // End date on quarter end: Mar 31
+    TestRunner.assertTrue(quarterEndInRange(new Date(2026, 2, 1), new Date(2026, 2, 31)), 'Mar 01 to Mar 31 contains Q1 end');
+    // End date before quarter end: Mar 15 (quarter end is Mar 31 which is > Mar 15)
+    TestRunner.assertFalse(quarterEndInRange(new Date(2026, 2, 1), new Date(2026, 2, 15)), 'Mar 01 to Mar 15 does not reach Q1 end');
+    // Start date equals quarter end (startDate is exclusive)
+    TestRunner.assertFalse(quarterEndInRange(new Date(2026, 2, 31), new Date(2026, 2, 31)), 'Mar 31 to Mar 31 exclusive start returns false');
+}
+
 function testDays360() {
     console.log('Testing days360()...');
 
@@ -603,6 +686,13 @@ function runAllTests() {
     testRound2();
     testPiastresConversion();
     testToNum();
+    testRoundInt();
+    testFmt();
+    testSafeParseFloat();
+    testGetFormattedDate();
+    testGetQuarterEndDate();
+    testCountCdPaymentsBeforeM1();
+    testQuarterEndInRange();
 
     // Date tests
     testDays360();
