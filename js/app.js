@@ -278,39 +278,42 @@
         if (!listEl) return;
 
         listEl.innerHTML = '';
+        const fragment = document.createDocumentFragment();
         collaterals.forEach((col, index) => {
             const row = document.createElement('div');
             row.id = `col-row-${col.id}`;
             row.className = `grid grid-cols-12 gap-1.5 items-center p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 transition-all ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
             
-            const colLabel = `CD ${index + 1}`;
+            const colIndex = index + 1;
+            const colLabel = `CD ${colIndex}`;
+            const colItemName = `${t(AppState.lang, 'collateralItemLabel')} ${colIndex}`;
             
             row.innerHTML = `
                 <div class="col-span-2 flex items-center justify-center gap-1 text-[11px] font-bold text-gray-600 dark:text-gray-300">
                     <span>${colLabel}</span>
                     ${collaterals.length > 1 ? `
-                    <button type="button" class="col-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${col.id}" title="${t(AppState.lang, 'removeCollateralBtn')}" aria-label="${t(AppState.lang, 'removeCollateralBtn')}">
+                    <button type="button" class="col-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="removeCollateralBtn" data-lang-aria-label="removeCollateralBtn" title="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                     ` : `
-                    <button type="button" class="col-clear-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 p-0.5 rounded transition-colors" data-id="${col.id}" title="${t(AppState.lang, 'clearCollateralBtn')}" aria-label="${t(AppState.lang, 'clearCollateralBtn')}">
+                    <button type="button" class="col-clear-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 p-0.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="clearCollateralBtn" data-lang-aria-label="clearCollateralBtn" title="${t(AppState.lang, 'clearCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'clearCollateralBtn')} (${colItemName})">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                     `}
                 </div>
                 <div class="col-span-5">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center" data-id="${col.id}" placeholder="100,000">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralAmountLabel" data-lang-title="collateralAmountLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralAmountLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralAmountLabel')} (${colItemName})">
                     </div>
                 </div>
                 <div class="col-span-3">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" placeholder="19.0">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
                     </div>
                 </div>
                 <div class="col-span-2">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="text-input text-xs select-text col-period-input p-0 text-center" data-id="${col.id}" placeholder="36">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="text-input text-xs select-text col-period-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralPeriodLabel" data-lang-title="collateralPeriodLabel" placeholder="36" aria-label="${t(AppState.lang, 'collateralPeriodLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralPeriodLabel')} (${colItemName})">
                     </div>
                 </div>
             `;
@@ -334,22 +337,53 @@
             }
 
             if (rateInput) {
+                const validateColRate = () => {
+                    const r = safeParseFloat(rateInput.value);
+                    const grp = rateInput.parentElement;
+                    if (!isNaN(r) && r > 100) {
+                        if (grp) grp.classList.add('error-state');
+                        rateInput.setAttribute('aria-invalid', 'true');
+                        rateInput.title = t(AppState.lang, 'maxRate');
+                    } else {
+                        if (grp) grp.classList.remove('error-state');
+                        rateInput.removeAttribute('aria-invalid');
+                        rateInput.title = `${t(AppState.lang, 'collateralRateLabel')} (${colItemName})`;
+                    }
+                };
+
                 rateInput.addEventListener('input', (e) => {
                     if (typeof validateRateInput === 'function') validateRateInput(e.target);
                     col.rate = e.target.value;
+                    validateColRate();
                     recalcCollateralMetrics(true);
                 });
                 rateInput.addEventListener('blur', (e) => {
                     if (typeof formatRateInputBlur === 'function') formatRateInputBlur(e.target);
                     col.rate = e.target.value;
+                    validateColRate();
                     recalcCollateralMetrics();
                 });
             }
 
             if (periodInput) {
+                const validateColPeriod = () => {
+                    const p = parseInt(periodInput.value, 10);
+                    const grp = periodInput.parentElement;
+                    if (!isNaN(p) && p > 600) {
+                        if (grp) grp.classList.add('error-state');
+                        periodInput.setAttribute('aria-invalid', 'true');
+                        periodInput.title = AppState.lang === 'ar' ? 'الحد الأقصى 600 شهر' : 'Max 600 months';
+                    } else {
+                        if (grp) grp.classList.remove('error-state');
+                        periodInput.removeAttribute('aria-invalid');
+                        periodInput.title = `${t(AppState.lang, 'collateralPeriodLabel')} (${colItemName})`;
+                    }
+                };
+
                 periodInput.addEventListener('input', (e) => {
                     if (typeof validatePeriodInput === 'function') validatePeriodInput(e.target);
                     col.period = e.target.value;
+                    validateColPeriod();
                 });
             }
 
@@ -379,27 +413,61 @@
                 });
             }
 
-            listEl.appendChild(row);
+            fragment.appendChild(row);
         });
 
+        listEl.appendChild(fragment);
+
         recalcCollateralMetrics();
+    }
+
+    /**
+     * Unified collateral summary calculations (Suggestion #2)
+     * Calculates total collateral, maximum loan (90%), required minimum rate (+2%),
+     * and monthly CD return in a single pass without redundant array loops.
+     * @param {Array} colList - Array of collateral objects {amount, rate, period}
+     * @returns {Object} Calculated summary metrics
+     */
+    function getCollateralSummary(colList) {
+        let totalCollateral = 0;
+        let maxRate = 0;
+        let totalMonthlyCdReturn = 0;
+        let hasCollateral = false;
+
+        if (Array.isArray(colList)) {
+            colList.forEach(c => {
+                const a = safeParseFloat(c.amount) || 0;
+                const r = safeParseFloat(c.rate) || 0;
+                if (a > 0) {
+                    totalCollateral += a;
+                    hasCollateral = true;
+                }
+                if (r > maxRate) {
+                    maxRate = r;
+                }
+                if (a > 0 && r > 0) {
+                    totalMonthlyCdReturn += (a * r) / 1200;
+                }
+            });
+        }
+
+        const maxLoan = totalCollateral * 0.90;
+        const minRate = maxRate > 0 ? maxRate + 2 : 0;
+
+        return {
+            totalCollateral,
+            maxRate,
+            totalMonthlyCdReturn,
+            hasCollateral,
+            maxLoan,
+            minRate
+        };
     }
 
     function recalcCollateralMetrics(autoFillRate = false) {
         if (AppState.loanType !== 'secured') return;
 
-        let totalCollateral = 0;
-        let maxRate = 0;
-
-        collaterals.forEach(c => {
-            const a = safeParseFloat(c.amount) || 0;
-            const r = safeParseFloat(c.rate) || 0;
-            if (a > 0) totalCollateral += a;
-            if (r > maxRate) maxRate = r;
-        });
-
-        const maxLoan = totalCollateral * 0.90;
-        const minRate = maxRate > 0 ? maxRate + 2 : 0;
+        const { totalCollateral, maxLoan, minRate } = getCollateralSummary(collaterals);
 
         const totalColEl = document.getElementById('summary-total-collateral');
         const maxLoanEl = document.getElementById('summary-max-loan');
@@ -430,18 +498,7 @@
             return;
         }
 
-        let totalCollateral = 0;
-        let maxRate = 0;
-
-        collaterals.forEach(c => {
-            const a = safeParseFloat(c.amount) || 0;
-            const r = safeParseFloat(c.rate) || 0;
-            if (a > 0) totalCollateral += a;
-            if (r > maxRate) maxRate = r;
-        });
-
-        const maxAllowedLoan = totalCollateral * 0.90;
-        const minRequiredRate = maxRate > 0 ? maxRate + 2 : 0;
+        const { totalCollateral, maxLoan: maxAllowedLoan, minRate: minRequiredRate, maxRate } = getCollateralSummary(collaterals);
 
         const enteredAmount = safeParseFloat(formInputs.amount?.value) || 0;
         const enteredRate = safeParseFloat(formInputs.rate?.value) || 0;
@@ -480,16 +537,7 @@
             return;
         }
 
-        let totalMonthlyCdReturn = 0;
-        let hasCollateral = false;
-        collaterals.forEach(c => {
-            const a = safeParseFloat(c.amount) || 0;
-            const r = safeParseFloat(c.rate) || 0;
-            if (a > 0 && r > 0) {
-                totalMonthlyCdReturn += (a * r) / 1200;
-                hasCollateral = true;
-            }
-        });
+        const { totalMonthlyCdReturn, hasCollateral } = getCollateralSummary(collaterals);
 
         // Get calculated or entered installment
         const lastM = AppState.lastRes?.M || safeParseFloat(formInputs.installment?.value) || 0;
@@ -752,16 +800,115 @@
         if (!menu) return;
         menu.classList.remove(...MENU_CLASSES.HIDDEN);
         menu.classList.add(...MENU_CLASSES.VISIBLE);
+        const trigger = menu.parentElement?.querySelector('[aria-haspopup]');
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
     }
 
     function closeMenu(menu) {
         if (!menu) return;
         menu.classList.remove(...MENU_CLASSES.VISIBLE);
         menu.classList.add(...MENU_CLASSES.HIDDEN);
+        const trigger = menu.parentElement?.querySelector('[aria-haspopup]');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
     }
 
     function isMenuOpen(menu) {
         return menu && !menu.classList.contains('invisible');
+    }
+
+    /**
+     * Reusable W3C ARIA listbox & menu keyboard navigation helper
+     */
+    function setupDropdownKeyboardNav({
+        triggerEl,
+        menuEl,
+        getOptions,
+        isOpen,
+        open,
+        close,
+        onSelect
+    }) {
+        if (!triggerEl || !menuEl) return;
+
+        let activeIndex = -1;
+
+        const clearActive = (opts) => {
+            opts.forEach(opt => {
+                opt.classList.remove('active-option');
+                opt.tabIndex = -1;
+            });
+        };
+
+        const setActive = (opts, index) => {
+            if (opts.length === 0) return;
+            clearActive(opts);
+            if (index < 0) index = 0;
+            if (index >= opts.length) index = opts.length - 1;
+            activeIndex = index;
+            const activeOpt = opts[activeIndex];
+            if (activeOpt) {
+                activeOpt.classList.add('active-option');
+                activeOpt.tabIndex = 0;
+                activeOpt.focus();
+            }
+        };
+
+        // Trigger keyboard navigation
+        triggerEl.addEventListener('keydown', (e) => {
+            const opts = getOptions();
+            if (['ArrowDown', 'ArrowUp', 'Enter', ' ', 'Spacebar'].includes(e.key)) {
+                e.preventDefault();
+                if (!isOpen()) {
+                    open();
+                    let targetIdx = opts.findIndex(o => o.getAttribute('aria-selected') === 'true' || o.classList.contains('text-indigo-700') || o.classList.contains('dark:text-indigo-300'));
+                    if (targetIdx === -1) targetIdx = 0;
+                    if (e.key === 'ArrowUp') targetIdx = opts.length - 1;
+                    setTimeout(() => setActive(opts, targetIdx), 50);
+                } else {
+                    close();
+                }
+            } else if (e.key === 'Escape' && isOpen()) {
+                e.preventDefault();
+                close();
+            }
+        });
+
+        // Menu items keyboard navigation
+        menuEl.addEventListener('keydown', (e) => {
+            const opts = getOptions();
+            if (opts.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const nextIdx = (activeIndex + 1) % opts.length;
+                setActive(opts, nextIdx);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prevIdx = (activeIndex - 1 + opts.length) % opts.length;
+                setActive(opts, prevIdx);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                setActive(opts, 0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                setActive(opts, opts.length - 1);
+            } else if (['Enter', ' ', 'Spacebar'].includes(e.key)) {
+                e.preventDefault();
+                if (activeIndex >= 0 && activeIndex < opts.length) {
+                    const chosen = opts[activeIndex];
+                    close();
+                    triggerEl.focus();
+                    if (onSelect) onSelect(chosen);
+                    else chosen.click();
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                close();
+                triggerEl.focus();
+            } else if (e.key === 'Tab') {
+                close();
+            }
+        });
     }
 
     function animateToggleBounce(toggleElement) {
@@ -867,6 +1014,21 @@
                 }
             });
         });
+
+        setupDropdownKeyboardNav({
+            triggerEl: themeBtn,
+            menuEl: themeMenu,
+            getOptions: () => Array.from(document.querySelectorAll('.theme-option')),
+            isOpen: () => isMenuOpen(themeMenu),
+            open: () => {
+                const langMenu = document.getElementById('lang-menu');
+                if (isMenuOpen(langMenu)) closeMenu(langMenu);
+                openMenu(themeMenu);
+                updateThemeMenuState(AppState.theme);
+            },
+            close: () => closeMenu(themeMenu),
+            onSelect: (btn) => btn.click()
+        });
     }
 
     function setupLanguageListeners() {
@@ -911,6 +1073,21 @@
                 updateLangMenuState(newLang);
                 closeMenu(langMenu);
             });
+        });
+
+        setupDropdownKeyboardNav({
+            triggerEl: langBtn,
+            menuEl: langMenu,
+            getOptions: () => Array.from(document.querySelectorAll('.lang-option')),
+            isOpen: () => isMenuOpen(langMenu),
+            open: () => {
+                const themeMenu = document.getElementById('theme-menu');
+                if (isMenuOpen(themeMenu)) closeMenu(themeMenu);
+                openMenu(langMenu);
+                updateLangMenuState(AppState.lang);
+            },
+            close: () => closeMenu(langMenu),
+            onSelect: (btn) => btn.click()
         });
     }
 
@@ -1007,9 +1184,15 @@
                 const val = parseFloat(tdRateInput.value);
                 if (!isNaN(val) && val > 100) {
                     tdRateGroup.classList.add('error-state');
-                    if (tdRateError) tdRateError.classList.remove('hidden');
+                    tdRateInput.setAttribute('aria-invalid', 'true');
+                    if (tdRateError) {
+                        tdRateError.classList.remove('hidden');
+                        tdRateInput.setAttribute('aria-describedby', 'error-td-rate');
+                    }
                 } else {
                     tdRateGroup.classList.remove('error-state');
+                    tdRateInput.removeAttribute('aria-invalid');
+                    tdRateInput.removeAttribute('aria-describedby');
                     if (tdRateError) tdRateError.classList.add('hidden');
                 }
             });
@@ -1026,8 +1209,15 @@
             adminInput.addEventListener('input', () => {
                 if (typeof validateRateInput === 'function') validateRateInput(adminInput);
                 const val = parseFloat(adminInput.value);
-                if (!isNaN(val) && val > 100) adminInput.parentElement.classList.add('error-state');
-                else adminInput.parentElement.classList.remove('error-state');
+                if (!isNaN(val) && val > 100) {
+                    adminInput.parentElement.classList.add('error-state');
+                    adminInput.setAttribute('aria-invalid', 'true');
+                    adminInput.title = t(AppState.lang, 'maxRate');
+                } else {
+                    adminInput.parentElement.classList.remove('error-state');
+                    adminInput.removeAttribute('aria-invalid');
+                    adminInput.title = '';
+                }
             });
             adminInput.addEventListener('blur', () => { if (typeof formatRateInputBlur === 'function') formatRateInputBlur(adminInput); });
         }
@@ -1038,8 +1228,15 @@
             stampRateInput.addEventListener('input', () => {
                 if (typeof validateRateInput === 'function') validateRateInput(stampRateInput);
                 const val = parseFloat(stampRateInput.value);
-                if (!isNaN(val) && val > 100) stampRateInput.parentElement.classList.add('error-state');
-                else stampRateInput.parentElement.classList.remove('error-state');
+                if (!isNaN(val) && val > 100) {
+                    stampRateInput.parentElement.classList.add('error-state');
+                    stampRateInput.setAttribute('aria-invalid', 'true');
+                    stampRateInput.title = t(AppState.lang, 'maxRate');
+                } else {
+                    stampRateInput.parentElement.classList.remove('error-state');
+                    stampRateInput.removeAttribute('aria-invalid');
+                    stampRateInput.title = '';
+                }
             });
             stampRateInput.addEventListener('blur', () => { if (typeof formatRateInputBlur === 'function') formatRateInputBlur(stampRateInput); });
         }
@@ -1360,9 +1557,18 @@
                 }
             });
 
-            // Keyboard: Escape to close
-            freqDropdown.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') closeFreqDropdown();
+            // Keyboard Navigation for listbox
+            setupDropdownKeyboardNav({
+                triggerEl: freqTrigger,
+                menuEl: freqDropdown,
+                getOptions: () => Array.from(freqDropdown.querySelectorAll('.freq-option')),
+                isOpen: () => isFreqOpen(),
+                open: () => {
+                    updateFreqRadios(freqSelect.value);
+                    openFreqDropdown();
+                },
+                close: () => closeFreqDropdown(),
+                onSelect: (opt) => opt.click()
             });
 
             // Sync trigger text when select changes programmatically (e.g. restore from history)
@@ -1588,9 +1794,13 @@
                 errMsg = AppState.lang === 'ar' ? 'الحد الأقصى 100%' : 'Max rate is 100%';
             }
         } else if (key === 'period') {
-            if (val > 600) {
+            const freqVal = document.getElementById('installment-freq')?.value || '1';
+            const maxPeriod = freqVal === '3' ? 200 : 600;
+            if (val > maxPeriod) {
                 isValid = false;
-                errMsg = AppState.lang === 'ar' ? 'الحد الأقصى 600 شهر' : 'Max 600 months';
+                errMsg = AppState.lang === 'ar'
+                    ? (freqVal === '3' ? 'الحد الأقصى 200 ربع' : 'الحد الأقصى 600 شهر')
+                    : (freqVal === '3' ? 'Max 200 quarters' : 'Max 600 months');
             }
         }
 
@@ -1599,9 +1809,17 @@
                 inputGroups[key].classList.add('error-state');
                 errorLabels[key].textContent = errMsg;
                 errorLabels[key].classList.remove('hidden');
+                if (formInputs[key]) {
+                    formInputs[key].setAttribute('aria-invalid', 'true');
+                    formInputs[key].setAttribute('aria-describedby', `error-${key}`);
+                }
             } else {
                 inputGroups[key].classList.remove('error-state');
                 errorLabels[key].classList.add('hidden');
+                if (formInputs[key]) {
+                    formInputs[key].removeAttribute('aria-invalid');
+                    formInputs[key].removeAttribute('aria-describedby');
+                }
             }
         }
 
@@ -2193,18 +2411,162 @@
         }
     }
 
+    /**
+     * Constructs and styles the printable HTML document inside the print iframe (Suggestion #15)
+     * Separates print DOM generation and CSS layout from print execution.
+     * @param {Document} doc - iframe document
+     * @param {Object} options - Cloned DOM nodes and language {summaryClone, scheduleClone, disclaimerClone, lang}
+     */
+    function buildPrintReportHtmlDocument(doc, { summaryClone, scheduleClone, disclaimerClone, lang }) {
+        const safeLang = lang === 'ar' ? 'ar' : 'en';
+        const html = doc.documentElement;
+        html.lang = safeLang;
+        html.dir = safeLang === 'ar' ? 'rtl' : 'ltr';
+        html.className = 'light';
+
+        const head = doc.head;
+        const meta = doc.createElement('meta');
+        meta.charset = 'UTF-8';
+        head.appendChild(meta);
+
+        const title = doc.createElement('title');
+        title.textContent = 'Loan Report';
+        head.appendChild(title);
+
+        // Clone styles
+        document.querySelectorAll('link[rel="stylesheet"]').forEach(link => head.appendChild(link.cloneNode(true)));
+        document.querySelectorAll('style').forEach(style => head.appendChild(style.cloneNode(true)));
+
+        const twScript = doc.createElement('script');
+        twScript.src = './tailwind.js';
+        head.appendChild(twScript);
+
+        const printStyles = doc.createElement('style');
+        printStyles.textContent = `
+            body { background-color: white !important; color: black !important; padding: 2rem; font-family: system-ui; }
+            .print-container { max-width: 800px; margin: 0 auto; display: block; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            #summary-section { background: white !important; border: 2px solid #000; border-radius: 12px; color: black !important; box-shadow: none !important; margin-bottom: 2rem; }
+            #summary-section * { color: black !important; text-shadow: none !important; }
+            #summary-section .absolute { display: none !important; }
+            
+            /* Added Disclaimer Styling */
+            #assumptions-panel { 
+                border: 1px solid #e5e7eb !important; 
+                background-color: #f9fafb !important; 
+                margin-bottom: 2rem !important; 
+                page-break-inside: avoid;
+                color: #6b7280 !important;
+                font-size: 0.75rem !important;
+            }
+
+            .summary-divider { background-color: #ccc !important; height: 1px !important; margin: 8px 0 !important; }
+            
+            /* Reset Tailwind CSS shadow variables */
+            * {
+                --tw-shadow: 0 0 #0000 !important;
+                --tw-ring-shadow: 0 0 #0000 !important;
+                --tw-ring-offset-shadow: 0 0 #0000 !important;
+            }
+            
+            /* Reset ONLY container DIVs - NOT table/tr/td/th */
+            #schedule-container,
+            #schedule-container > div,
+            #schedule-container > div > div,
+            .table-container { 
+                border: none !important; 
+                box-shadow: none !important; 
+                overflow: visible !important; 
+                max-height: none !important;
+            }
+            
+            /* Remove divide-y effect (border-top on rows) */
+            tbody tr { border-top: none !important; }
+            table { border-collapse: collapse; width: 100%; border: none !important; font-size: 10pt; }
+            thead, tbody, tr, th, td { position: static !important; overflow: visible !important; }
+            thead { display: table-header-group !important; }
+            tbody { display: table-row-group !important; }
+            tr { display: table-row !important; break-inside: avoid; page-break-inside: avoid; }
+            th, td { display: table-cell !important; }
+            thead th { 
+                background-color: #f3f4f6 !important; 
+                color: #000 !important; 
+                border-bottom: 2px solid #000 !important; 
+                font-weight: bold !important; 
+                text-align: center !important; 
+            }
+            tbody td { border-bottom: 1px solid #e5e7eb !important; padding: 6px 8px !important; text-align: center !important; }
+            .hidden { display: table-cell !important; }
+            #close-schedule-btn, #copy-summary-btn { display: none !important; }
+            [data-stamp-col] { color: #7c3aed !important; }
+            .bg-purple-50, .bg-purple-100\\/50 { background-color: #faf5ff !important; }
+            .text-purple-600, .text-purple-700, .text-purple-400 { color: #7c3aed !important; }
+            @page { size: A4; margin: 1cm; }
+            .no-print { display: none !important; }
+        `;
+        head.appendChild(printStyles);
+
+        const body = doc.body;
+        body.className = 'lang-ready';
+
+        const container = doc.createElement('div');
+        container.className = 'print-container';
+
+        // Add Header
+        const h2 = doc.createElement('h2');
+        h2.className = 'text-xl font-bold mb-4 mt-8';
+        h2.style.cssText = 'text-align: center; break-before: page; page-break-before: always;';
+        h2.textContent = t(lang, 'scheduleTitle');
+
+        container.appendChild(summaryClone);
+        if (disclaimerClone) container.appendChild(disclaimerClone);
+        container.appendChild(h2);
+
+        const tableWrapper = doc.createElement('div');
+        tableWrapper.className = 'w-full';
+        tableWrapper.appendChild(scheduleClone);
+        container.appendChild(tableWrapper);
+
+        // Footer
+        const footer = doc.createElement('div');
+        footer.style.cssText = 'margin-top: 2rem; text-align: center; font-size: 0.75rem; color: #666; border-top: 1px solid #ccc; pt-4';
+        footer.textContent = `Generated by Loan Calculator • ${new Date().toLocaleDateString(safeLang === 'ar' ? 'ar-EG' : 'en-GB')}`;
+        container.appendChild(footer);
+
+        body.appendChild(container);
+
+        // Print Trigger
+        const script = doc.createElement('script');
+        script.textContent = 'setTimeout(() => { window.focus(); window.print(); }, 500);';
+        body.appendChild(script);
+    }
+
     function printReport() {
         if (AppState.schedule.length === 0) return;
         const frame = document.getElementById('print-frame');
         if (!frame) return;
 
+        const pdfBtn = document.getElementById('export-pdf-button');
+        const spinner = pdfBtn?.querySelector('.export-spinner');
+        const icon = pdfBtn?.querySelector('.export-icon');
+        const textSpan = pdfBtn?.querySelector('.export-text');
+
+        const setPdfLoading = (loading) => {
+            if (!pdfBtn) return;
+            pdfBtn.disabled = loading;
+            pdfBtn.setAttribute('aria-busy', loading ? 'true' : 'false');
+            if (spinner) spinner.classList.toggle('hidden', !loading);
+            if (icon) icon.classList.toggle('hidden', loading);
+            if (textSpan) textSpan.textContent = t(AppState.lang, loading ? 'exportingPdf' : 'exportPdfButton');
+        };
+
+        setPdfLoading(true);
+
         try {
             const doc = frame.contentWindow.document;
             const summaryClone = document.getElementById('summary-section').cloneNode(true);
             const scheduleClone = document.getElementById('schedule-container').cloneNode(true);
-
-            // New addition: Clone disclaimer
-            const disclaimerClone = document.getElementById('assumptions-panel').cloneNode(true);
+            const disclaimerClone = document.getElementById('assumptions-panel')?.cloneNode(true);
 
             const existingHeader = scheduleClone.querySelector('.px-6.py-4');
             if (existingHeader) existingHeader.remove();
@@ -2225,145 +2587,53 @@
             doc.write('<!DOCTYPE html><html><head></head><body></body></html>');
             doc.close();
 
-            const html = doc.documentElement;
-            // Strict sanitization
-            const safeLang = AppState.lang === 'ar' ? 'ar' : 'en';
-            html.lang = safeLang;
-            html.dir = safeLang === 'ar' ? 'rtl' : 'ltr';
-            html.className = 'light';
+            buildPrintReportHtmlDocument(doc, {
+                summaryClone,
+                scheduleClone,
+                disclaimerClone,
+                lang: AppState.lang
+            });
 
-            const head = doc.head;
-            const meta = doc.createElement('meta');
-            meta.charset = 'UTF-8';
-            head.appendChild(meta);
-
-            const title = doc.createElement('title');
-            title.textContent = 'Loan Report';
-            head.appendChild(title);
-
-            // Clone styles
-            document.querySelectorAll('link[rel="stylesheet"]').forEach(link => head.appendChild(link.cloneNode(true)));
-            document.querySelectorAll('style').forEach(style => head.appendChild(style.cloneNode(true)));
-
-            const twScript = doc.createElement('script');
-            twScript.src = './tailwind.js';
-            head.appendChild(twScript);
-
-            const printStyles = doc.createElement('style');
-            printStyles.textContent = `
-                body { background-color: white !important; color: black !important; padding: 2rem; font-family: system-ui; }
-                .print-container { max-width: 800px; margin: 0 auto; display: block; }
-                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                #summary-section { background: white !important; border: 2px solid #000; border-radius: 12px; color: black !important; box-shadow: none !important; margin-bottom: 2rem; }
-                #summary-section * { color: black !important; text-shadow: none !important; }
-                #summary-section .absolute { display: none !important; }
-                
-                /* Added Disclaimer Styling */
-                #assumptions-panel { 
-                    border: 1px solid #e5e7eb !important; 
-                    background-color: #f9fafb !important; 
-                    margin-bottom: 2rem !important; 
-                    page-break-inside: avoid;
-                    color: #6b7280 !important;
-                    font-size: 0.75rem !important;
-                }
-
-                .summary-divider { background-color: #ccc !important; height: 1px !important; margin: 8px 0 !important; }
-                
-                /* Reset Tailwind CSS shadow variables */
-                * {
-                    --tw-shadow: 0 0 #0000 !important;
-                    --tw-ring-shadow: 0 0 #0000 !important;
-                    --tw-ring-offset-shadow: 0 0 #0000 !important;
-                }
-                
-                /* Reset ONLY container DIVs - NOT table/tr/td/th */
-                #schedule-container,
-                #schedule-container > div,
-                #schedule-container > div > div,
-                .table-container { 
-                    border: none !important; 
-                    box-shadow: none !important; 
-                    overflow: visible !important; 
-                    max-height: none !important;
-                }
-                
-                /* Remove divide-y effect (border-top on rows) */
-                tbody tr { border-top: none !important; }
-                table { border-collapse: collapse; width: 100%; border: none !important; font-size: 10pt; }
-                thead, tbody, tr, th, td { position: static !important; overflow: visible !important; }
-                thead { display: table-header-group !important; }
-                tbody { display: table-row-group !important; }
-                tr { display: table-row !important; break-inside: avoid; page-break-inside: avoid; }
-                th, td { display: table-cell !important; }
-                thead th { 
-                    background-color: #f3f4f6 !important; 
-                    color: #000 !important; 
-                    border-bottom: 2px solid #000 !important; 
-                    font-weight: bold !important; 
-                    text-align: center !important; 
-                }
-                tbody td { border-bottom: 1px solid #e5e7eb !important; padding: 6px 8px !important; text-align: center !important; }
-                .hidden { display: table-cell !important; }
-                #close-schedule-btn, #copy-summary-btn { display: none !important; }
-                [data-stamp-col] { color: #7c3aed !important; }
-                .bg-purple-50, .bg-purple-100\\/50 { background-color: #faf5ff !important; }
-                .text-purple-600, .text-purple-700, .text-purple-400 { color: #7c3aed !important; }
-                @page { size: A4; margin: 1cm; }
-                .no-print { display: none !important; }
-            `;
-            head.appendChild(printStyles);
-
-            const body = doc.body;
-            body.className = 'lang-ready';
-
-            const container = doc.createElement('div');
-            container.className = 'print-container';
-
-            // Add Header
-            const h2 = doc.createElement('h2');
-            h2.className = 'text-xl font-bold mb-4 mt-8';
-            h2.style.cssText = 'text-align: center; break-before: page; page-break-before: always;';
-            h2.textContent = t(AppState.lang, 'scheduleTitle');
-
-            container.appendChild(summaryClone);
-            container.appendChild(disclaimerClone);
-            container.appendChild(h2);
-
-            const tableWrapper = doc.createElement('div');
-            tableWrapper.className = 'w-full';
-            // We can append scheduleClone directly if it's a node, or clone its content
-            // scheduleClone is a node (cloneNode(true) earlier), so we just append it
-            tableWrapper.appendChild(scheduleClone);
-            container.appendChild(tableWrapper);
-
-            // Footer
-            const footer = doc.createElement('div');
-            footer.style.cssText = 'margin-top: 2rem; text-align: center; font-size: 0.75rem; color: #666; border-top: 1px solid #ccc; pt-4';
-            footer.textContent = `Generated by Loan Calculator • ${new Date().toLocaleDateString(safeLang === 'ar' ? 'ar-EG' : 'en-GB')}`;
-            container.appendChild(footer);
-
-            body.appendChild(container);
-
-            // Print Trigger
-            const script = doc.createElement('script');
-            // Execute directly - document is already ready. Focus is needed for some browsers.
-            script.textContent = 'setTimeout(() => { window.focus(); window.print(); }, 500);';
-            body.appendChild(script);
-        } catch (e) { console.error(e); showToast(t(AppState.lang, 'printFailed'), "error"); }
+            // Restore button after print has been handed to browser print dialog
+            setTimeout(() => {
+                setPdfLoading(false);
+            }, 1200);
+        } catch (e) {
+            console.error(e);
+            showToast(t(AppState.lang, 'printFailed'), "error");
+            setPdfLoading(false);
+        }
     }
 
     async function exportExcel() {
         if (AppState.schedule.length === 0) return;
 
-        try {
-            await loadXLSX();
-        } catch (e) {
-            showToast(t(AppState.lang, 'libNotLoaded'), "error");
-            return;
-        }
+        const xlsxBtn = document.getElementById('export-xlsx-button');
+        const spinner = xlsxBtn?.querySelector('.export-spinner');
+        const icon = xlsxBtn?.querySelector('.export-icon');
+        const textSpan = xlsxBtn?.querySelector('.export-text');
+
+        const setXlsxLoading = (loading) => {
+            if (!xlsxBtn) return;
+            xlsxBtn.disabled = loading;
+            xlsxBtn.setAttribute('aria-busy', loading ? 'true' : 'false');
+            if (spinner) spinner.classList.toggle('hidden', !loading);
+            if (icon) icon.classList.toggle('hidden', loading);
+            if (textSpan) textSpan.textContent = t(AppState.lang, loading ? 'exportingXlsx' : 'exportXlsxButton');
+        };
+
+        setXlsxLoading(true);
+        const startTime = Date.now();
+        const MIN_LOADING_TIME = 600; // ms: ensures animation is smooth and perceptible
 
         try {
+            try {
+                await loadXLSX();
+            } catch (e) {
+                showToast(t(AppState.lang, 'libNotLoaded'), "error");
+                return;
+            }
+
             const l = AppState.lang;
             const res = AppState.lastRes;
             const isRTL = l === 'ar';
@@ -2532,6 +2802,12 @@
         } catch (e) {
             console.error(e);
             showToast(t(AppState.lang, 'exportFailed'), "error");
+        } finally {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, MIN_LOADING_TIME - elapsed);
+            setTimeout(() => {
+                setXlsxLoading(false);
+            }, remaining);
         }
     }
 

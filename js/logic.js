@@ -162,6 +162,31 @@ function quarterEndInRange(startDate, endDate) {
 }
 
 /**
+ * Fast interest rate solver using Newton-Raphson Method
+ * @param {number} P - Loan principal
+ * @param {number} N - Number of periods
+ * @param {number} M - Periodic installment
+ * @returns {number|null} Annualized rate percentage, or null if failed to converge
+ */
+function solveRateNewton(P, N, M) {
+    let i = 0.01;
+    for (let j = 0; j < 20; j++) {
+        if (i <= 0.0000001) i = 0.0000001;
+        let f = M * (1 - Math.pow(1 + i, -N)) / i - P;
+        let df = (M / i) * (N * Math.pow(1 + i, -N - 1) / (1 + i) - (1 - Math.pow(1 + i, -N)) / i);
+        if (!isFinite(f) || !isFinite(df) || df === 0) break;
+        let newI = i - f / df;
+        if (Math.abs(newI - i) < 0.0000001) {
+            let res = newI * 1200;
+            return (isFinite(res) && res > 0) ? res : null;
+        }
+        i = newI;
+    }
+    let res = i * 1200;
+    return (isFinite(res) && res > 0) ? res : null;
+}
+
+/**
  * Fallback solver using Bisection Method
  */
 function solveRateBisection(P, N, M) {
@@ -255,24 +280,9 @@ function calculateLoan(inputs, activeKey, freq) {
                     resM = M; // Installment stays as entered
                     valid = true;
                 } else {
-                    // M * N > P: use Newton-Raphson solver
-                    let i = 0.01;
-                    let converged = false;
-                    for (let j = 0; j < 20; j++) {
-                        if (i <= 0.0000001) i = 0.0000001;
-                        let f = M * (1 - Math.pow(1 + i, -N)) / i - P;
-                        let df = (M / i) * (N * Math.pow(1 + i, -N - 1) / (1 + i) - (1 - Math.pow(1 + i, -N)) / i);
-                        if (!isFinite(f) || !isFinite(df) || df === 0) break;
-                        let newI = i - f / df;
-                        if (Math.abs(newI - i) < 0.0000001) {
-                            i = newI;
-                            converged = true;
-                            break;
-                        }
-                        i = newI;
-                    }
-                    resR = i * 1200;
-                    if (!converged || !isFinite(resR) || resR <= 0) {
+                    // M * N > P: use Newton-Raphson solver with Bisection fallback
+                    resR = solveRateNewton(P, N, M);
+                    if (resR === null || !isFinite(resR) || resR <= 0) {
                         resR = solveRateBisection(P, N, M);
                     }
 
