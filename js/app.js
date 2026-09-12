@@ -58,15 +58,34 @@
 
     // Multi-collateral system state
     let collaterals = [
-        { id: 1, amount: '', rate: '', period: '' }
+        { id: 1, amount: '', redemption: '', rate: '' }
     ];
     let nextCollateralId = 2;
 
     window.getCollaterals = () => collaterals.map(c => ({
         amount: safeParseFloat(c.amount) || 0,
-        rate: safeParseFloat(c.rate) || 0,
-        period: parseInt(c.period) || 36
+        redemption: safeParseFloat(c.redemption) || 0,
+        rate: safeParseFloat(c.rate) || 0
     }));
+
+    window.setMainCollateralsFromCd1 = (cd1List) => {
+        if (!Array.isArray(cd1List) || cd1List.length === 0) return;
+        collaterals = cd1List.map((c, idx) => {
+            const rawAmt = safeParseFloat(c.amount);
+            const rawRed = safeParseFloat(c.redemption);
+            const rawRate = safeParseFloat(c.rate);
+            return {
+                id: idx + 1,
+                amount: !isNaN(rawAmt) && rawAmt > 0 ? (typeof fmt === 'function' ? fmt(rawAmt) : String(rawAmt)) : '',
+                redemption: !isNaN(rawRed) && rawRed > 0 ? (typeof fmt === 'function' ? fmt(rawRed) : String(rawRed)) : '',
+                rate: !isNaN(rawRate) && rawRate > 0 ? (rawRate % 1 === 0 ? rawRate.toFixed(1) : String(rawRate)) : ''
+            };
+        });
+        nextCollateralId = collaterals.length + 1;
+        renderCollaterals();
+        recalcCollateralMetrics(false);
+    };
+
 
 
     // Use global fmt from logic.js if available, else fallback
@@ -301,37 +320,45 @@
                     </button>
                     `}
                 </div>
-                <div class="col-span-5">
+                <div class="col-span-4">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralAmountLabel" data-lang-title="collateralAmountLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralAmountLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralAmountLabel')} (${colItemName})">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
                     </div>
                 </div>
-                <div class="col-span-3">
+                <div class="col-span-4">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-redemption-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
                     </div>
                 </div>
                 <div class="col-span-2">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="text-input text-xs select-text col-period-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralPeriodLabel" data-lang-title="collateralPeriodLabel" placeholder="36" aria-label="${t(AppState.lang, 'collateralPeriodLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralPeriodLabel')} (${colItemName})">
+                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
                     </div>
                 </div>
             `;
 
             const amountInput = row.querySelector('.col-amount-input');
+            const redemptionInput = row.querySelector('.col-redemption-input');
             const rateInput = row.querySelector('.col-rate-input');
-            const periodInput = row.querySelector('.col-period-input');
             const removeBtn = row.querySelector('.col-remove-btn');
             const clearBtn = row.querySelector('.col-clear-btn');
 
             if (amountInput) amountInput.value = col.amount || '';
+            if (redemptionInput) redemptionInput.value = col.redemption || '';
             if (rateInput) rateInput.value = col.rate || '';
-            if (periodInput) periodInput.value = col.period || '';
 
             if (amountInput) {
                 amountInput.addEventListener('input', (e) => {
                     if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
                     col.amount = e.target.value;
+                    recalcCollateralMetrics();
+                });
+            }
+
+            if (redemptionInput) {
+                redemptionInput.addEventListener('input', (e) => {
+                    if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
+                    col.redemption = e.target.value;
                     recalcCollateralMetrics();
                 });
             }
@@ -365,28 +392,6 @@
                 });
             }
 
-            if (periodInput) {
-                const validateColPeriod = () => {
-                    const p = parseInt(periodInput.value, 10);
-                    const grp = periodInput.parentElement;
-                    if (!isNaN(p) && p > 600) {
-                        if (grp) grp.classList.add('error-state');
-                        periodInput.setAttribute('aria-invalid', 'true');
-                        periodInput.title = AppState.lang === 'ar' ? 'الحد الأقصى 600 شهر' : 'Max 600 months';
-                    } else {
-                        if (grp) grp.classList.remove('error-state');
-                        periodInput.removeAttribute('aria-invalid');
-                        periodInput.title = `${t(AppState.lang, 'collateralPeriodLabel')} (${colItemName})`;
-                    }
-                };
-
-                periodInput.addEventListener('input', (e) => {
-                    if (typeof validatePeriodInput === 'function') validatePeriodInput(e.target);
-                    col.period = e.target.value;
-                    validateColPeriod();
-                });
-            }
-
             if (removeBtn) {
                 removeBtn.addEventListener('click', () => {
                     if (typeof haptic !== 'undefined') haptic('light');
@@ -404,11 +409,11 @@
                 clearBtn.addEventListener('click', () => {
                     if (typeof haptic !== 'undefined') haptic('light');
                     col.amount = '';
+                    col.redemption = '';
                     col.rate = '';
-                    col.period = '';
                     if (amountInput) amountInput.value = '';
+                    if (redemptionInput) redemptionInput.value = '';
                     if (rateInput) rateInput.value = '';
-                    if (periodInput) periodInput.value = '';
                     recalcCollateralMetrics();
                 });
             }
@@ -423,9 +428,9 @@
 
     /**
      * Unified collateral summary calculations (Suggestion #2)
-     * Calculates total collateral, maximum loan (90%), required minimum rate (+2%),
-     * and monthly CD return in a single pass without redundant array loops.
-     * @param {Array} colList - Array of collateral objects {amount, rate, period}
+     * Calculates total collateral, maximum loan (min of 90% nominal or redemption value),
+     * required minimum rate (+2%), and monthly CD return in a single pass.
+     * @param {Array} colList - Array of collateral objects {amount, redemption, rate, period}
      * @returns {Object} Calculated summary metrics
      */
     function getCollateralSummary(colList) {
@@ -433,14 +438,21 @@
         let maxRate = 0;
         let totalMonthlyCdReturn = 0;
         let hasCollateral = false;
+        let totalMaxLoan = 0;
 
         if (Array.isArray(colList)) {
             colList.forEach(c => {
                 const a = safeParseFloat(c.amount) || 0;
                 const r = safeParseFloat(c.rate) || 0;
+                const red = safeParseFloat(c.redemption);
                 if (a > 0) {
                     totalCollateral += a;
                     hasCollateral = true;
+                    // Rule: 90% of nominal value or redemption value, whichever is lower
+                    const colMax = (red !== undefined && red !== null && !isNaN(red) && red > 0)
+                        ? Math.min(a * 0.90, red)
+                        : a * 0.90;
+                    totalMaxLoan += colMax;
                 }
                 if (r > maxRate) {
                     maxRate = r;
@@ -451,7 +463,7 @@
             });
         }
 
-        const maxLoan = totalCollateral * 0.90;
+        const maxLoan = totalMaxLoan;
         const minRate = maxRate > 0 ? maxRate + 2 : 0;
 
         return {
@@ -1112,7 +1124,7 @@
             addColBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
                 const newId = nextCollateralId++;
-                collaterals.push({ id: newId, amount: '', rate: '', period: '' });
+                collaterals.push({ id: newId, amount: '', redemption: '', rate: '', period: '' });
                 renderCollaterals(newId);
             });
         }
@@ -1121,7 +1133,7 @@
         if (clearColBtn) {
             clearColBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('medium');
-                collaterals = [{ id: 1, amount: '', rate: '', period: '' }];
+                collaterals = [{ id: 1, amount: '', redemption: '', rate: '', period: '' }];
                 nextCollateralId = 2;
                 renderCollaterals();
                 recalcCollateralMetrics();
@@ -1743,6 +1755,14 @@
         // REFRESH DYNAMIC VALUES
         renderCollaterals();
         updateCollateralWarnings();
+        if (typeof window.renderSsCd1List === 'function') window.renderSsCd1List();
+        if (typeof window.updateTenorAdvisoryAndMatchButton === 'function') {
+            const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+            window.updateTenorAdvisoryAndMatchButton(p);
+        }
+        if (typeof window.ssUpdateFirstInstDateDisplay === 'function') {
+            window.ssUpdateFirstInstDateDisplay();
+        }
         if (AppState.lastRes.P) {
             const freq = AppState.lastRes.freq || 1;
             document.getElementById('summary-period').textContent = AppState.lastRes.N;
@@ -2129,7 +2149,7 @@
 
         // Reset Loan Type to unsecured and Admin Fees to 3%
         setLoanType('unsecured');
-        collaterals = [{ id: 1, amount: '', rate: '', period: '' }];
+        collaterals = [{ id: 1, amount: '', redemption: '', rate: '', period: '' }];
         nextCollateralId = 2;
         renderCollaterals();
 
@@ -2190,11 +2210,11 @@
                 if (typeof haptic !== 'undefined') haptic('light');
                 const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
                 if (typeof renderHistoryList === 'function') renderHistoryList(history, AppState.lang);
-                if (typeof toggleModal === 'function') toggleModal(historyModal);
+                if (typeof toggleModal === 'function') toggleModal(historyModal, true);
             });
-            closeHistory.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); if (typeof toggleModal === 'function') toggleModal(historyModal); });
+            closeHistory.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); if (typeof toggleModal === 'function') toggleModal(historyModal, false); });
             historyModal.addEventListener('click', (e) => {
-                if ((e.target === historyModal || e.target.classList.contains('modal-overlay')) && typeof toggleModal === 'function') { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(historyModal); }
+                if ((e.target === historyModal || e.target.classList.contains('modal-overlay')) && typeof toggleModal === 'function') { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(historyModal, false); }
             });
 
             if (historyList) {
@@ -2356,11 +2376,11 @@
         // About Modal
         const aboutModal = document.getElementById('about-modal');
         if (aboutModal) {
-            document.getElementById('about-btn').addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal); });
-            document.getElementById('close-about').addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal); });
+            document.getElementById('about-btn').addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal, true); });
+            document.getElementById('close-about').addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal, false); });
 
             aboutModal.addEventListener('click', (e) => {
-                if (e.target === aboutModal || e.target.classList.contains('modal-overlay')) { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal); }
+                if (e.target === aboutModal || e.target.classList.contains('modal-overlay')) { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(aboutModal, false); }
             });
 
             document.getElementById('share-btn').addEventListener('click', async () => {
@@ -2374,6 +2394,96 @@
                     try { await navigator.clipboard.writeText(shareUrl); showToast(t(AppState.lang, 'toastLinkCopied')); } catch (err) { showToast(t(AppState.lang, 'copyFailed')); }
                 }
             });
+        }
+
+        // What's New & App Guide Modal
+        const whatsNewModal = document.getElementById('whats-new-modal');
+        if (whatsNewModal) {
+            const closeWhatsNewBtn = document.getElementById('close-whats-new');
+            const whatsNewGotItBtn = document.getElementById('btn-whats-new-got-it');
+            const openWhatsNewBtn = document.getElementById('open-whats-new-btn');
+            const tabBtnWhatsNew = document.getElementById('tab-btn-whats-new');
+            const tabBtnAppFeatures = document.getElementById('tab-btn-app-features');
+            const tabContentWhatsNew = document.getElementById('tab-content-whats-new');
+            const tabContentAppFeatures = document.getElementById('tab-content-app-features');
+
+            const switchWhatsNewTab = (tab) => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                if (tab === 'whats-new') {
+                    if (tabBtnWhatsNew) tabBtnWhatsNew.className = 'py-2 px-3 text-xs font-bold rounded-lg transition-all text-center bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-xs';
+                    if (tabBtnAppFeatures) tabBtnAppFeatures.className = 'py-2 px-3 text-xs font-semibold rounded-lg transition-all text-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+                    if (contentWhatsNew) contentWhatsNew.classList.remove('hidden');
+                    if (contentFeatures) contentFeatures.classList.add('hidden');
+                } else {
+                    if (tabBtnAppFeatures) tabBtnAppFeatures.className = 'py-2 px-3 text-xs font-bold rounded-lg transition-all text-center bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-xs';
+                    if (tabBtnWhatsNew) tabBtnWhatsNew.className = 'py-2 px-3 text-xs font-semibold rounded-lg transition-all text-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+                    if (contentFeatures) contentFeatures.classList.remove('hidden');
+                    if (contentWhatsNew) contentWhatsNew.classList.add('hidden');
+                }
+            };
+
+            const contentWhatsNew = tabContentWhatsNew;
+            const contentFeatures = tabContentAppFeatures;
+
+            if (tabBtnWhatsNew) tabBtnWhatsNew.addEventListener('click', () => switchWhatsNewTab('whats-new'));
+            if (tabBtnAppFeatures) tabBtnAppFeatures.addEventListener('click', () => switchWhatsNewTab('app-features'));
+
+            const dismissWhatsNew = () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                if (whatsNewModal && !whatsNewModal.classList.contains('pointer-events-none')) {
+                    toggleModal(whatsNewModal, false);
+                }
+                const curVer = (typeof self !== 'undefined' && self.APP_VERSION) || '2.3.0';
+                localStorage.setItem('last_seen_version', curVer);
+
+                // Fail-safe: ensure scroll is restored after exit transition
+                setTimeout(() => {
+                    if (typeof ScrollLock !== 'undefined' && !ScrollLock.isAnyModalOrPickerOpen()) {
+                        ScrollLock.forceUnlock();
+                    }
+                }, 350);
+            };
+
+            if (closeWhatsNewBtn) closeWhatsNewBtn.addEventListener('click', dismissWhatsNew);
+            if (whatsNewGotItBtn) whatsNewGotItBtn.addEventListener('click', dismissWhatsNew);
+
+            whatsNewModal.addEventListener('click', (e) => {
+                if (e.target === whatsNewModal || e.target.classList.contains('modal-overlay')) {
+                    dismissWhatsNew();
+                }
+            });
+
+            if (openWhatsNewBtn) {
+                openWhatsNewBtn.addEventListener('click', () => {
+                    if (typeof haptic !== 'undefined') haptic('light');
+                    if (aboutModal && !aboutModal.classList.contains('pointer-events-none')) {
+                        toggleModal(aboutModal, false);
+                    }
+                    switchWhatsNewTab('whats-new');
+                    toggleModal(whatsNewModal, true);
+                });
+            }
+
+            // Automatic Check on Launch:
+            const curVer = (typeof self !== 'undefined' && self.APP_VERSION) || '2.3.0';
+            const lastSeen = localStorage.getItem('last_seen_version');
+            if (!lastSeen) {
+                // Newcomer -> Show App Guide
+                switchWhatsNewTab('app-features');
+                setTimeout(() => {
+                    if (whatsNewModal.classList.contains('pointer-events-none')) {
+                        toggleModal(whatsNewModal, true);
+                    }
+                }, 750);
+            } else if (lastSeen !== curVer) {
+                // Updated User -> Show What's New
+                switchWhatsNewTab('whats-new');
+                setTimeout(() => {
+                    if (whatsNewModal.classList.contains('pointer-events-none')) {
+                        toggleModal(whatsNewModal, true);
+                    }
+                }, 750);
+            }
         }
     }
 
@@ -2940,10 +3050,12 @@
 
             const aboutModal = document.getElementById('about-modal');
             const historyModal = document.getElementById('history-modal');
+            const whatsNewModal = document.getElementById('whats-new-modal');
             const schedContainer = document.getElementById('schedule-container');
 
-            if (aboutModal && !aboutModal.classList.contains('pointer-events-none')) toggleModal(aboutModal);
-            else if (historyModal && !historyModal.classList.contains('pointer-events-none')) toggleModal(historyModal);
+            if (whatsNewModal && !whatsNewModal.classList.contains('pointer-events-none')) toggleModal(whatsNewModal, false);
+            else if (aboutModal && !aboutModal.classList.contains('pointer-events-none')) toggleModal(aboutModal, false);
+            else if (historyModal && !historyModal.classList.contains('pointer-events-none')) toggleModal(historyModal, false);
             else if (schedContainer && !schedContainer.classList.contains('hidden') && typeof closeScheduleUI === 'function') closeScheduleUI();
         }
 

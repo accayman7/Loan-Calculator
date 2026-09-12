@@ -221,10 +221,17 @@
             resultsDiv.innerHTML = html;
         }
 
-        // Auto-run on page load
-        window.addEventListener('load', () => {
-            setTimeout(runTests, 300);
-        });
+        function executeTestsSync() {
+            try {
+                const summary = runAllTests();
+                displayResults(summary);
+            } catch (error) {
+                document.getElementById('results').innerHTML = '<div class="result-fail result-item">Error: ' + error.message + '</div>';
+            }
+        }
+
+        // Auto-run immediately
+        executeTestsSync();
     </script>
 </body>
 

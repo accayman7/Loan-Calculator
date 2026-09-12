@@ -472,12 +472,11 @@
             color: #ffffff;
         }
 
-        /* Self-Sufficient CD1 Table Layout: custom fractional columns for perfect mobile fit */
-        .ss-cd-row {
-            display: grid;
-            grid-template-columns: minmax(38px, 1.1fr) minmax(72px, 2.3fr) minmax(34px, 1.1fr) minmax(102px, 3.5fr);
-            gap: 0.375rem;
-            align-items: center;
+        /* Self-Sufficient CD1 Card Container */
+        .ss-cd-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
 
         /* Radio Cell - container for radio button in input-group */
@@ -2388,16 +2387,20 @@
                                     </div>
                                 </div>
 
-                                <!-- Column Headers -->
-                                <div class="grid grid-cols-12 gap-1.5 px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                                    <div class="col-span-2 text-center" data-lang-key="colHeaderNum">#</div>
-                                    <div class="col-span-5 text-center" data-lang-key="colHeaderAmount">Amount</div>
-                                    <div class="col-span-3 text-center" data-lang-key="colHeaderRate">Rate %</div>
-                                    <div class="col-span-2 text-center" data-lang-key="colHeaderPeriod">Months</div>
-                                </div>
+                                <!-- Column Headers & List Wrapper -->
+                                <div class="overflow-x-auto -mx-1 px-1">
+                                    <div class="min-w-[340px] sm:min-w-0">
+                                        <div class="grid grid-cols-12 gap-1.5 px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                            <div class="col-span-2 text-center" data-lang-key="colHeaderNum">#</div>
+                                            <div class="col-span-4 text-center" data-lang-key="colHeaderNominal">Nominal</div>
+                                            <div class="col-span-4 text-center" data-lang-key="colHeaderRedemption">Redemption</div>
+                                            <div class="col-span-2 text-center" data-lang-key="colHeaderRate">Rate %</div>
+                                        </div>
 
-                                <div id="collaterals-list" class="space-y-2">
-                                    <!-- Collateral rows dynamically rendered -->
+                                        <div id="collaterals-list" class="space-y-2 mt-1">
+                                            <!-- Collateral rows dynamically rendered -->
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="pt-2 border-t border-indigo-200/60 dark:border-indigo-800/60 grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-xs">
@@ -2406,7 +2409,10 @@
                                         <span id="summary-total-collateral" class="font-bold text-gray-800 dark:text-gray-200 select-text">-</span>
                                     </div>
                                     <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px]">
-                                        <span class="block text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="maxLoanAllowedLabel">Max Loan (90%)</span>
+                                        <div class="flex items-center justify-center gap-1">
+                                            <span class="block text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="maxLoanAllowedLabel">Max Loan</span>
+                                            <span class="info-icon tooltip-end text-[9px]" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="maxLoanAllowedTooltip" data-tooltip="Maximum Loan Limit: By banking regulations, maximum loan amount is 90% of certificate nominal value or its redemption value, whichever is lower.">ℹ</span>
+                                        </div>
                                         <span id="summary-max-loan" class="font-bold text-indigo-600 dark:text-indigo-400 select-text">-</span>
                                     </div>
                                     <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px]">
@@ -2972,16 +2978,9 @@
                                     </div>
                                 </div>
 
-                                <!-- Column Headers -->
-                                <div class="ss-cd-row px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 text-center">
-                                    <div data-lang-key="colHeaderNum">#</div>
-                                    <div data-lang-key="colHeaderAmount">Amount</div>
-                                    <div data-lang-key="colHeaderRate">Rate %</div>
-                                    <div data-lang-key="cdInterestDateShort">Next Interest Date</div>
-                                </div>
-
-                                <div id="ss-cd1-list" class="space-y-2">
-                                    <!-- Dynamically rendered CD1 rows -->
+                                <!-- CD1 Cards List -->
+                                <div id="ss-cd1-list" class="space-y-3">
+                                    <!-- Dynamically rendered CD1 cards with dedicated field labels -->
                                 </div>
                             </div>
 
@@ -3024,8 +3023,15 @@
                                     <span class="text-xs font-bold text-gray-800 dark:text-gray-200" data-lang-key="ssLoanTermsTitle">Loan Terms</span>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssBookingDateLabel" for="ss-booking-date-display">Booking Date:</label>
+                                    <div class="sm:col-span-2 space-y-1">
+                                        <div class="flex items-center justify-between">
+                                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400" data-lang-key="ssBookingDateLabel" for="ss-booking-date-display">Booking Date:</label>
+                                            <span class="text-[11px] text-gray-500 dark:text-gray-400">
+                                                <span data-lang-key="firstInstDateLabel">First Installment Date:</span>
+                                                <span id="ss-first-inst-date-display" class="font-bold text-green-700 dark:text-green-300"></span>
+                                                <span class="text-[10px] text-gray-400" data-lang-key="deferredM1Note">(5th of 2nd month)</span>
+                                            </span>
+                                        </div>
                                         <div class="input-group relative">
                                             <input type="text" inputmode="numeric" id="ss-booking-date-display" class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
                                             <button type="button" id="ss-booking-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
@@ -3047,6 +3053,11 @@
                                         <div class="input-group" id="group-ss-period">
                                             <input type="text" inputmode="numeric" pattern="[0-9]*" id="ss-loan-period" value="36" placeholder="36" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
+                                        <div class="mt-1 flex justify-end">
+                                            <button type="button" id="ss-match-cd1-btn" class="hidden text-[10px] font-bold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 px-1.5 py-0.5 rounded transition-colors whitespace-nowrap cursor-pointer" title="Match CD₁ maturity">
+                                                <span id="ss-match-cd1-text">⚡ Match CD₁: 36 mos</span>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssAdminFeesInputLabel" for="ss-admin-fees">Admin Fees (%):</label>
@@ -3058,6 +3069,14 @@
                                         <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssStampRateInputLabel" for="ss-stamp-rate">Stamp Rate (%):</label>
                                         <div class="input-group" id="group-ss-stamp-rate">
                                             <input type="text" inputmode="decimal" id="ss-stamp-rate" value="0.2" placeholder="0.2" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        </div>
+                                    </div>
+
+                                    <!-- Tenor Advisory Box -->
+                                    <div id="ss-tenor-advisory" class="hidden sm:col-span-2 p-2.5 rounded-lg text-xs leading-snug border transition-all">
+                                        <div class="flex items-start gap-2">
+                                            <span id="ss-tenor-advisory-icon" class="text-sm flex-shrink-0">⚠️</span>
+                                            <span id="ss-tenor-advisory-text" class="font-medium text-gray-700 dark:text-gray-300"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -3547,6 +3566,14 @@
                     <span data-lang-key="installAppAbout">Install App</span>
                 </button>
 
+                <button id="open-whats-new-btn"
+                    class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold transition-all active:scale-95 border border-emerald-300/60 dark:border-emerald-700/60">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span data-lang-key="viewWhatsNewBtn">✨ What's New & App Guide</span>
+                </button>
+
                 <button id="force-update-btn"
                     class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium transition-all active:scale-95">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -3591,6 +3618,158 @@
             </div>
         </div>
     </div>
+    </div>
+
+    <!-- What's New & App Guide Modal -->
+    <div id="whats-new-modal" role="dialog" aria-modal="true" aria-labelledby="whats-new-modal-title"
+        class="modal pointer-events-none fixed w-full h-full top-0 left-0 flex items-end justify-center md:items-center z-50">
+        <div
+            class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
+        </div>
+        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe max-h-[88vh] flex flex-col">
+            
+            <!-- Modal Header -->
+            <div class="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">✨</span>
+                    <h3 id="whats-new-modal-title" class="text-base sm:text-lg font-bold text-gray-900 dark:text-white" data-lang-key="whatsNewModalTitle">
+                        What's New & App Guide
+                    </h3>
+                </div>
+                <button type="button" id="close-whats-new" class="modal-close p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400" aria-label="Close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="px-5 pt-3 pb-2 flex-shrink-0">
+                <div class="grid grid-cols-2 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-xl gap-1">
+                    <button type="button" id="tab-btn-whats-new" class="py-2 px-3 text-xs font-bold rounded-lg transition-all text-center bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-xs" data-lang-key="tabWhatsNew">
+                        ✨ What's New
+                    </button>
+                    <button type="button" id="tab-btn-app-features" class="py-2 px-3 text-xs font-semibold rounded-lg transition-all text-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" data-lang-key="tabAppFeatures">
+                        🌟 App Guide
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Body -->
+            <div class="px-5 py-3 overflow-y-auto flex-1 space-y-3 text-left rtl:text-right" id="whats-new-modal-body">
+                
+                <!-- Tab 1: What's New -->
+                <div id="tab-content-whats-new" class="space-y-2.5">
+                    <!-- Item 1: Limits -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex-shrink-0 text-base">🏛️</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="wnLimitTitle">Safer Borrowing Limits</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="wnLimitDesc">Maximum loan is automatically capped at 90% of certificate value or redemption value, whichever is less.</p>
+                        </div>
+                    </div>
+
+                    <!-- Item 2: Cards -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex-shrink-0 text-base">🏷️</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="wnCardsTitle">Clear Certificate Cards</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="wnCardsDesc">In Self-Sufficient mode, every certificate is now a neat card with clear names directly above every box.</p>
+                        </div>
+                    </div>
+
+                    <!-- Item 3: Auto Rate -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex-shrink-0 text-base">⚡</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="wnRateTitle">Auto-Calculated Loan Rate</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="wnRateDesc">Loan interest automatically sets itself 2% above your highest certificate rate, matching bank policies.</p>
+                        </div>
+                    </div>
+
+                    <!-- Item 4: Due Date -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex-shrink-0 text-base">📅</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="wnDueDateTitle">First Payment Date</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="wnDueDateDesc">Clearly displays your first installment date (5th of 2nd month) for easy budgeting.</p>
+                        </div>
+                    </div>
+
+                    <!-- Item 5: Sync -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 flex-shrink-0 text-base">🔄</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="wnSyncTitle">Instant Certificate Sync</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="wnSyncDesc">When calculating a self-paying loan, your certificates automatically transfer to your loan details with zero re-typing.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: App Guide & Features -->
+                <div id="tab-content-app-features" class="space-y-2.5 hidden">
+                    <!-- Feature 1 -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex-shrink-0 text-base">🧮</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="featLoanTitle">Flexible Loan Calculator</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="featLoanDesc">Calculate your monthly installment, loan amount, interest rate, or duration with reducing balance calculations.</p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex-shrink-0 text-base">🛡️</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="featSecuredTitle">Secured Loans (CD-Backed)</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="featSecuredDesc">Check your borrowing limit and see whether your monthly certificate interest covers your loan payment.</p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 flex-shrink-0 text-base">⚡</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="featSsTitle">Self-Sufficient Loan Mode</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="featSsDesc">Use your existing certificate to fund a new high-rate certificate that pays off all installments with monthly surplus.</p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 4 -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex-shrink-0 text-base">⏩</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="featEarlyTitle">Early Settlement Calculator</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="featEarlyDesc">Find out the exact remaining principal, payoff fees, and interest accrued for any settlement date.</p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 5 -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex-shrink-0 text-base">📊</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="featExportTitle">Schedule & PDF Reports</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="featExportDesc">View month-by-month repayment breakdown, quarterly stamp tax, and export official PDF or Excel reports.</p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 6 -->
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 flex gap-3 items-start">
+                        <div class="p-2 rounded-lg bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex-shrink-0 text-base">🔒</div>
+                        <div class="space-y-0.5">
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100" data-lang-key="featOfflineTitle">100% Private & Offline</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed" data-lang-key="featOfflineDesc">Runs completely offline on your device. Your financial numbers are never sent anywhere.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-gray-100 dark:border-gray-800/80 flex-shrink-0">
+                <button type="button" id="btn-whats-new-got-it" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-98 text-sm" data-lang-key="whatsNewGotIt">
+                    Got it!
+                </button>
+            </div>
+        </div>
     </div>
 
     <div id="history-modal" role="dialog" aria-modal="true" aria-labelledby="history-modal-title"

@@ -227,11 +227,14 @@ const txt = {
         clearCollateralBtn: "Clear",
         removeCollateralBtn: "Remove",
         collateralItemLabel: "Collateral",
-        collateralAmountLabel: "Collateral Amount",
+        collateralAmountLabel: "Nominal Value",
+        collateralNominalLabel: "Nominal Value",
+        collateralRedemptionLabel: "Redemption Value",
         collateralRateLabel: "Interest Rate (%)",
         collateralPeriodLabel: "Period (months)",
         totalCollateralLabel: "Total Collateral:",
-        maxLoanAllowedLabel: "Max Loan (90%):",
+        maxLoanAllowedLabel: "Max Loan:",
+        maxLoanAllowedTooltip: "Maximum Loan Limit: By banking regulations, maximum loan amount is 90% of certificate nominal value or its redemption value, whichever is lower.",
         minLoanRateLabel: "Min Rate (+2%):",
         minLoanRateTooltip: "Minimum Loan Rate: By banking regulations, loan interest must be at least 2% higher than your highest collateral CD rate.",
         cdMonthlyReturnLabel: "Monthly CD Returns",
@@ -244,18 +247,57 @@ const txt = {
         selfCoveringLoanLabel: "100% Self-Covering Loan",
         selfCoveringChipLabel: "100% covered by CDs:",
         applyLoanAmountBtn: "Use Value",
-        warningExceeds90Collateral: "Loan amount exceeds 90% of total collateral ({max})",
+        warningExceeds90Collateral: "Loan amount exceeds maximum collateral limit ({max})",
         warningBelowMinRate: "Loan rate is below minimum required ({min}%)",
-        ssErrorExceeds90Collateral: "Generated loan amount exceeds 90% of total collateral.",
+        ssErrorExceeds90Collateral: "Generated loan amount ({gross}) exceeds maximum collateral limit ({max}).",
         colHeaderNum: "#",
-        colHeaderAmount: "Amount",
+        colHeaderAmount: "Nominal",
+        colHeaderNominal: "Nominal",
+        colHeaderRedemption: "Redemption",
         colHeaderRate: "Rate %",
-        colHeaderPeriod: "Months",
         ssCd1SectionTitle: "Existing Certificates (CD₁)",
         ssCd2SectionTitle: "New Certificate (CD₂)",
         ssLoanTermsTitle: "Loan Terms",
         addCd1Btn: "Add CD₁",
-        cdInterestDateShort: "Next Interest Date"
+        cdInterestDateShort: "Next Interest Date",
+        cdCouponDateShort: "Next Coupon",
+        cdMaturityDateShort: "Maturity Date",
+        remainingTenorLabel: "{n} mos left",
+        matchCd1TenorBtn: "⚡ Match CD₁: {n} mos",
+        advisoryMaturityExceeded: "Loan period ({loan} mos) exceeds CD₁ maturity ({cd} mos remaining). At month {cd}, CD₁ will renew at the prevailing market rate, which may alter your net surplus.",
+        reassuranceMaturityMatched: "Guaranteed Horizon: Loan duration is fully covered within CD₁'s current contracted term.",
+        datesLabel: "Dates",
+        firstInstDateLabel: "First Installment Date:",
+        deferredM1Note: "(5th of 2nd month)",
+        nextCouponDateLabel: "Next Coupon Date",
+        maturityDateLabel: "Maturity Date",
+        whatsNewModalTitle: "What's New & App Guide",
+        tabWhatsNew: "✨ What's New",
+        tabAppFeatures: "🌟 App Guide",
+        wnLimitTitle: "Safer Borrowing Limits",
+        wnLimitDesc: "Maximum loan is automatically capped at 90% of certificate value or redemption value, whichever is less.",
+        wnCardsTitle: "Clear Certificate Cards",
+        wnCardsDesc: "In Self-Sufficient mode, every certificate is now a neat card with clear names directly above every box.",
+        wnRateTitle: "Auto-Calculated Loan Rate",
+        wnRateDesc: "Loan interest automatically sets itself 2% above your highest certificate rate, matching bank policies.",
+        wnDueDateTitle: "First Payment Date",
+        wnDueDateDesc: "Clearly displays your first installment date (5th of 2nd month) for easy budgeting.",
+        wnSyncTitle: "Instant Certificate Sync",
+        wnSyncDesc: "When calculating a self-paying loan, your certificates automatically transfer to your loan details with zero re-typing.",
+        featLoanTitle: "Flexible Loan Calculator",
+        featLoanDesc: "Calculate your monthly installment, loan amount, interest rate, or duration with reducing balance calculations.",
+        featSecuredTitle: "Secured Loans (CD-Backed)",
+        featSecuredDesc: "Check your borrowing limit and see whether your monthly certificate interest covers your loan payment.",
+        featSsTitle: "Self-Sufficient Loan Mode",
+        featSsDesc: "Use your existing certificate to fund a new high-rate certificate that pays off all installments with monthly surplus.",
+        featEarlyTitle: "Early Settlement Calculator",
+        featEarlyDesc: "Find out the exact remaining principal, payoff fees, and interest accrued for any settlement date.",
+        featExportTitle: "Schedule & PDF Reports",
+        featExportDesc: "View month-by-month repayment breakdown, quarterly stamp tax, and export official PDF or Excel reports.",
+        featOfflineTitle: "100% Private & Offline",
+        featOfflineDesc: "Runs completely offline on your device. Your financial numbers are never sent anywhere.",
+        whatsNewGotIt: "Got it!",
+        viewWhatsNewBtn: "✨ What's New & App Guide"
     },
     ar: {
         appTitle: "حاسبة القروض",
@@ -482,11 +524,14 @@ const txt = {
         clearCollateralBtn: "مسح",
         removeCollateralBtn: "حذف",
         collateralItemLabel: "الضمانة",
-        collateralAmountLabel: "مبلغ الضمانة",
+        collateralAmountLabel: "القيمة الاسمية",
+        collateralNominalLabel: "القيمة الاسمية",
+        collateralRedemptionLabel: "القيمة الاستردادية",
         collateralRateLabel: "فائدة الضمانة (%)",
         collateralPeriodLabel: "المدة (أشهر)",
         totalCollateralLabel: "إجمالي الضمانات:",
-        maxLoanAllowedLabel: "أقصى قرض (90%):",
+        maxLoanAllowedLabel: "أقصى قرض:",
+        maxLoanAllowedTooltip: "الحد الأقصى للقرض: وفقاً للتعليمات المصرفية، الحد الأقصى لمبلغ القرض هو 90% من القيمة الاسمية للشهادة أو قيمتها الاستردادية أيهما أقل.",
         minLoanRateLabel: "أدنى فائدة (+2%):",
         minLoanRateTooltip: "الحد الأدنى لسعر فائدة القرض: وفقاً للتعليمات المصرفية، يجب أن تكون فائدة القرض أعلى بنسبة 2% على الأقل من أعلى فائدة للشهادات الضامنة.",
         cdMonthlyReturnLabel: "عوائد الشهادات شهرياً",
@@ -499,18 +544,57 @@ const txt = {
         selfCoveringLoanLabel: "قرض مغطى بالكامل من الفوائد",
         selfCoveringChipLabel: "مغطى بالكامل من الشهادات:",
         applyLoanAmountBtn: "استخدام المبلغ",
-        warningExceeds90Collateral: "مبلغ القرض يتجاوز 90% من إجمالي الضمانات ({max})",
+        warningExceeds90Collateral: "مبلغ القرض يتجاوز الحد الأقصى المسموح به للضمانات ({max})",
         warningBelowMinRate: "فائدة القرض أقل من الحد الأدنى المطلوب ({min}%)",
-        ssErrorExceeds90Collateral: "مبلغ القرض الناتج يتجاوز 90% من إجمالي الضمانات.",
+        ssErrorExceeds90Collateral: "مبلغ القرض الناتج ({gross}) يتجاوز الحد الأقصى المسموح به للضمانات ({max}).",
         colHeaderNum: "#",
-        colHeaderAmount: "المبلغ",
+        colHeaderAmount: "الاسمية",
+        colHeaderNominal: "الاسمية",
+        colHeaderRedemption: "الاستردادية",
         colHeaderRate: "الفائدة %",
-        colHeaderPeriod: "المدة",
         ssCd1SectionTitle: "الشهادات القائمة (شهادة 1)",
         ssCd2SectionTitle: "الشهادة الجديدة (شهادة 2)",
         ssLoanTermsTitle: "شروط القرض",
         addCd1Btn: "إضافة شهادة 1",
-        cdInterestDateShort: "تاريخ العائد القادم"
+        cdInterestDateShort: "تاريخ العائد القادم",
+        cdCouponDateShort: "العائد القادم",
+        cdMaturityDateShort: "تاريخ الاستحقاق",
+        remainingTenorLabel: "متبقي {n} شهر",
+        matchCd1TenorBtn: "⚡ مطابقة مدة الشهادة: {n} شهر",
+        advisoryMaturityExceeded: "مدة القرض ({loan} شهر) تتجاوز استحقاق الشهادة (متبقي {cd} شهر). عند الشهر {cd}، ستتطلب الشهادة تجديداً بسعر الفائدة السائد حينها، مما قد يغير الفائض الشهري.",
+        reassuranceMaturityMatched: "فترة مضمونة: مدة القرض مغطاة بالكامل ضمن فترة الفائدة الثابتة الحالية للشهادة.",
+        datesLabel: "التواريخ",
+        firstInstDateLabel: "تاريخ أول قسط:",
+        deferredM1Note: "(يوم 5 من الشهر الثاني)",
+        nextCouponDateLabel: "تاريخ الكوبون القادم",
+        maturityDateLabel: "تاريخ الاستحقاق",
+        whatsNewModalTitle: "ما الجديد ودليل التطبيق",
+        tabWhatsNew: "✨ ما الجديد",
+        tabAppFeatures: "🌟 دليل التطبيق",
+        wnLimitTitle: "حدود اقتراض مطابقة للبنك",
+        wnLimitDesc: "تطبيق تعليمات البنك تلقائياً: أقصى قرض هو 90% من القيمة الاسمية للشهادة أو قيمتها الاستردادية أيهما أقل.",
+        wnCardsTitle: "بطاقات واضحة للشهادات",
+        wnCardsDesc: "في نظام السداد الذاتي، أصبحت كل شهادة بطاقة منظمة يعلو كل حقل فيها اسمه بوضوح تام.",
+        wnRateTitle: "تحديد الفائدة تلقائياً",
+        wnRateDesc: "يتم احتساب فائدة القرض تلقائياً لتكون أعلى بنسبة 2% من أعلى عائد لشهادتك الضامنة وفقاً للقواعد.",
+        wnDueDateTitle: "تاريخ أول قسط",
+        wnDueDateDesc: "يوضح صراحةً تاريخ استحقاق أول قسط (يوم 5 من الشهر الثاني بعد المنح) لتنظيم ميزانيتك بسهولة.",
+        wnSyncTitle: "مزامنة فورية للشهادات",
+        wnSyncDesc: "عند حساب القرض الذاتي، يتم نقل شهاداتك تلقائياً لجدول الضمانات الرئيسي دون الحاجة لإعادة كتابتها.",
+        featLoanTitle: "حاسبة قروض متكاملة",
+        featLoanDesc: "احسب القسط، أو مبلغ القرض، أو الفائدة، أو المدة بنظام الرصيد المتناقص المعتمد بنكياً.",
+        featSecuredTitle: "قروض بضمان الشهادات",
+        featSecuredDesc: "اعرف أقصى مبلغ للاقتراض وما إذا كانت عوائد شهاداتك الشهرية تغطي قسط القرض بالكامل.",
+        featSsTitle: "نظام القرض الذاتي",
+        featSsDesc: "استثمر شهادتك الحالية لربط شهادة جديدة أعلى تسدد جميع الأقساط بالكامل مع فائض شهري.",
+        featEarlyTitle: "حاسبة السداد المبكر",
+        featEarlyDesc: "احسب رصيد الأصل المتبقي، وعمولة السداد، والفوائد المستحقة لأي تاريخ سداد تختاره.",
+        featExportTitle: "جدول الأقساط وتقارير PDF",
+        featExportDesc: "استعرض تفاصيل جدول السداد شهراً بشهر مع ضريبة الدمغة، واستخرج تقارير PDF وإكسيل بضغطة زر.",
+        featOfflineTitle: "خصوصية تامة وبدون إنترنت",
+        featOfflineDesc: "يعمل التطبيق محلياً بالكامل على جهازك دون اتصال؛ لا يتم إرسال أو مشاركة أي بيانات نهائياً.",
+        whatsNewGotIt: "فهمت!",
+        viewWhatsNewBtn: "✨ ما الجديد ودليل التطبيق"
     }
 };
 
@@ -539,9 +623,39 @@ let toastTimer = null;
 const ScrollLock = (() => {
     let lockCount = 0;
 
+    function isAnyModalOrPickerOpen() {
+        const openModals = document.querySelectorAll('.modal:not(.pointer-events-none)');
+        if (openModals.length > 0) return true;
+
+        const mobileBackdrop = document.getElementById('mobile-picker-backdrop');
+        if (mobileBackdrop && !mobileBackdrop.classList.contains('pointer-events-none') && !mobileBackdrop.classList.contains('opacity-0')) {
+            return true;
+        }
+        const desktopPopover = document.getElementById('desktop-calendar-popover');
+        if (desktopPopover && !desktopPopover.classList.contains('hidden')) {
+            return true;
+        }
+        if (typeof window !== 'undefined' && typeof window.isDatePickerOpen === 'function' && window.isDatePickerOpen()) {
+            return true;
+        }
+        return false;
+    }
+
+    function release() {
+        lockCount = 0;
+        document.body.classList.remove('scroll-lock');
+        document.body.style.paddingRight = '';
+        const nav = document.querySelector('nav');
+        if (nav) nav.style.paddingRight = '';
+        const updateBanner = document.getElementById('update-banner');
+        if (updateBanner) updateBanner.style.paddingRight = '';
+        const messageBox = document.getElementById('message-box');
+        if (messageBox) messageBox.style.paddingRight = '';
+    }
+
     function enable() {
         lockCount++;
-        if (lockCount > 1) return; // Already locked
+        if (lockCount > 1 && document.body.classList.contains('scroll-lock')) return; // Already locked
 
         const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
         if (scrollbarWidth > 0) {
@@ -560,22 +674,28 @@ const ScrollLock = (() => {
     }
 
     function disable() {
-        lockCount--;
-        if (lockCount > 0) return; // Still locked by other modals
-        lockCount = 0; // Safeguard
+        lockCount = Math.max(0, lockCount - 1);
 
-        document.body.classList.remove('scroll-lock');
-        document.body.style.paddingRight = '';
-        const nav = document.querySelector('nav');
-        if (nav) nav.style.paddingRight = '';
-        const updateBanner = document.getElementById('update-banner');
-        if (updateBanner) updateBanner.style.paddingRight = '';
-        const messageBox = document.getElementById('message-box');
-        if (messageBox) messageBox.style.paddingRight = '';
+        // Ground truth check: if no modal or picker is actually open in the DOM, release unconditionally
+        if (!isAnyModalOrPickerOpen()) {
+            release();
+            return;
+        }
+
+        if (lockCount > 0) return; // Still locked by other active components
+        release();
     }
 
-    return { enable, disable };
+    function forceUnlock() {
+        release();
+    }
+
+    return { enable, disable, forceUnlock, isAnyModalOrPickerOpen };
 })();
+
+if (typeof window !== 'undefined') {
+    window.ScrollLock = ScrollLock;
+}
 
 // Debug mode flag - set to true during development
 const DEBUG_MODE = false;
@@ -1097,7 +1217,7 @@ function attachModalSwipeDismiss(modal) {
         // If pulled downward at least 60px and mostly vertical
         if (deltaY > 60 && deltaY > deltaX * 1.5) {
             if (typeof haptic !== 'undefined') haptic('light');
-            toggleModal(modal);
+            toggleModal(modal, false);
         }
         isTrackingSwipe = false;
     };
@@ -1118,24 +1238,34 @@ function removeModalSwipeDismiss() {
     }
 }
 
-function toggleModal(modal) {
+function toggleModal(modal, forceOpen) {
     if (!modal) return;
-    const isOpening = modal.classList.contains('pointer-events-none');
-    const modalId = modal.id || 'unknown-modal';
+    const currentlyClosed = modal.classList.contains('pointer-events-none');
+    const isOpening = typeof forceOpen === 'boolean' ? forceOpen : currentlyClosed;
 
-    modal.classList.toggle('pointer-events-none');
+    // Idempotency check: don't re-execute if already in the target state
+    if (isOpening && !currentlyClosed) return;
+    if (!isOpening && currentlyClosed) return;
+
+    modal.classList.toggle('pointer-events-none', !isOpening);
 
     const overlay = modal.querySelector('.modal-overlay');
-    if (overlay) overlay.classList.toggle('opacity-0');
+    if (overlay) overlay.classList.toggle('opacity-0', !isOpening);
 
     const container = modal.querySelector('.modal-container');
     if (container) {
-        container.classList.toggle('translate-y-full');
-        container.classList.toggle('md:opacity-0');
-        container.classList.toggle('md:scale-95');
+        container.classList.toggle('translate-y-full', !isOpening);
+        container.classList.toggle('md:opacity-0', !isOpening);
+        container.classList.toggle('md:scale-95', !isOpening);
     }
 
-    if (modalTimer) clearTimeout(modalTimer);
+    const modalId = modal.id || 'unknown-modal';
+
+    // Clear any pending close timer for this specific modal
+    if (modal._closeTimer) {
+        clearTimeout(modal._closeTimer);
+        modal._closeTimer = null;
+    }
 
     if (isOpening) {
         ScrollLock.enable();
@@ -1143,18 +1273,20 @@ function toggleModal(modal) {
 
         // Register with in-memory BackHandler
         if (typeof BackHandler !== 'undefined') {
-            BackHandler.push(modalId, () => toggleModal(modal));
+            BackHandler.push(modalId, () => toggleModal(modal, false));
         }
     } else {
         removeModalSwipeDismiss();
-        modalTimer = setTimeout(() => {
-            ScrollLock.disable();
-        }, 300);
 
-        // Unregister from in-memory BackHandler
+        // Unregister from in-memory BackHandler immediately
         if (typeof BackHandler !== 'undefined') {
             BackHandler.pop(modalId);
         }
+
+        modal._closeTimer = setTimeout(() => {
+            modal._closeTimer = null;
+            ScrollLock.disable();
+        }, 300);
     }
 }
 
@@ -1766,7 +1898,7 @@ function initSwipeToClose() {
                 container.style.transition = 'transform 0.3s ease-out';
                 container.style.transform = 'translateY(100%)';
                 if (typeof haptic !== 'undefined') haptic('light');
-                toggleModal(modal);
+                toggleModal(modal, false);
 
                 setTimeout(() => {
                     container.style.transform = '';

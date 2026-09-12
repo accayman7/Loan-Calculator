@@ -37,6 +37,111 @@ function ssDefaultCdInterestDate(bookingDate) {
 }
 
 /**
+ * Compute the default CD maturity date from a booking date.
+ * Default is 3 years (36 months) from booking.
+ *
+ * @param {Date} bookingDate
+ * @returns {Date}
+ */
+function ssDefaultCdMaturityDate(bookingDate) {
+    if (!bookingDate) bookingDate = new Date();
+    return new Date(bookingDate.getFullYear() + 3, bookingDate.getMonth(), bookingDate.getDate());
+}
+
+/**
+ * Calculate remaining full months between booking date and maturity date.
+ *
+ * @param {Date} bookingDate
+ * @param {Date} maturityDate
+ * @returns {number}
+ */
+function ssCalculateRemainingMonths(bookingDate, maturityDate) {
+    if (!bookingDate || !maturityDate) return 0;
+    let months = (maturityDate.getFullYear() - bookingDate.getFullYear()) * 12 + (maturityDate.getMonth() - bookingDate.getMonth());
+    if (maturityDate.getDate() < bookingDate.getDate()) {
+        months -= 1;
+    }
+    return Math.max(0, months);
+}
+
+/**
+ * Update the remaining tenor badge on a CD1 card element.
+ *
+ * @param {Object} cd
+ * @param {HTMLElement} cardEl
+ */
+function updateRemainingBadge(cd, cardEl) {
+    if (!cardEl) return;
+    const badge = cardEl.querySelector('.ss-cd-remaining-badge');
+    if (!badge) return;
+    const bkISO = document.getElementById('ss-booking-date-native')?.value;
+    const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
+    const matDate = cd.maturityISO ? _ssParseNativeDate(cd.maturityISO) : null;
+    const lang = _ssAppState?.lang || 'en';
+    if (matDate && bkDate) {
+        const months = ssCalculateRemainingMonths(bkDate, matDate);
+        badge.textContent = t(lang, 'remainingTenorLabel').replace('{n}', months);
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+/**
+ * Update Quick Match button and Tenor Advisory banner based on CD1 maturities and loan period.
+ *
+ * @param {number} loanPeriod
+ */
+function updateTenorAdvisoryAndMatchButton(loanPeriod) {
+    const bkISO = document.getElementById('ss-booking-date-native')?.value;
+    const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
+
+    const candidateTenors = ssCd1List
+        .map(c => {
+            const matDate = c.maturityISO ? _ssParseNativeDate(c.maturityISO) : null;
+            return matDate ? ssCalculateRemainingMonths(bkDate, matDate) : null;
+        })
+        .filter(m => m !== null && m > 0);
+
+    const matchBtn = document.getElementById('ss-match-cd1-btn');
+    const matchText = document.getElementById('ss-match-cd1-text');
+    const advisoryBox = document.getElementById('ss-tenor-advisory');
+    const advisoryIcon = document.getElementById('ss-tenor-advisory-icon');
+    const advisoryText = document.getElementById('ss-tenor-advisory-text');
+    const lang = _ssAppState?.lang || 'en';
+
+    if (candidateTenors.length > 0) {
+        const minMaturity = Math.min(...candidateTenors);
+        if (matchBtn && matchText) {
+            matchBtn.classList.remove('hidden');
+            matchText.textContent = t(lang, 'matchCd1TenorBtn').replace('{n}', minMaturity);
+        }
+
+        if (advisoryBox && advisoryIcon && advisoryText && loanPeriod > 0) {
+            advisoryBox.classList.remove('hidden');
+            if (loanPeriod > minMaturity) {
+                // Advisory warning style
+                advisoryBox.className = 'sm:col-span-2 p-2.5 rounded-lg text-xs leading-snug border transition-all bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800/60 text-amber-800 dark:text-amber-300';
+                advisoryIcon.textContent = '⚠️';
+                advisoryText.className = 'font-medium text-amber-900 dark:text-amber-200';
+                advisoryText.textContent = t(lang, 'advisoryMaturityExceeded')
+                    .replace('{loan}', loanPeriod)
+                    .replace('{cd}', minMaturity);
+            } else {
+                // Reassurance horizon style
+                advisoryBox.className = 'sm:col-span-2 p-2.5 rounded-lg text-xs leading-snug border transition-all bg-green-50 dark:bg-green-950/40 border-green-300 dark:border-green-800/60 text-green-800 dark:text-green-300';
+                advisoryIcon.textContent = '✅';
+                advisoryText.className = 'font-medium text-green-900 dark:text-green-200';
+                advisoryText.textContent = t(lang, 'reassuranceMaturityMatched');
+            }
+        }
+    } else {
+        if (matchBtn) matchBtn.classList.add('hidden');
+        if (advisoryBox) advisoryBox.classList.add('hidden');
+    }
+}
+
+/**
  * Seed and display an SS CD-interest date field from a Date object.
  * @param {Date}   dateObj
  * @param {HTMLElement} nativeEl
@@ -77,8 +182,59 @@ function _ssParseNativeDate(isoStr) {
  * @param {Function} animateToggleBounce - bounce animation helper
  * @param {Function} appCalculateFn - the appCalculate function for use after solver
  */
+/**
+ * Derive the first installment date: 5th of second month after booking date.
+ * @param {Date} bookingDate
+ * @returns {Date}
+ */
+function ssGetFirstInstallmentDate(bookingDate) {
+    if (!bookingDate) bookingDate = new Date();
+    return new Date(bookingDate.getFullYear(), bookingDate.getMonth() + 2, 5);
+}
+
+/**
+ * Update the visible First Installment Date display in the Loan Terms card.
+ * @param {Date} [bookingDate]
+ */
+function ssUpdateFirstInstDateDisplay(bookingDate) {
+    const displayEl = document.getElementById('ss-first-inst-date-display');
+    if (!displayEl) return;
+    if (!bookingDate) {
+        const ssBDNative = document.getElementById('ss-booking-date-native');
+        bookingDate = ssBDNative?.value ? _ssParseNativeDate(ssBDNative.value) : new Date();
+    }
+    const m1 = ssGetFirstInstallmentDate(bookingDate);
+    const d = String(m1.getDate()).padStart(2, '0');
+    const m = String(m1.getMonth() + 1).padStart(2, '0');
+    const y = m1.getFullYear();
+    displayEl.textContent = (typeof dateBuildValue === 'function')
+        ? dateBuildValue(d, m, String(y), false)
+        : `${d}/${m}/${y}`;
+}
+
+/**
+ * Auto-fill loan rate to highest CD1 rate + 2.0% unless manually overridden.
+ */
+function ssAutoFillLoanRate() {
+    if (ssLoanRateManuallyEdited) return;
+    const loanRateInput = document.getElementById('ss-loan-rate');
+    if (!loanRateInput) return;
+
+    const cd1Rates = ssCd1List
+        .map(c => safeParseFloat(c.rate))
+        .filter(r => !isNaN(r) && r > 0);
+
+    if (cd1Rates.length === 0) {
+        loanRateInput.value = '';
+        return;
+    }
+    const maxCd1 = Math.max(...cd1Rates);
+    const suggestedRate = maxCd1 + 2.0;
+    loanRateInput.value = suggestedRate.toFixed(2);
+}
+
 let ssCd1List = [
-    { id: 1, amount: '', rate: '', dateISO: '' }
+    { id: 1, amount: '', redemption: '', rate: '', dateISO: '', maturityISO: '' }
 ];
 let nextSsCd1Id = 2;
 let ssTd2RateManuallyEdited = false;
@@ -88,59 +244,107 @@ function renderSsCd1List(newIdToAnimate = null) {
     const listEl = document.getElementById('ss-cd1-list');
     if (!listEl) return;
 
+    const lang = _ssAppState?.lang || 'en';
+    const bkISO = document.getElementById('ss-booking-date-native')?.value;
+    const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
+
     listEl.innerHTML = '';
     ssCd1List.forEach((cd, index) => {
         const row = document.createElement('div');
         row.id = `ss-cd1-card-${cd.id}`;
-        row.className = `ss-cd-row p-2 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-900/60 transition-all ${cd.id === newIdToAnimate ? 'item-enter' : ''}`;
+        row.className = `ss-cd-card p-2.5 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-900/60 shadow-xs transition-all space-y-2.5 ${cd.id === newIdToAnimate ? 'item-enter' : ''}`;
 
         const cdLabel = `CD₁ #${index + 1}`;
 
         row.innerHTML = `
-            <div class="flex items-center justify-center gap-1 text-[11px] font-bold text-green-800 dark:text-green-300 text-center">
-                <span>${cdLabel}</span>
-                ${ssCd1List.length > 1 ? `
-                <button type="button" class="ss-cd-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${cd.id}" title="${t(_ssAppState?.lang || 'en', 'removeCollateralBtn')}" aria-label="${t(_ssAppState?.lang || 'en', 'removeCollateralBtn')}">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                </button>
-                ` : `
-                <button type="button" class="ss-cd-clear-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 p-0.5 rounded transition-colors" data-id="${cd.id}" title="${t(_ssAppState?.lang || 'en', 'clearCollateralBtn')}" aria-label="${t(_ssAppState?.lang || 'en', 'clearCollateralBtn')}">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-                `}
-            </div>
-            <div>
-                <div class="input-group py-1 px-1">
-                    <input type="text" inputmode="decimal" class="text-input select-text ss-cd-amount p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="100,000">
+            <!-- Card Header: Title & Action Button -->
+            <div class="flex items-center justify-between pb-1.5 border-b border-green-100 dark:border-green-900/40">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold text-green-900 dark:text-green-200">${cdLabel}</span>
                 </div>
-            </div>
-            <div>
-                <div class="input-group py-1 px-1">
-                    <input type="text" inputmode="decimal" class="text-input select-text ss-cd-rate p-0 text-center" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="19.0">
-                </div>
-            </div>
-            <div>
-                <div class="input-group py-1 px-1 flex items-center gap-0.5">
-                    <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
-                    <button type="button" class="ss-cd-picker-btn flex-shrink-0 w-4.5 h-4.5 p-0.5 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open date picker">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <input type="date" class="ss-cd-date-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
+                <div>
+                    ${ssCd1List.length > 1 ? `
+                    <button type="button" class="ss-cd-remove-btn flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-red-500 dark:hover:text-red-400 py-0.5 px-1.5 rounded transition-colors" data-id="${cd.id}" title="${t(lang, 'removeCollateralBtn')}" aria-label="${t(lang, 'removeCollateralBtn')}">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <span>${t(lang, 'removeCollateralBtn')}</span>
                     </button>
+                    ` : `
+                    <button type="button" class="ss-cd-clear-btn flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 py-0.5 px-1.5 rounded transition-colors" data-id="${cd.id}" title="${t(lang, 'clearCollateralBtn')}" aria-label="${t(lang, 'clearCollateralBtn')}">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        <span>${t(lang, 'clearCollateralBtn')}</span>
+                    </button>
+                    `}
+                </div>
+            </div>
+
+            <!-- Row 1: Core Financial Values with Dedicated Field Labels -->
+            <div class="grid grid-cols-12 gap-2 items-end">
+                <div class="col-span-5">
+                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1" data-lang-key="collateralNominalLabel">${t(lang, 'collateralNominalLabel')}</label>
+                    <div class="input-group py-1 px-1.5">
+                        <input type="text" inputmode="decimal" class="text-input select-text ss-cd-amount p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="100,000" aria-label="${t(lang, 'collateralNominalLabel')}" title="${t(lang, 'collateralNominalLabel')}">
+                    </div>
+                </div>
+                <div class="col-span-4">
+                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1" data-lang-key="collateralRedemptionLabel">${t(lang, 'collateralRedemptionLabel')}</label>
+                    <div class="input-group py-1 px-1.5">
+                        <input type="text" inputmode="decimal" class="text-input select-text ss-cd-redemption p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="90,000" aria-label="${t(lang, 'collateralRedemptionLabel')}" title="${t(lang, 'collateralRedemptionLabel')}">
+                    </div>
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1" data-lang-key="colHeaderRate">${t(lang, 'colHeaderRate')}</label>
+                    <div class="input-group py-1 px-1.5">
+                        <input type="text" inputmode="decimal" class="text-input select-text ss-cd-rate p-0 text-center" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="19.0" aria-label="${t(lang, 'colHeaderRate')}" title="${t(lang, 'colHeaderRate')}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Date Fields with Dedicated Field Labels -->
+            <div class="pt-2 border-t border-green-100/80 dark:border-green-900/40 grid grid-cols-12 gap-2 items-end">
+                <div class="col-span-6">
+                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1" data-lang-key="nextCouponDateLabel">${t(lang, 'nextCouponDateLabel')}</label>
+                    <div class="input-group relative py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'nextCouponDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
+                        <button type="button" class="ss-cd-picker-btn flex-shrink-0 w-4.5 h-4.5 p-0.5 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open date picker">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <input type="date" class="ss-cd-date-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
+                        </button>
+                    </div>
+                </div>
+                <div class="col-span-6">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400" data-lang-key="maturityDateLabel">${t(lang, 'maturityDateLabel')}</label>
+                        <span class="ss-cd-remaining-badge text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/70 text-green-800 dark:text-green-300 text-center whitespace-nowrap"></span>
+                    </div>
+                    <div class="input-group relative py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'maturityDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
+                        <button type="button" class="ss-cd-maturity-picker-btn flex-shrink-0 w-4.5 h-4.5 p-0.5 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open maturity date picker">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <input type="date" class="ss-cd-maturity-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
 
         const amountInput = row.querySelector('.ss-cd-amount');
+        const redemptionInput = row.querySelector('.ss-cd-redemption');
         const rateInput = row.querySelector('.ss-cd-rate');
         const dateDisplay = row.querySelector('.ss-cd-date-display');
         const dateNative = row.querySelector('.ss-cd-date-native');
         const pickerBtn = row.querySelector('.ss-cd-picker-btn');
+        const matDisplay = row.querySelector('.ss-cd-maturity-display');
+        const matNative = row.querySelector('.ss-cd-maturity-native');
+        const matPickerBtn = row.querySelector('.ss-cd-maturity-picker-btn');
         const removeBtn = row.querySelector('.ss-cd-remove-btn');
         const clearBtn = row.querySelector('.ss-cd-clear-btn');
 
         if (amountInput) amountInput.value = cd.amount || '';
+        if (redemptionInput) redemptionInput.value = cd.redemption || '';
         if (rateInput) rateInput.value = cd.rate || '';
 
         const adjustAmountFontSize = (input) => {
@@ -150,7 +354,7 @@ function renderSsCd1List(newIdToAnimate = null) {
             else input.style.fontSize = '11px';
         };
 
-        // Seed date if available
+        // Seed Next Coupon date if available
         if (cd.dateISO && dateNative) {
             dateNative.value = cd.dateISO;
             const p = cd.dateISO.split('-');
@@ -162,12 +366,38 @@ function renderSsCd1List(newIdToAnimate = null) {
             }
         }
 
+        // Seed Maturity date if available
+        if (cd.maturityISO && matNative) {
+            matNative.value = cd.maturityISO;
+            const p = cd.maturityISO.split('-');
+            if (p.length === 3 && matDisplay) {
+                matDisplay.value = (typeof dateBuildValue === 'function')
+                    ? dateBuildValue(p[2], p[1], p[0], false)
+                    : `${p[2]}/${p[1]}/${p[0]}`;
+                matDisplay.dataset.iso = cd.maturityISO;
+            }
+        }
+
+        // Initial badge update
+        updateRemainingBadge(cd, row);
+
         if (amountInput) {
             adjustAmountFontSize(amountInput);
             amountInput.addEventListener('input', (e) => {
                 if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
                 adjustAmountFontSize(e.target);
                 cd.amount = e.target.value;
+                const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+                updateTenorAdvisoryAndMatchButton(p);
+            });
+        }
+
+        if (redemptionInput) {
+            adjustAmountFontSize(redemptionInput);
+            redemptionInput.addEventListener('input', (e) => {
+                if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
+                adjustAmountFontSize(e.target);
+                cd.redemption = e.target.value;
             });
         }
 
@@ -175,10 +405,12 @@ function renderSsCd1List(newIdToAnimate = null) {
             rateInput.addEventListener('input', (e) => {
                 if (typeof validateRateInput === 'function') validateRateInput(e.target);
                 cd.rate = e.target.value;
+                ssAutoFillLoanRate();
             });
             rateInput.addEventListener('blur', (e) => {
                 if (typeof formatRateInputBlur === 'function') formatRateInputBlur(e.target);
                 cd.rate = e.target.value;
+                ssAutoFillLoanRate();
             });
         }
 
@@ -211,6 +443,41 @@ function renderSsCd1List(newIdToAnimate = null) {
             });
         }
 
+        if (matDisplay && matNative && typeof initDateInput === 'function') {
+            initDateInput(matDisplay, matNative);
+            matNative.addEventListener('change', () => {
+                cd.maturityISO = matNative.value;
+                updateRemainingBadge(cd, row);
+                const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+                updateTenorAdvisoryAndMatchButton(p);
+            });
+        }
+
+        if (matPickerBtn && matDisplay && matNative) {
+            matPickerBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                if (typeof openDatePicker === 'function') {
+                    openDatePicker(matDisplay, _ssAppState?.lang || 'en', (selectedDate) => {
+                        if (selectedDate) {
+                            const y = selectedDate.getFullYear();
+                            const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                            const d = String(selectedDate.getDate()).padStart(2, '0');
+                            matDisplay.value = (typeof dateBuildValue === 'function')
+                                ? dateBuildValue(d, m, String(y), false)
+                                : `${d}/${m}/${y}`;
+                            matNative.value = `${y}-${m}-${d}`;
+                            cd.maturityISO = matNative.value;
+                            updateRemainingBadge(cd, row);
+                            const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+                            updateTenorAdvisoryAndMatchButton(p);
+                        }
+                    });
+                } else {
+                    matNative.showPicker();
+                }
+            });
+        }
+
         if (removeBtn) {
             removeBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
@@ -219,6 +486,9 @@ function renderSsCd1List(newIdToAnimate = null) {
                 setTimeout(() => {
                     ssCd1List = ssCd1List.filter(c => c.id !== cd.id);
                     renderSsCd1List();
+                    const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+                    updateTenorAdvisoryAndMatchButton(p);
+                    ssAutoFillLoanRate();
                 }, 240);
             });
         }
@@ -227,12 +497,27 @@ function renderSsCd1List(newIdToAnimate = null) {
             clearBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
                 cd.amount = '';
+                cd.redemption = '';
                 cd.rate = '';
-                cd.dateISO = '';
-                if (amountInput) { amountInput.value = ''; adjustAmountFontSize(amountInput); }
-                if (rateInput) rateInput.value = '';
-                if (dateDisplay) { dateDisplay.value = ''; dateDisplay.dataset.iso = ''; }
-                if (dateNative) dateNative.value = '';
+
+                // Reset dates to defaults from booking date
+                const bkISO = document.getElementById('ss-booking-date-native')?.value;
+                const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
+                const defaultDate = bkDate ? ssDefaultCdInterestDate(bkDate) : new Date();
+                const defaultMat = bkDate ? ssDefaultCdMaturityDate(bkDate) : new Date();
+                const y = defaultDate.getFullYear();
+                const m = String(defaultDate.getMonth() + 1).padStart(2, '0');
+                const d = String(defaultDate.getDate()).padStart(2, '0');
+                const my = defaultMat.getFullYear();
+                const mm = String(defaultMat.getMonth() + 1).padStart(2, '0');
+                const md = String(defaultMat.getDate()).padStart(2, '0');
+                cd.dateISO = `${y}-${m}-${d}`;
+                cd.maturityISO = `${my}-${mm}-${md}`;
+
+                renderSsCd1List();
+                const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+                updateTenorAdvisoryAndMatchButton(p);
+                ssAutoFillLoanRate();
                 if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
             });
         }
@@ -300,9 +585,23 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
             const m = String(defaultDate.getMonth() + 1).padStart(2, '0');
             const d = String(defaultDate.getDate()).padStart(2, '0');
             
+            const defaultMat = bkDate ? ssDefaultCdMaturityDate(bkDate) : new Date();
+            const my = defaultMat.getFullYear();
+            const mm = String(defaultMat.getMonth() + 1).padStart(2, '0');
+            const md = String(defaultMat.getDate()).padStart(2, '0');
+
             const newId = nextSsCd1Id++;
-            ssCd1List.push({ id: newId, amount: '', rate: '', dateISO: `${y}-${m}-${d}` });
+            ssCd1List.push({
+                id: newId,
+                amount: '',
+                redemption: '',
+                rate: '',
+                dateISO: `${y}-${m}-${d}`,
+                maturityISO: `${my}-${mm}-${md}`
+            });
             renderSsCd1List(newId);
+            const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+            updateTenorAdvisoryAndMatchButton(p);
         });
     }
 
@@ -318,9 +617,24 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
             const m = String(defaultDate.getMonth() + 1).padStart(2, '0');
             const d = String(defaultDate.getDate()).padStart(2, '0');
 
-            ssCd1List = [{ id: 1, amount: '', rate: '', dateISO: `${y}-${m}-${d}` }];
+            const defaultMat = bkDate ? ssDefaultCdMaturityDate(bkDate) : new Date();
+            const my = defaultMat.getFullYear();
+            const mm = String(defaultMat.getMonth() + 1).padStart(2, '0');
+            const md = String(defaultMat.getDate()).padStart(2, '0');
+
+            ssCd1List = [{
+                id: 1,
+                amount: '',
+                redemption: '',
+                rate: '',
+                dateISO: `${y}-${m}-${d}`,
+                maturityISO: `${my}-${mm}-${md}`
+            }];
             nextSsCd1Id = 2;
             renderSsCd1List();
+            const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+            updateTenorAdvisoryAndMatchButton(p);
+            ssAutoFillLoanRate();
             if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
         });
     }
@@ -334,8 +648,13 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
     }
     const ssLoanRateInput = document.getElementById('ss-loan-rate');
     if (ssLoanRateInput) {
-        ssLoanRateInput.addEventListener('input', () => {
-            ssLoanRateManuallyEdited = true;
+        ssLoanRateInput.addEventListener('input', (e) => {
+            if (!e.target.value || e.target.value.trim() === '') {
+                ssLoanRateManuallyEdited = false;
+                ssAutoFillLoanRate();
+            } else {
+                ssLoanRateManuallyEdited = true;
+            }
         });
     }
 
@@ -346,6 +665,40 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
     if (ssLoanPeriodInput && !ssLoanPeriodInput.value) ssLoanPeriodInput.value = '36';
     if (ssAdminFeesInput && !ssAdminFeesInput.value) ssAdminFeesInput.value = '1';
     if (ssStampRateInput && !ssStampRateInput.value) ssStampRateInput.value = '0.2';
+
+    if (ssLoanPeriodInput) {
+        ssLoanPeriodInput.addEventListener('input', () => {
+            const p = parseInt(ssLoanPeriodInput.value) || 0;
+            updateTenorAdvisoryAndMatchButton(p);
+        });
+    }
+
+    // --- Quick Match CD1 Tenor Button ---
+    const matchCd1Btn = document.getElementById('ss-match-cd1-btn');
+    if (matchCd1Btn) {
+        matchCd1Btn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('light');
+            const bkISO = document.getElementById('ss-booking-date-native')?.value;
+            const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
+
+            const candidateTenors = ssCd1List
+                .map(c => {
+                    const matDate = c.maturityISO ? _ssParseNativeDate(c.maturityISO) : null;
+                    return matDate ? ssCalculateRemainingMonths(bkDate, matDate) : null;
+                })
+                .filter(m => m !== null && m > 0);
+
+            if (candidateTenors.length > 0) {
+                const minMaturity = Math.min(...candidateTenors);
+                const periodInput = document.getElementById('ss-loan-period');
+                if (periodInput) {
+                    periodInput.value = String(minMaturity);
+                    updateTenorAdvisoryAndMatchButton(minMaturity);
+                    if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
+                }
+            }
+        });
+    }
 
     // --- SS Booking Date: seed with today, wire text input & picker ---
     const ssBDDisplay = document.getElementById('ss-booking-date-display');
@@ -414,14 +767,23 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
             const cdDate = ssDefaultCdInterestDate(bd);
             _ssSeedCdDateField(cdDate, ssCD2Native, ssCD2Display);
 
+            const matDate = ssDefaultCdMaturityDate(bd);
+            const my = matDate.getFullYear();
+            const mm = String(matDate.getMonth() + 1).padStart(2, '0');
+            const md = String(matDate.getDate()).padStart(2, '0');
+
             // Also re-seed unedited CD1 dates
             const y = cdDate.getFullYear();
             const m = String(cdDate.getMonth() + 1).padStart(2, '0');
             const d = String(cdDate.getDate()).padStart(2, '0');
             ssCd1List.forEach(c => {
                 if (!c.dateISO || c.dateISO === '') c.dateISO = `${y}-${m}-${d}`;
+                if (!c.maturityISO || c.maturityISO === '') c.maturityISO = `${my}-${mm}-${md}`;
             });
             renderSsCd1List();
+            const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
+            updateTenorAdvisoryAndMatchButton(p);
+            ssUpdateFirstInstDateDisplay(bd);
         });
     }
 
@@ -450,14 +812,24 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
         });
     }
 
-    // Initial render of CD1 list with default date
+    // Initial render of CD1 list with default dates
     const initialBkDate = (ssBDNative && ssBDNative.value) ? _ssParseNativeDate(ssBDNative.value) : new Date();
     const initialCdDate = initialBkDate ? ssDefaultCdInterestDate(initialBkDate) : new Date();
     const iy = initialCdDate.getFullYear();
     const im = String(initialCdDate.getMonth() + 1).padStart(2, '0');
     const id = String(initialCdDate.getDate()).padStart(2, '0');
     ssCd1List[0].dateISO = `${iy}-${im}-${id}`;
+
+    const initialMatDate = initialBkDate ? ssDefaultCdMaturityDate(initialBkDate) : new Date();
+    const my = initialMatDate.getFullYear();
+    const mm = String(initialMatDate.getMonth() + 1).padStart(2, '0');
+    const md = String(initialMatDate.getDate()).padStart(2, '0');
+    ssCd1List[0].maturityISO = `${my}-${mm}-${md}`;
+
     renderSsCd1List();
+    updateTenorAdvisoryAndMatchButton(36);
+    ssUpdateFirstInstDateDisplay(initialBkDate);
+    ssAutoFillLoanRate();
 }
 
 /**
@@ -475,12 +847,16 @@ function updateSelfSufficient(showError = false) {
 
     const td2R = safeParseFloat(td2RateInput?.value);
     const loanRate = safeParseFloat(ssLoanRateInput?.value);
-    const loanPeriod = parseInt(ssLoanPeriodInput?.value);
+    const loanPeriod = parseInt(ssLoanPeriodInput?.value) || 0;
+
+    // Update tenor advisory and match button for current period
+    updateTenorAdvisoryAndMatchButton(loanPeriod);
 
     // 1. Validate CD1 collaterals
     const validCd1s = ssCd1List
         .map(c => ({
             amount: safeParseFloat(c.amount) || 0,
+            redemption: safeParseFloat(c.redemption) || 0,
             rate: safeParseFloat(c.rate) || 0,
             date: c.dateISO ? _ssParseNativeDate(c.dateISO) : null
         }))
@@ -510,13 +886,7 @@ function updateSelfSufficient(showError = false) {
         bookingDate = new Date(parts[0], parts[1] - 1, parts[2]);
     }
 
-    let m1_Date;
-    if (_ssDateInputs.firstNative.value) {
-        const parts = _ssDateInputs.firstNative.value.split('-');
-        m1_Date = new Date(parts[0], parts[1] - 1, parts[2]);
-    } else {
-        m1_Date = new Date(bookingDate.getFullYear(), bookingDate.getMonth() + 2, 5);
-    }
+    const m1_Date = ssGetFirstInstallmentDate(bookingDate);
 
     const stampRate = parseFloat(document.getElementById('ss-stamp-rate').value) || 0;
     const adminFees = parseFloat(document.getElementById('ss-admin-fees').value) || 0;
@@ -558,7 +928,11 @@ function updateSelfSufficient(showError = false) {
             ssResults.style.maxHeight = '0';
         }
         if (showError && ssError) {
-            ssError.textContent = t(_ssAppState.lang, 'ssErrorExceeds90Collateral');
+            const rawMsg = t(_ssAppState.lang, 'ssErrorExceeds90Collateral');
+            const msg = rawMsg
+                .replace('{max}', fmt(solution.maxAllowedLoan))
+                .replace('{gross}', fmt(solution.grossLoan));
+            ssError.textContent = msg;
             ssError.classList.remove('hidden');
         }
         return;
@@ -638,6 +1012,12 @@ function updateSelfSufficient(showError = false) {
             _ssFormInputs.amount.value = String(solution.grossLoan);
             if (typeof formatCurrencyInput === 'function') formatCurrencyInput(_ssFormInputs.amount);
         }
+
+        // Auto-fill CD1 into main collaterals table
+        if (typeof window.setMainCollateralsFromCd1 === 'function') {
+            window.setMainCollateralsFromCd1(validCd1s);
+        }
+
         updateSelfSufficient._fromSolver = true;
         try {
             const mainAdminFees = document.getElementById('admin-fees');
@@ -713,12 +1093,24 @@ function resetSelfSufficient() {
     const cd = String(cdDate.getDate()).padStart(2, '0');
     _ssSeedCdDateField(cdDate, document.getElementById('ss-cd2-interest-date-native'), document.getElementById('ss-cd2-interest-date-display'));
 
-    // Reset CD1 list to 1 empty item seeded with default date
+    // Reset CD1 list to 1 empty item seeded with default dates
+    const matDate = ssDefaultCdMaturityDate(today);
+    const my = matDate.getFullYear();
+    const mm = String(matDate.getMonth() + 1).padStart(2, '0');
+    const md = String(matDate.getDate()).padStart(2, '0');
+
     ssCd1List = [
-        { id: 1, amount: '', rate: '', dateISO: `${cy}-${cm}-${cd}` }
+        { id: 1, amount: '', redemption: '', rate: '', dateISO: `${cy}-${cm}-${cd}`, maturityISO: `${my}-${mm}-${md}` }
     ];
     nextSsCd1Id = 2;
     renderSsCd1List();
+    ssUpdateFirstInstDateDisplay(today);
+    ssAutoFillLoanRate();
+
+    const matchBtn = document.getElementById('ss-match-cd1-btn');
+    if (matchBtn) matchBtn.classList.add('hidden');
+    const advisoryBox = document.getElementById('ss-tenor-advisory');
+    if (advisoryBox) advisoryBox.classList.add('hidden');
 
     document.getElementById('self-sufficient-toggle').checked = false;
     document.getElementById('self-sufficient-toggle').dispatchEvent(new Event('change'));
@@ -737,3 +1129,10 @@ function resetSelfSufficient() {
     const leftoverRow = document.getElementById('ss-net-leftover-row');
     if (leftoverRow) leftoverRow.classList.add('hidden');
 }
+
+// Expose globals for external module coordination
+window.renderSsCd1List = renderSsCd1List;
+window.updateSelfSufficient = updateSelfSufficient;
+window.updateTenorAdvisoryAndMatchButton = updateTenorAdvisoryAndMatchButton;
+window.ssUpdateFirstInstDateDisplay = ssUpdateFirstInstDateDisplay;
+

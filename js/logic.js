@@ -710,8 +710,8 @@ function evaluateTdLoanCandidate(td2, params) {
             availableCdInterest: availableCdInterest,
             netLeftover: round2(netLoan - buffer - effectiveTd2),
             totalCollateral: td1,
-            maxAllowedLoan: round2(0.90 * td1),
-            exceedsCollateralLimit: grossLoan > (0.90 * td1 + 0.01)
+            maxAllowedLoan: round2((params && params.maxAllowedLoan !== undefined) ? params.maxAllowedLoan : (0.90 * td1)),
+            exceedsCollateralLimit: grossLoan > (((params && params.maxAllowedLoan !== undefined) ? params.maxAllowedLoan : (0.90 * td1)) + 0.01)
         };
     }
 
@@ -728,12 +728,21 @@ function solveTdLoan(td1, tdRate, loanRate, N, dates, stampRate, adminFees, td2R
     // Support multi-collateral array passed as td1
     let totalCollateral = 0;
     let totalMonthlyCollateralIncome = 0;
+    let maxAllowedLoan = 0;
     if (Array.isArray(td1)) {
         td1.forEach(c => {
             const a = safeParseFloat(c.amount) || 0;
             const r = safeParseFloat(c.rate) || 0;
-            if (a > 0 && r > 0) {
+            const red = safeParseFloat(c.redemption);
+            if (a > 0) {
                 totalCollateral += a;
+                // Rule: 90% of nominal value or redemption value, whichever is lower
+                const colMax = (red !== undefined && red !== null && !isNaN(red) && red > 0)
+                    ? Math.min(a * 0.90, red)
+                    : a * 0.90;
+                maxAllowedLoan += colMax;
+            }
+            if (a > 0 && r > 0) {
                 totalMonthlyCollateralIncome += (a * r / 1200);
             }
         });
@@ -742,6 +751,8 @@ function solveTdLoan(td1, tdRate, loanRate, N, dates, stampRate, adminFees, td2R
         }
         tdRate = (totalMonthlyCollateralIncome * 1200) / totalCollateral;
         td1 = totalCollateral;
+    } else {
+        maxAllowedLoan = 0.90 * td1;
     }
 
     // Default td2Rate to tdRate if not provided
@@ -793,7 +804,8 @@ function solveTdLoan(td1, tdRate, loanRate, N, dates, stampRate, adminFees, td2R
         feeFactor,
         freq,
         cd1AccrualDate,
-        cd2AccrualDate
+        cd2AccrualDate,
+        maxAllowedLoan
     };
 
     // --- Step 3: Iterate td2 downward until conditions are met ---

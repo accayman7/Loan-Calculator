@@ -675,6 +675,28 @@ function testSolveTdLoanMultiCollateral() {
 
     const resZeros = solveTdLoan([{ amount: 0, rate: 0 }], 0, 20, 36, dates, 0.2, 1, 20, 1);
     TestRunner.assertFalse(resZeros.valid, 'Zero collaterals array returns valid: false');
+
+    // Test 3: Redemption value lower than 90% (Nominal 1M, 90% is 900k, Redemption 800k -> Max loan = 800k)
+    const colRedLower = [{ amount: 1000000, redemption: 800000, rate: 20 }];
+    const resRedLower = solveTdLoan(colRedLower, 20, 22, 36, dates, 0.2, 1, 20, 1);
+    TestRunner.assertTrue(resRedLower.valid, 'Col with lower redemption produces valid solution');
+    TestRunner.assertEqual(resRedLower.maxAllowedLoan, 800000, 'Nominal 1M with redemption 800k yields max loan 800,000');
+    TestRunner.assertEqual(resRedLower.exceedsCollateralLimit, resRedLower.grossLoan > 800000, 'exceedsCollateralLimit checks against 800k');
+
+    // Test 4: Redemption value higher than 90% (Nominal 1M, 90% is 900k, Redemption 950k -> Max loan = 900k)
+    const colRedHigher = [{ amount: 1000000, redemption: 950000, rate: 20 }];
+    const resRedHigher = solveTdLoan(colRedHigher, 20, 22, 36, dates, 0.2, 1, 20, 1);
+    TestRunner.assertTrue(resRedHigher.valid, 'Col with higher redemption produces valid solution');
+    TestRunner.assertEqual(resRedHigher.maxAllowedLoan, 900000, 'Nominal 1M with redemption 950k yields max loan 900,000');
+
+    // Test 5: Multi-collateral with mixed redemption values (1M @ 800k red + 500k @ 500k red -> 800k + 450k = 1,250,000)
+    const colMixed = [
+        { amount: 1000000, redemption: 800000, rate: 20 },
+        { amount: 500000, redemption: 500000, rate: 20 }
+    ];
+    const resMixed = solveTdLoan(colMixed, 20, 22, 36, dates, 0.2, 1, 20, 1);
+    TestRunner.assertTrue(resMixed.valid, 'Mixed redemption produces valid solution');
+    TestRunner.assertEqual(resMixed.maxAllowedLoan, 1250000, 'Combined max loan is 800k + 450k = 1,250,000');
 }
 
 function runAllTests() {
