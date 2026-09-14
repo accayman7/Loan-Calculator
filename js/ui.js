@@ -260,7 +260,7 @@ const txt = {
         ssLoanTermsTitle: "Loan Terms",
         addCd1Btn: "Add CD₁",
         cdInterestDateShort: "Next Interest Date",
-        cdCouponDateShort: "Next Coupon",
+        cdCouponDateShort: "Next Interest",
         cdMaturityDateShort: "Maturity Date",
         remainingTenorLabel: "{n} mos left",
         matchCd1TenorBtn: "⚡ Match CD₁: {n} mos",
@@ -269,8 +269,10 @@ const txt = {
         datesLabel: "Dates",
         firstInstDateLabel: "First Installment Date:",
         deferredM1Note: "(5th of 2nd month)",
-        nextCouponDateLabel: "Next Coupon Date",
+        nextCouponDateLabel: "Next Interest Date",
         maturityDateLabel: "Maturity Date",
+        loanEndDateLabel: "Loan End Date:",
+        loanEndDateTooltip: "Loan End Date: The maturity date of the loan when the final installment is paid (calculated based on loan duration and installment schedule).",
         whatsNewModalTitle: "What's New & App Guide",
         tabWhatsNew: "✨ What's New",
         tabAppFeatures: "🌟 App Guide",
@@ -566,8 +568,10 @@ const txt = {
         datesLabel: "التواريخ",
         firstInstDateLabel: "تاريخ أول قسط:",
         deferredM1Note: "(يوم 5 من الشهر الثاني)",
-        nextCouponDateLabel: "تاريخ الكوبون القادم",
+        nextCouponDateLabel: "تاريخ العائد القادم",
         maturityDateLabel: "تاريخ الاستحقاق",
+        loanEndDateLabel: "تاريخ نهاية القرض:",
+        loanEndDateTooltip: "تاريخ نهاية القرض: تاريخ سداد القسط الأخير للقرض (يُحسب بناءً على مدة القرض وجدول الأقساط).",
         whatsNewModalTitle: "ما الجديد ودليل التطبيق",
         tabWhatsNew: "✨ ما الجديد",
         tabAppFeatures: "🌟 دليل التطبيق",
@@ -1191,6 +1195,7 @@ function attachModalSwipeDismiss(modal) {
 
     const container = modal.querySelector('.modal-container');
     if (!container) return;
+    const scrollable = container.querySelector('.overflow-y-auto') || container;
 
     let startY = 0;
     let startX = 0;
@@ -1198,9 +1203,8 @@ function attachModalSwipeDismiss(modal) {
 
     const onTouchStart = (e) => {
         if (e.touches.length !== 1) return;
-        const scrollable = container.querySelector('.overflow-y-auto') || container;
         // Only trigger pull-down if at top of scroll
-        if (scrollable && scrollable.scrollTop > 5) return;
+        if (scrollable && scrollable.scrollTop > 0) return;
 
         startY = e.touches[0].clientY;
         startX = e.touches[0].clientX;
@@ -1209,13 +1213,17 @@ function attachModalSwipeDismiss(modal) {
 
     const onTouchEnd = (e) => {
         if (!isTrackingSwipe) return;
+        if (scrollable && scrollable.scrollTop > 0) {
+            isTrackingSwipe = false;
+            return;
+        }
         const endY = e.changedTouches[0]?.clientY || 0;
         const endX = e.changedTouches[0]?.clientX || 0;
         const deltaY = endY - startY;
         const deltaX = Math.abs(endX - startX);
 
-        // If pulled downward at least 60px and mostly vertical
-        if (deltaY > 60 && deltaY > deltaX * 1.5) {
+        // If pulled downward at least 120px and mostly vertical
+        if (deltaY > 120 && deltaY > deltaX * 1.5) {
             if (typeof haptic !== 'undefined') haptic('light');
             toggleModal(modal, false);
         }
@@ -1857,14 +1865,17 @@ function initSwipeToClose() {
         if (!container) return;
 
         let startY = 0;
+        let startX = 0;
         let currentY = 0;
         let isDragging = false;
 
         container.addEventListener('touchstart', (e) => {
             if (window.innerWidth >= 768) return;
-            if (container.scrollTop > 0) return;
+            const scrollable = container.querySelector('.overflow-y-auto') || container;
+            if (scrollable && scrollable.scrollTop > 0) return;
 
             startY = e.touches[0].clientY;
+            startX = e.touches[0].clientX;
             isDragging = false;
 
             container.style.transition = 'none';
@@ -1872,12 +1883,16 @@ function initSwipeToClose() {
 
         container.addEventListener('touchmove', (e) => {
             if (window.innerWidth >= 768) return;
-            if (container.scrollTop > 0 && !isDragging) return;
+            const scrollable = container.querySelector('.overflow-y-auto') || container;
+            if (scrollable && scrollable.scrollTop > 0 && !isDragging) return;
 
             currentY = e.touches[0].clientY;
+            const currentX = e.touches[0].clientX;
             const diff = currentY - startY;
+            const diffX = Math.abs(currentX - startX);
 
-            if (diff > 0) {
+            // Only drag to dismiss if at the very top and dragging downward
+            if (diff > 10 && diff > diffX * 1.2 && (!scrollable || scrollable.scrollTop <= 0)) {
                 if (e.cancelable) e.preventDefault();
                 isDragging = true;
                 container.style.transform = `translateY(${diff}px)`;
@@ -1894,7 +1909,7 @@ function initSwipeToClose() {
 
             const diff = currentY - startY;
 
-            if (diff > 150) {
+            if (diff > 120) {
                 container.style.transition = 'transform 0.3s ease-out';
                 container.style.transform = 'translateY(100%)';
                 if (typeof haptic !== 'undefined') haptic('light');

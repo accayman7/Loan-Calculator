@@ -301,15 +301,15 @@
         collaterals.forEach((col, index) => {
             const row = document.createElement('div');
             row.id = `col-row-${col.id}`;
-            row.className = `grid grid-cols-12 gap-1.5 items-center p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 transition-all ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
+            row.className = `grid grid-cols-12 gap-1 sm:gap-1.5 items-center p-1.5 sm:p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 transition-all ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
             
             const colIndex = index + 1;
             const colLabel = `CD ${colIndex}`;
             const colItemName = `${t(AppState.lang, 'collateralItemLabel')} ${colIndex}`;
             
             row.innerHTML = `
-                <div class="col-span-2 flex items-center justify-center gap-1 text-[11px] font-bold text-gray-600 dark:text-gray-300">
-                    <span>${colLabel}</span>
+                <div class="col-span-2 flex items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] font-bold text-gray-600 dark:text-gray-300">
+                    <span class="whitespace-nowrap">${colLabel}</span>
                     ${collaterals.length > 1 ? `
                     <button type="button" class="col-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="removeCollateralBtn" data-lang-aria-label="removeCollateralBtn" title="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

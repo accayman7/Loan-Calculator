@@ -2327,11 +2327,11 @@
         class="fixed top-24 left-0 right-0 mx-auto w-fit max-w-[90vw] z-[100] px-6 py-3 rounded-lg text-white font-medium shadow-2xl text-sm text-center transition duration-300 ease-out transform hidden opacity-0 -translate-y-3">
     </div>
 
-    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full pb-24">
+    <main class="flex-grow max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-6 sm:py-8 w-full pb-24">
         <form id="loan-form" onsubmit="return false;" class="lg:grid lg:grid-cols-12 lg:gap-8 items-start">
             <div id="input-section" class="lg:col-span-5 space-y-6">
                 <div
-                    class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors">
+                    class="bg-white dark:bg-gray-900 p-3.5 sm:p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors">
                     <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-800 pb-2"
                         data-lang-key="inputSectionTitle">Loan Details</h2>
 
@@ -2365,7 +2365,7 @@
 
                         <!-- Dynamic Collateral Details Section (Shown when Secured Loan is active) -->
                         <div id="collateral-section" class="overflow-hidden transition-all duration-300 max-h-0 opacity-0 mb-3">
-                            <div class="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/50 space-y-3">
+                            <div class="p-2.5 sm:p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/50 space-y-3">
                                 <div class="flex items-center justify-between gap-2">
                                     <div class="flex items-center gap-1.5 min-w-0">
                                         <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2388,18 +2388,16 @@
                                 </div>
 
                                 <!-- Column Headers & List Wrapper -->
-                                <div class="overflow-x-auto -mx-1 px-1">
-                                    <div class="min-w-[340px] sm:min-w-0">
-                                        <div class="grid grid-cols-12 gap-1.5 px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                                            <div class="col-span-2 text-center" data-lang-key="colHeaderNum">#</div>
-                                            <div class="col-span-4 text-center" data-lang-key="colHeaderNominal">Nominal</div>
-                                            <div class="col-span-4 text-center" data-lang-key="colHeaderRedemption">Redemption</div>
-                                            <div class="col-span-2 text-center" data-lang-key="colHeaderRate">Rate %</div>
-                                        </div>
+                                <div>
+                                    <div class="grid grid-cols-12 gap-1 sm:gap-1.5 px-1 sm:px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                        <div class="col-span-2 text-center" data-lang-key="colHeaderNum">#</div>
+                                        <div class="col-span-4 text-center" data-lang-key="colHeaderNominal">Nominal</div>
+                                        <div class="col-span-4 text-center" data-lang-key="colHeaderRedemption">Redemption</div>
+                                        <div class="col-span-2 text-center" data-lang-key="colHeaderRate">Rate %</div>
+                                    </div>
 
-                                        <div id="collaterals-list" class="space-y-2 mt-1">
-                                            <!-- Collateral rows dynamically rendered -->
-                                        </div>
+                                    <div id="collaterals-list" class="space-y-1.5 sm:space-y-2 mt-1">
+                                        <!-- Collateral rows dynamically rendered -->
                                     </div>
                                 </div>
 
@@ -2933,7 +2931,7 @@
                 </div>
 
                 <div
-                    class="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors">
+                    class="bg-white dark:bg-gray-900 p-3.5 sm:p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors">
                     <label for="self-sufficient-toggle" class="flex items-center cursor-pointer justify-between w-full">
                         <span class="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                             <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2953,27 +2951,27 @@
 
                     <div id="self-sufficient-section"
                         class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
-                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4 p-1">
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4 p-0 sm:p-1">
                             <p class="text-xs text-gray-500 dark:text-gray-400" data-lang-key="ssDescAdvanced">
                                 Calculate a self-paying loan backed by your CD.</p>
 
                             <!-- 1. Existing Certificates (CD1) -->
-                            <div class="p-3.5 bg-green-50/60 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-900/50 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-1.5">
+                            <div class="p-2.5 sm:p-3.5 bg-green-50/60 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-900/50 space-y-3">
+                                <div class="flex items-center justify-between gap-1">
+                                    <div class="flex items-center gap-1.5 min-w-0">
                                         <svg class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                         </svg>
-                                        <span class="text-xs font-bold text-green-900 dark:text-green-200" data-lang-key="ssCd1SectionTitle">Existing Certificates (CD₁)</span>
+                                        <span class="text-xs font-bold text-green-900 dark:text-green-200 whitespace-nowrap" data-lang-key="ssCd1SectionTitle">Existing Certificates (CD₁)</span>
                                     </div>
-                                    <div class="flex items-center gap-1">
-                                        <button type="button" id="ss-clear-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 py-1 px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Clear all CD₁" aria-label="Clear all CD₁">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            <span data-lang-key="clearAllBtn">Clear All</span>
+                                    <div class="flex items-center gap-1 flex-shrink-0">
+                                        <button type="button" id="ss-clear-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 py-1 px-1.5 sm:px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap" title="Clear all CD₁" aria-label="Clear all CD₁">
+                                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            <span data-lang-key="clearAllBtn" class="whitespace-nowrap">Clear All</span>
                                         </button>
-                                        <button type="button" id="ss-add-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 py-1 px-2.5 rounded-lg bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 transition-colors">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                            <span data-lang-key="addCd1Btn">Add CD₁</span>
+                                        <button type="button" id="ss-add-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 py-1 px-2 sm:px-2.5 rounded-lg bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 transition-colors whitespace-nowrap">
+                                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                            <span data-lang-key="addCd1Btn" class="whitespace-nowrap">Add CD₁</span>
                                         </button>
                                     </div>
                                 </div>
@@ -2985,22 +2983,22 @@
                             </div>
 
                             <!-- 2. New Certificate (CD2) -->
-                            <div class="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 space-y-3">
+                            <div class="p-2.5 sm:p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 space-y-3">
                                 <div class="flex items-center gap-1.5">
                                     <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     <span class="text-xs font-bold text-gray-800 dark:text-gray-200" data-lang-key="ssCd2SectionTitle">New Certificate (CD₂)</span>
                                 </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="grid grid-cols-2 gap-2 sm:gap-3">
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="td2RateLabel" for="td2-rate">CD₂ Rate (%):</label>
+                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="td2RateLabel" for="td2-rate">CD₂ Rate (%):</label>
                                         <div class="input-group" id="group-td2-rate">
                                             <input type="text" inputmode="decimal" id="td2-rate" placeholder="19.0" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssCd2InterestDateLabel" for="ss-cd2-interest-date-display">CD₂ First Interest Date:</label>
+                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssCd2InterestDateLabel" for="ss-cd2-interest-date-display">CD₂ First Interest Date:</label>
                                         <div class="input-group relative">
                                             <input type="text" inputmode="numeric" id="ss-cd2-interest-date-display" class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
                                             <button type="button" id="ss-cd2-interest-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
@@ -3015,23 +3013,16 @@
                             </div>
 
                             <!-- 3. Loan Terms & Parameters -->
-                            <div class="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 space-y-3">
+                            <div class="p-2.5 sm:p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60 space-y-3">
                                 <div class="flex items-center gap-1.5">
                                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                     </svg>
                                     <span class="text-xs font-bold text-gray-800 dark:text-gray-200" data-lang-key="ssLoanTermsTitle">Loan Terms</span>
                                 </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div class="sm:col-span-2 space-y-1">
-                                        <div class="flex items-center justify-between">
-                                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400" data-lang-key="ssBookingDateLabel" for="ss-booking-date-display">Booking Date:</label>
-                                            <span class="text-[11px] text-gray-500 dark:text-gray-400">
-                                                <span data-lang-key="firstInstDateLabel">First Installment Date:</span>
-                                                <span id="ss-first-inst-date-display" class="font-bold text-green-700 dark:text-green-300"></span>
-                                                <span class="text-[10px] text-gray-400" data-lang-key="deferredM1Note">(5th of 2nd month)</span>
-                                            </span>
-                                        </div>
+                                <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                                    <div class="col-span-2 space-y-1">
+                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400" data-lang-key="ssBookingDateLabel" for="ss-booking-date-display">Booking Date:</label>
                                         <div class="input-group relative">
                                             <input type="text" inputmode="numeric" id="ss-booking-date-display" class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
                                             <button type="button" id="ss-booking-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
@@ -3042,38 +3033,57 @@
                                             </button>
                                         </div>
                                     </div>
+
+                                    <!-- Repayment Timeline Info Strip -->
+                                    <div class="col-span-2 flex flex-col gap-1.5 p-2.5 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900/50 text-xs">
+                                        <div class="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                                            <span class="text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap" data-lang-key="firstInstDateLabel">First Installment Date:</span>
+                                            <span class="font-bold text-green-700 dark:text-green-300 text-end whitespace-nowrap">
+                                                <span id="ss-first-inst-date-display">-</span>
+                                                <span class="text-[10px] font-normal text-gray-400 ms-1" data-lang-key="deferredM1Note">(5th of 2nd month)</span>
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-indigo-100/70 dark:border-indigo-900/50">
+                                            <span class="flex items-center gap-1 text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
+                                                <span data-lang-key="loanEndDateLabel">Loan End Date:</span>
+                                                <span class="info-icon tooltip-end text-[9px]" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="loanEndDateTooltip" data-tooltip="Loan End Date: The maturity date of the loan when the final installment is paid (calculated based on loan duration and installment schedule).">ℹ</span>
+                                            </span>
+                                            <span id="ss-loan-end-date-display" class="font-bold text-indigo-600 dark:text-indigo-400 select-text text-end whitespace-nowrap">-</span>
+                                        </div>
+                                    </div>
+
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssLoanRateLabel" for="ss-loan-rate">Loan Rate (%):</label>
+                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssLoanRateLabel" for="ss-loan-rate">Loan Rate (%):</label>
                                         <div class="input-group" id="group-ss-loan-rate">
                                             <input type="text" inputmode="decimal" id="ss-loan-rate" placeholder="21.0" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssPeriodLabel" for="ss-loan-period">Period (months):</label>
+                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssPeriodLabel" for="ss-loan-period">Period (months):</label>
                                         <div class="input-group" id="group-ss-period">
                                             <input type="text" inputmode="numeric" pattern="[0-9]*" id="ss-loan-period" value="36" placeholder="36" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                         <div class="mt-1 flex justify-end">
-                                            <button type="button" id="ss-match-cd1-btn" class="hidden text-[10px] font-bold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 px-1.5 py-0.5 rounded transition-colors whitespace-nowrap cursor-pointer" title="Match CD₁ maturity">
+                                            <button type="button" id="ss-match-cd1-btn" class="hidden text-[9.5px] sm:text-[10px] font-bold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 px-1.5 py-0.5 rounded transition-colors whitespace-nowrap cursor-pointer truncate max-w-full" title="Match CD₁ maturity">
                                                 <span id="ss-match-cd1-text">⚡ Match CD₁: 36 mos</span>
                                             </button>
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssAdminFeesInputLabel" for="ss-admin-fees">Admin Fees (%):</label>
+                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssAdminFeesInputLabel" for="ss-admin-fees">Admin Fees (%):</label>
                                         <div class="input-group" id="group-ss-admin-fees">
                                             <input type="text" inputmode="decimal" id="ss-admin-fees" value="1" placeholder="1" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" data-lang-key="ssStampRateInputLabel" for="ss-stamp-rate">Stamp Rate (%):</label>
+                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssStampRateInputLabel" for="ss-stamp-rate">Stamp Rate (%):</label>
                                         <div class="input-group" id="group-ss-stamp-rate">
                                             <input type="text" inputmode="decimal" id="ss-stamp-rate" value="0.2" placeholder="0.2" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
 
                                     <!-- Tenor Advisory Box -->
-                                    <div id="ss-tenor-advisory" class="hidden sm:col-span-2 p-2.5 rounded-lg text-xs leading-snug border transition-all">
+                                    <div id="ss-tenor-advisory" class="hidden col-span-2 p-2.5 rounded-lg text-xs leading-snug border transition-all">
                                         <div class="flex items-start gap-2">
                                             <span id="ss-tenor-advisory-icon" class="text-sm flex-shrink-0">⚠️</span>
                                             <span id="ss-tenor-advisory-text" class="font-medium text-gray-700 dark:text-gray-300"></span>
@@ -3626,7 +3636,7 @@
         <div
             class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
         </div>
-        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe max-h-[88vh] flex flex-col">
+        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe h-[85vh] md:h-auto md:max-h-[88vh] flex flex-col">
             
             <!-- Modal Header -->
             <div class="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0">
