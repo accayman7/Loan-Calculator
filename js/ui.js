@@ -897,11 +897,19 @@ function initOfflineIndicator() {
     const offlineReadyShown = localStorage.getItem('offlineReadyShown');
     if (!offlineReadyShown && 'serviceWorker' in navigator) {
         navigator.serviceWorker.ready.then(() => {
+            // Newcomers are introduced to offline support directly in the App Guide modal
+            if (!localStorage.getItem('last_seen_version')) {
+                localStorage.setItem('offlineReadyShown', 'true');
+                return;
+            }
             setTimeout(() => {
+                if (typeof ScrollLock !== 'undefined' && ScrollLock.isAnyModalOrPickerOpen()) {
+                    return;
+                }
                 const lang = document.documentElement.lang || 'en';
                 showToast(t(lang, 'offlineReady'));
                 localStorage.setItem('offlineReadyShown', 'true');
-            }, 1500);
+            }, 3500);
         });
     }
 }
@@ -1276,6 +1284,12 @@ function toggleModal(modal, forceOpen) {
     }
 
     if (isOpening) {
+        // Clean up any visible tutorial tooltip when opening a modal
+        const existingTooltip = document.querySelector('.tutorial-tooltip');
+        if (existingTooltip) {
+            existingTooltip.remove();
+        }
+
         ScrollLock.enable();
         attachModalSwipeDismiss(modal);
 

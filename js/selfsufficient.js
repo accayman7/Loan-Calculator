@@ -358,6 +358,18 @@ function renderSsCd1List(newIdToAnimate = null) {
             <!-- Row 2: Date Fields with Dedicated Field Labels -->
             <div class="pt-2 border-t border-green-100/80 dark:border-green-900/40 grid grid-cols-12 gap-2 items-end">
                 <div class="col-span-6">
+                    <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="maturityDateLabel">${t(lang, 'maturityDateLabel')}</label>
+                    <div class="input-group relative py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'maturityDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
+                        <button type="button" class="ss-cd-maturity-picker-btn flex-shrink-0 w-4.5 h-4.5 p-0.5 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open maturity date picker">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <input type="date" class="ss-cd-maturity-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
+                        </button>
+                    </div>
+                </div>
+                <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="nextCouponDateLabel">${t(lang, 'nextCouponDateLabel')}</label>
                     <div class="input-group relative py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'nextCouponDateLabel')}">
                         <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
@@ -366,20 +378,6 @@ function renderSsCd1List(newIdToAnimate = null) {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                             <input type="date" class="ss-cd-date-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
-                        </button>
-                    </div>
-                </div>
-                <div class="col-span-6">
-                    <div class="mb-1">
-                        <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap truncate" data-lang-key="maturityDateLabel">${t(lang, 'maturityDateLabel')}</label>
-                    </div>
-                    <div class="input-group relative py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'maturityDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
-                        <button type="button" class="ss-cd-maturity-picker-btn flex-shrink-0 w-4.5 h-4.5 p-0.5 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open maturity date picker">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <input type="date" class="ss-cd-maturity-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
                         </button>
                     </div>
                 </div>
@@ -469,71 +467,45 @@ function renderSsCd1List(newIdToAnimate = null) {
             });
         }
 
-        const syncMaturityDayFromInterestDate = (interestIsoStr) => {
-            if (!interestIsoStr) return;
-            const parts = interestIsoStr.split('-');
-            if (parts.length !== 3) return;
-            const newDay = parts[2];
+        const syncInterestDateFromMaturityDate = (maturityIsoStr) => {
+            if (!maturityIsoStr) return;
+            const mParts = maturityIsoStr.split('-');
+            if (mParts.length !== 3) return;
+            const mDay = parseInt(mParts[2], 10);
+            if (!mDay || isNaN(mDay)) return;
 
-            if (cd.maturityISO) {
-                const mParts = cd.maturityISO.split('-');
-                if (mParts.length === 3) {
-                    const mYear = parseInt(mParts[0], 10);
-                    const mMonth = parseInt(mParts[1], 10);
-                    const maxDays = new Date(mYear, mMonth, 0).getDate();
-                    const validDay = String(Math.min(parseInt(newDay, 10), maxDays)).padStart(2, '0');
-                    cd.maturityISO = `${mParts[0]}-${mParts[1]}-${validDay}`;
+            const bkISO = document.getElementById('ss-booking-date-native')?.value;
+            const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
 
-                    if (matNative) matNative.value = cd.maturityISO;
-                    if (matDisplay) {
-                        matDisplay.value = (typeof dateBuildValue === 'function')
-                            ? dateBuildValue(validDay, mParts[1], mParts[0], false)
-                            : `${validDay}/${mParts[1]}/${mParts[0]}`;
-                        matDisplay.dataset.iso = cd.maturityISO;
-                    }
-                    updateRemainingBadge(cd, row);
-                    const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
-                    updateTenorAdvisoryAndMatchButton(p);
-                    if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
-                }
+            let targetYear = bkDate.getFullYear();
+            let targetMonth = bkDate.getMonth() + 1;
+            if (targetMonth > 11) {
+                targetYear += Math.floor(targetMonth / 12);
+                targetMonth = targetMonth % 12;
             }
+            const maxDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+            const validDay = Math.min(mDay, maxDays);
+            const yStr = String(targetYear);
+            const mStr = String(targetMonth + 1).padStart(2, '0');
+            const dStr = String(validDay).padStart(2, '0');
+            cd.dateISO = `${yStr}-${mStr}-${dStr}`;
+
+            if (dateNative) dateNative.value = cd.dateISO;
+            if (dateDisplay) {
+                dateDisplay.value = (typeof dateBuildValue === 'function')
+                    ? dateBuildValue(dStr, mStr, yStr, false)
+                    : `${dStr}/${mStr}/${yStr}`;
+                dateDisplay.dataset.iso = cd.dateISO;
+                dateDisplay.classList.remove('text-red-500');
+            }
+            if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
         };
-
-        if (dateDisplay && dateNative && typeof initDateInput === 'function') {
-            initDateInput(dateDisplay, dateNative);
-            dateNative.addEventListener('change', () => {
-                cd.dateISO = dateNative.value;
-                syncMaturityDayFromInterestDate(cd.dateISO);
-            });
-        }
-
-        if (pickerBtn && dateDisplay && dateNative) {
-            pickerBtn.addEventListener('click', () => {
-                if (typeof haptic !== 'undefined') haptic('light');
-                if (typeof openDatePicker === 'function') {
-                    openDatePicker(dateDisplay, _ssAppState?.lang || 'en', (selectedDate) => {
-                        if (selectedDate) {
-                            const y = selectedDate.getFullYear();
-                            const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                            const d = String(selectedDate.getDate()).padStart(2, '0');
-                            dateDisplay.value = (typeof dateBuildValue === 'function')
-                                ? dateBuildValue(d, m, String(y), false)
-                                : `${d}/${m}/${y}`;
-                            dateNative.value = `${y}-${m}-${d}`;
-                            cd.dateISO = dateNative.value;
-                            syncMaturityDayFromInterestDate(cd.dateISO);
-                        }
-                    });
-                } else {
-                    dateNative.showPicker();
-                }
-            });
-        }
 
         if (matDisplay && matNative && typeof initDateInput === 'function') {
             initDateInput(matDisplay, matNative);
             matNative.addEventListener('change', () => {
                 cd.maturityISO = matNative.value;
+                syncInterestDateFromMaturityDate(cd.maturityISO);
                 updateRemainingBadge(cd, row);
                 const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
                 updateTenorAdvisoryAndMatchButton(p);
@@ -554,6 +526,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                                 : `${d}/${m}/${y}`;
                             matNative.value = `${y}-${m}-${d}`;
                             cd.maturityISO = matNative.value;
+                            syncInterestDateFromMaturityDate(cd.maturityISO);
                             updateRemainingBadge(cd, row);
                             const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
                             updateTenorAdvisoryAndMatchButton(p);
@@ -561,6 +534,37 @@ function renderSsCd1List(newIdToAnimate = null) {
                     });
                 } else {
                     matNative.showPicker();
+                }
+            });
+        }
+
+        if (dateDisplay && dateNative && typeof initDateInput === 'function') {
+            initDateInput(dateDisplay, dateNative);
+            dateNative.addEventListener('change', () => {
+                cd.dateISO = dateNative.value;
+                if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
+            });
+        }
+
+        if (pickerBtn && dateDisplay && dateNative) {
+            pickerBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                if (typeof openDatePicker === 'function') {
+                    openDatePicker(dateDisplay, _ssAppState?.lang || 'en', (selectedDate) => {
+                        if (selectedDate) {
+                            const y = selectedDate.getFullYear();
+                            const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                            const d = String(selectedDate.getDate()).padStart(2, '0');
+                            dateDisplay.value = (typeof dateBuildValue === 'function')
+                                ? dateBuildValue(d, m, String(y), false)
+                                : `${d}/${m}/${y}`;
+                            dateNative.value = `${y}-${m}-${d}`;
+                            cd.dateISO = dateNative.value;
+                            if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
+                        }
+                    });
+                } else {
+                    dateNative.showPicker();
                 }
             });
         }

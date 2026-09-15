@@ -725,8 +725,19 @@
         // Check if already shown for this version
         if (localStorage.getItem(TOOLTIP_KEY)) return;
 
+        // Defer if newcomer hasn't seen/dismissed the App Guide yet
+        if (!localStorage.getItem('last_seen_version')) return;
+
+        // Never trigger if any modal or date picker is currently open
+        if (typeof ScrollLock !== 'undefined' && ScrollLock.isAnyModalOrPickerOpen()) return;
+        const whatsNewModal = document.getElementById('whats-new-modal');
+        if (whatsNewModal && !whatsNewModal.classList.contains('pointer-events-none')) return;
+
         // Wait a bit for the page to settle
         setTimeout(() => {
+            if (typeof ScrollLock !== 'undefined' && ScrollLock.isAnyModalOrPickerOpen()) return;
+            if (whatsNewModal && !whatsNewModal.classList.contains('pointer-events-none')) return;
+
             // Find the first radio button (Loan Amount)
             const firstRadio = document.querySelector('input[name="calc-target"][value="amount"]');
             if (!firstRadio) return;
@@ -2442,6 +2453,11 @@
                         ScrollLock.forceUnlock();
                     }
                 }, 350);
+
+                // Show first-time tutorial now that the user has closed the guide modal and is on the calculator
+                setTimeout(() => {
+                    showFirstTimeTutorial(AppState.lang);
+                }, 500);
             };
 
             if (closeWhatsNewBtn) closeWhatsNewBtn.addEventListener('click', dismissWhatsNew);
@@ -2470,19 +2486,30 @@
             if (!lastSeen) {
                 // Newcomer -> Show App Guide
                 switchWhatsNewTab('app-features');
+                // The App Guide explicitly informs the user that the app works 100% offline
+                localStorage.setItem('offlineReadyShown', 'true');
                 setTimeout(() => {
                     if (whatsNewModal.classList.contains('pointer-events-none')) {
                         toggleModal(whatsNewModal, true);
                     }
                 }, 750);
-            } else if (lastSeen !== curVer) {
-                // Updated User -> Show What's New
-                switchWhatsNewTab('whats-new');
-                setTimeout(() => {
-                    if (whatsNewModal.classList.contains('pointer-events-none')) {
-                        toggleModal(whatsNewModal, true);
-                    }
-                }, 750);
+            } else {
+                const lastParts = lastSeen.split('.').map(n => parseInt(n, 10) || 0);
+                const curParts = curVer.split('.').map(n => parseInt(n, 10) || 0);
+                const isMajorMinorChange = curParts[0] !== lastParts[0] || curParts[1] !== lastParts[1];
+
+                if (isMajorMinorChange) {
+                    // Major / Minor Update -> Show What's New
+                    switchWhatsNewTab('whats-new');
+                    setTimeout(() => {
+                        if (whatsNewModal.classList.contains('pointer-events-none')) {
+                            toggleModal(whatsNewModal, true);
+                        }
+                    }, 750);
+                } else if (lastSeen !== curVer) {
+                    // Patch/Bugfix update only -> silently record new patch without popping up
+                    localStorage.setItem('last_seen_version', curVer);
+                }
             }
         }
     }
