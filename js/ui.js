@@ -892,26 +892,6 @@ function initOfflineIndicator() {
     // Listen for online/offline events
     window.addEventListener('online', updateStatus);
     window.addEventListener('offline', updateStatus);
-
-    // Show one-time "works offline" toast on first install
-    const offlineReadyShown = localStorage.getItem('offlineReadyShown');
-    if (!offlineReadyShown && 'serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(() => {
-            // Newcomers are introduced to offline support directly in the App Guide modal
-            if (!localStorage.getItem('last_seen_version')) {
-                localStorage.setItem('offlineReadyShown', 'true');
-                return;
-            }
-            setTimeout(() => {
-                if (typeof ScrollLock !== 'undefined' && ScrollLock.isAnyModalOrPickerOpen()) {
-                    return;
-                }
-                const lang = document.documentElement.lang || 'en';
-                showToast(t(lang, 'offlineReady'));
-                localStorage.setItem('offlineReadyShown', 'true');
-            }, 3500);
-        });
-    }
 }
 
 /* ================= ADAPTIVE HAPTIC FEEDBACK ================= */
@@ -1287,6 +1267,7 @@ function toggleModal(modal, forceOpen) {
         // Clean up any visible tutorial tooltip when opening a modal
         const existingTooltip = document.querySelector('.tutorial-tooltip');
         if (existingTooltip) {
+            if (existingTooltip._autoDismissTimer) clearTimeout(existingTooltip._autoDismissTimer);
             existingTooltip.remove();
         }
 

@@ -223,9 +223,6 @@
         handleSharedData();
 
         document.body.classList.add('lang-ready');
-
-        // 10. Show first-time tutorial tooltip (one-time only)
-        showFirstTimeTutorial(AppState.lang);
     });
 
     // --- Helper Logic ---
@@ -725,18 +722,17 @@
         // Check if already shown for this version
         if (localStorage.getItem(TOOLTIP_KEY)) return;
 
-        // Defer if newcomer hasn't seen/dismissed the App Guide yet
-        if (!localStorage.getItem('last_seen_version')) return;
-
         // Never trigger if any modal or date picker is currently open
         if (typeof ScrollLock !== 'undefined' && ScrollLock.isAnyModalOrPickerOpen()) return;
-        const whatsNewModal = document.getElementById('whats-new-modal');
-        if (whatsNewModal && !whatsNewModal.classList.contains('pointer-events-none')) return;
+        const openModals = document.querySelectorAll('.modal:not(.pointer-events-none)');
+        if (openModals.length > 0) return;
 
         // Wait a bit for the page to settle
         setTimeout(() => {
             if (typeof ScrollLock !== 'undefined' && ScrollLock.isAnyModalOrPickerOpen()) return;
-            if (whatsNewModal && !whatsNewModal.classList.contains('pointer-events-none')) return;
+            const openModalsNow = document.querySelectorAll('.modal:not(.pointer-events-none)');
+            if (openModalsNow.length > 0) return;
+            if (document.querySelector('.tutorial-tooltip')) return;
 
             // Find the first radio button (Loan Amount)
             const firstRadio = document.querySelector('input[name="calc-target"][value="amount"]');
@@ -792,6 +788,10 @@
 
             // Dismiss handler
             const dismissTooltip = () => {
+                if (tooltip._autoDismissTimer) {
+                    clearTimeout(tooltip._autoDismissTimer);
+                    tooltip._autoDismissTimer = null;
+                }
                 tooltip.style.opacity = '0';
                 // Reverse the horizontal slide-in: collapse back toward the radio button
                 const dismissX = isRTL ? '15px' : '-15px';
@@ -811,10 +811,10 @@
                 radio.addEventListener('change', dismissTooltip, { once: true });
             });
 
-            // Auto-dismiss after 10 seconds
-            setTimeout(() => {
+            // Auto-dismiss after 15 seconds of viewing the form
+            tooltip._autoDismissTimer = setTimeout(() => {
                 if (tooltip.parentElement) dismissTooltip();
-            }, 10000);
+            }, 15000);
         }, 800);
     }
 
@@ -2484,10 +2484,8 @@
             const curVer = (typeof self !== 'undefined' && self.APP_VERSION) || '2.3.0';
             const lastSeen = localStorage.getItem('last_seen_version');
             if (!lastSeen) {
-                // Newcomer -> Show App Guide
+                // Newcomer -> Show App Guide (tutorial tooltip will trigger after user dismisses guide)
                 switchWhatsNewTab('app-features');
-                // The App Guide explicitly informs the user that the app works 100% offline
-                localStorage.setItem('offlineReadyShown', 'true');
                 setTimeout(() => {
                     if (whatsNewModal.classList.contains('pointer-events-none')) {
                         toggleModal(whatsNewModal, true);
@@ -2499,16 +2497,22 @@
                 const isMajorMinorChange = curParts[0] !== lastParts[0] || curParts[1] !== lastParts[1];
 
                 if (isMajorMinorChange) {
-                    // Major / Minor Update -> Show What's New
+                    // Major / Minor Update -> Show What's New (tutorial tooltip will trigger after user dismisses)
                     switchWhatsNewTab('whats-new');
                     setTimeout(() => {
                         if (whatsNewModal.classList.contains('pointer-events-none')) {
                             toggleModal(whatsNewModal, true);
                         }
                     }, 750);
-                } else if (lastSeen !== curVer) {
-                    // Patch/Bugfix update only -> silently record new patch without popping up
-                    localStorage.setItem('last_seen_version', curVer);
+                } else {
+                    if (lastSeen !== curVer) {
+                        // Patch/Bugfix update only -> silently record new patch without popping up
+                        localStorage.setItem('last_seen_version', curVer);
+                    }
+                    // No modal is shown on launch -> safe to trigger tutorial tooltip for first-time calculator use
+                    setTimeout(() => {
+                        showFirstTimeTutorial(AppState.lang);
+                    }, 800);
                 }
             }
         }
