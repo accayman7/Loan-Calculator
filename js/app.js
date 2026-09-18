@@ -86,7 +86,21 @@
         recalcCollateralMetrics(false);
     };
 
+    /**
+     * Dispatch polite screen-reader announcements to dedicated live regions
+     */
+    function announceLiveStatus(regionId, message) {
+        if (!message) return;
+        const liveRegion = document.getElementById(regionId);
+        if (!liveRegion) return;
+        liveRegion.textContent = '';
+        setTimeout(() => {
+            liveRegion.textContent = message;
+        }, 50);
+    }
 
+    const announceCollateralStatus = (msg) => announceLiveStatus('collateral-live-region', msg);
+    const announceExportStatus = (msg) => announceLiveStatus('export-live-region', msg);
 
     // Use global fmt from logic.js if available, else fallback
     const displayFmt = (n) => (typeof fmt === 'function') ? fmt(n) : n.toFixed(2);
@@ -301,12 +315,13 @@
             row.className = `grid grid-cols-12 gap-1 sm:gap-1.5 items-center p-1.5 sm:p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 transition-all ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
             
             const colIndex = index + 1;
-            const colLabel = `CD ${colIndex}`;
+            const badgePrefix = t(AppState.lang, 'collateralBadge') || 'CD';
+            const colLabel = `${badgePrefix} ${colIndex}`;
             const colItemName = `${t(AppState.lang, 'collateralItemLabel')} ${colIndex}`;
             
             row.innerHTML = `
                 <div class="col-span-2 flex items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] font-bold text-gray-600 dark:text-gray-300">
-                    <span class="whitespace-nowrap">${colLabel}</span>
+                    <span id="col-label-${col.id}" class="whitespace-nowrap" dir="auto">${colLabel}</span>
                     ${collaterals.length > 1 ? `
                     <button type="button" class="col-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="removeCollateralBtn" data-lang-aria-label="removeCollateralBtn" title="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -319,19 +334,22 @@
                 </div>
                 <div class="col-span-4">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
+                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-nominal" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
                     </div>
                 </div>
                 <div class="col-span-4">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-redemption-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
+                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-redemption-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-redemption" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
                     </div>
                 </div>
                 <div class="col-span-2">
                     <div class="input-group py-1 px-1">
-                        <input type="text" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
+                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-rate" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
                     </div>
                 </div>
+                <span id="col-amount-error-${col.id}" class="sr-only" role="alert"></span>
+                <span id="col-redemption-error-${col.id}" class="sr-only" role="alert"></span>
+                <span id="col-rate-error-${col.id}" class="sr-only" role="alert"></span>
             `;
 
             const amountInput = row.querySelector('.col-amount-input');
@@ -344,10 +362,58 @@
             if (redemptionInput) redemptionInput.value = col.redemption || '';
             if (rateInput) rateInput.value = col.rate || '';
 
+            const validateColRedemption = () => {
+                const a = safeParseFloat(amountInput?.value);
+                const red = safeParseFloat(redemptionInput?.value);
+                const grp = redemptionInput?.parentElement;
+                const errEl = row.querySelector(`#col-redemption-error-${col.id}`);
+                if (!isNaN(a) && a > 0 && !isNaN(red) && red > a) {
+                    if (grp) grp.classList.add('error-state');
+                    if (redemptionInput) {
+                        redemptionInput.setAttribute('aria-invalid', 'true');
+                        redemptionInput.setAttribute('aria-describedby', `col-redemption-error-${col.id}`);
+                        redemptionInput.title = t(AppState.lang, 'errorRedemptionExceedsNominal');
+                    }
+                    if (errEl) errEl.textContent = `${colItemName}: ${t(AppState.lang, 'errorRedemptionExceedsNominal')}`;
+                } else {
+                    if (grp) grp.classList.remove('error-state');
+                    if (redemptionInput) {
+                        redemptionInput.removeAttribute('aria-invalid');
+                        redemptionInput.removeAttribute('aria-describedby');
+                        redemptionInput.title = `${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})`;
+                    }
+                    if (errEl) errEl.textContent = '';
+                }
+            };
+
+            const validateColRate = () => {
+                const r = safeParseFloat(rateInput?.value);
+                const grp = rateInput?.parentElement;
+                const errEl = row.querySelector(`#col-rate-error-${col.id}`);
+                if (!isNaN(r) && r > 100) {
+                    if (grp) grp.classList.add('error-state');
+                    if (rateInput) {
+                        rateInput.setAttribute('aria-invalid', 'true');
+                        rateInput.setAttribute('aria-describedby', `col-rate-error-${col.id}`);
+                        rateInput.title = t(AppState.lang, 'maxRate');
+                    }
+                    if (errEl) errEl.textContent = `${colItemName}: ${t(AppState.lang, 'maxRate')}`;
+                } else {
+                    if (grp) grp.classList.remove('error-state');
+                    if (rateInput) {
+                        rateInput.removeAttribute('aria-invalid');
+                        rateInput.removeAttribute('aria-describedby');
+                        rateInput.title = `${t(AppState.lang, 'collateralRateLabel')} (${colItemName})`;
+                    }
+                    if (errEl) errEl.textContent = '';
+                }
+            };
+
             if (amountInput) {
                 amountInput.addEventListener('input', (e) => {
                     if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
                     col.amount = e.target.value;
+                    validateColRedemption();
                     recalcCollateralMetrics();
                 });
             }
@@ -356,25 +422,12 @@
                 redemptionInput.addEventListener('input', (e) => {
                     if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
                     col.redemption = e.target.value;
+                    validateColRedemption();
                     recalcCollateralMetrics();
                 });
             }
 
             if (rateInput) {
-                const validateColRate = () => {
-                    const r = safeParseFloat(rateInput.value);
-                    const grp = rateInput.parentElement;
-                    if (!isNaN(r) && r > 100) {
-                        if (grp) grp.classList.add('error-state');
-                        rateInput.setAttribute('aria-invalid', 'true');
-                        rateInput.title = t(AppState.lang, 'maxRate');
-                    } else {
-                        if (grp) grp.classList.remove('error-state');
-                        rateInput.removeAttribute('aria-invalid');
-                        rateInput.title = `${t(AppState.lang, 'collateralRateLabel')} (${colItemName})`;
-                    }
-                };
-
                 rateInput.addEventListener('input', (e) => {
                     if (typeof validateRateInput === 'function') validateRateInput(e.target);
                     col.rate = e.target.value;
@@ -398,6 +451,7 @@
                         collaterals = collaterals.filter(c => c.id !== col.id);
                         renderCollaterals();
                         recalcCollateralMetrics();
+                        announceCollateralStatus(t(AppState.lang, 'collateralRemoved').replace('{index}', colIndex));
                     }, 240);
                 });
             }
@@ -411,6 +465,8 @@
                     if (amountInput) amountInput.value = '';
                     if (redemptionInput) redemptionInput.value = '';
                     if (rateInput) rateInput.value = '';
+                    validateColRedemption();
+                    validateColRate();
                     recalcCollateralMetrics();
                 });
             }
@@ -876,6 +932,19 @@
             }
         };
 
+        const findMatchByChar = (opts, char, startIdx) => {
+            const lower = char.toLowerCase();
+            const len = opts.length;
+            for (let i = 0; i < len; i++) {
+                const idx = (startIdx + i) % len;
+                const optText = opts[idx].textContent.trim().toLowerCase();
+                if (optText.startsWith(lower)) {
+                    return idx;
+                }
+            }
+            return -1;
+        };
+
         // Trigger keyboard navigation
         triggerEl.addEventListener('keydown', (e) => {
             const opts = getOptions();
@@ -883,7 +952,7 @@
                 e.preventDefault();
                 if (!isOpen()) {
                     open();
-                    let targetIdx = opts.findIndex(o => o.getAttribute('aria-selected') === 'true' || o.classList.contains('text-indigo-700') || o.classList.contains('dark:text-indigo-300'));
+                    let targetIdx = opts.findIndex(o => o.getAttribute('aria-selected') === 'true' || o.getAttribute('aria-checked') === 'true' || o.classList.contains('text-indigo-700') || o.classList.contains('dark:text-indigo-300'));
                     if (targetIdx === -1) targetIdx = 0;
                     if (e.key === 'ArrowUp') targetIdx = opts.length - 1;
                     setTimeout(() => setActive(opts, targetIdx), 50);
@@ -893,6 +962,14 @@
             } else if (e.key === 'Escape' && isOpen()) {
                 e.preventDefault();
                 close();
+                triggerEl.focus();
+            } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== ' ') {
+                if (!isOpen()) open();
+                const match = findMatchByChar(opts, e.key, (activeIndex + 1) % opts.length);
+                if (match !== -1) {
+                    e.preventDefault();
+                    setTimeout(() => setActive(opts, match), 50);
+                }
             }
         });
 
@@ -930,6 +1007,12 @@
                 triggerEl.focus();
             } else if (e.key === 'Tab') {
                 close();
+            } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== ' ') {
+                const match = findMatchByChar(opts, e.key, (activeIndex + 1) % opts.length);
+                if (match !== -1) {
+                    e.preventDefault();
+                    setActive(opts, match);
+                }
             }
         });
     }
@@ -1137,6 +1220,7 @@
                 const newId = nextCollateralId++;
                 collaterals.push({ id: newId, amount: '', redemption: '', rate: '', period: '' });
                 renderCollaterals(newId);
+                announceCollateralStatus(t(AppState.lang, 'collateralAdded').replace('{index}', collaterals.length));
             });
         }
 
@@ -1148,6 +1232,7 @@
                 nextCollateralId = 2;
                 renderCollaterals();
                 recalcCollateralMetrics();
+                announceCollateralStatus(t(AppState.lang, 'collateralsCleared'));
             });
         }
 
@@ -1518,25 +1603,16 @@
             };
 
             const openFreqDropdown = () => {
-                freqDropdown.classList.remove('hidden');
-                freqDropdown.style.opacity = '0';
-                freqDropdown.style.transform = 'scaleY(0.95) translateY(-4px)';
-                void freqDropdown.offsetHeight; // force reflow
-                freqDropdown.style.opacity = '1';
-                freqDropdown.style.transform = 'scaleY(1) translateY(0)';
+                openMenu(freqDropdown);
                 if (freqChevron) freqChevron.style.transform = 'rotate(180deg)';
-                freqTrigger.setAttribute('aria-expanded', 'true');
             };
 
             const closeFreqDropdown = () => {
-                freqDropdown.style.opacity = '0';
-                freqDropdown.style.transform = 'scaleY(0.95) translateY(-8px)';
-                setTimeout(() => freqDropdown.classList.add('hidden'), 200);
+                closeMenu(freqDropdown);
                 if (freqChevron) freqChevron.style.transform = 'rotate(0deg)';
-                freqTrigger.setAttribute('aria-expanded', 'false');
             };
 
-            const isFreqOpen = () => !freqDropdown.classList.contains('hidden');
+            const isFreqOpen = () => isMenuOpen(freqDropdown);
 
             freqTrigger.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1562,14 +1638,13 @@
                     }
                     updateFreqRadios(val);
                     
-                    // Start the closing animation immediately (browser composite pipeline will handle it)
+                    // Start closing animation immediately
                     closeFreqDropdown();
                     
-                    // Defer heavy calculation (250ms) to allow the 200ms dropdown closing animation to finish strictly
-                    setTimeout(() => {
+                    if (freqSelect.value !== val) {
                         freqSelect.value = val;
                         freqSelect.dispatchEvent(new Event('change'));
-                    }, 250);
+                    }
                 });
             });
 
@@ -1863,7 +1938,10 @@
         themeOptions.forEach(btn => {
             const val = btn.dataset.themeValue;
             const check = btn.querySelector('.check-icon');
-            if (val === activeTheme) {
+            const isSelected = val === activeTheme;
+            btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+            btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            if (isSelected) {
                 btn.classList.add('bg-indigo-50', 'dark:bg-indigo-900/20', 'text-indigo-700', 'dark:text-indigo-300');
                 if (check) check.classList.remove('hidden');
             } else {
@@ -1878,7 +1956,10 @@
         langOptions.forEach(btn => {
             const val = btn.dataset.langValue;
             const check = btn.querySelector('.check-icon');
-            if (val === activeLang) {
+            const isSelected = val === activeLang;
+            btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+            btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            if (isSelected) {
                 btn.classList.add('bg-indigo-50', 'dark:bg-indigo-900/20', 'text-indigo-700', 'dark:text-indigo-300');
                 if (check) check.classList.remove('hidden');
             } else {
@@ -2702,6 +2783,8 @@
         };
 
         setPdfLoading(true);
+        showToast(t(AppState.lang, 'exportPdfStarting'));
+        announceExportStatus(t(AppState.lang, 'exportPdfStarting'));
 
         try {
             const doc = frame.contentWindow.document;
@@ -2738,11 +2821,14 @@
             // Restore button after print has been handed to browser print dialog
             setTimeout(() => {
                 setPdfLoading(false);
+                showToast(t(AppState.lang, 'exportPdfSuccess'), "success");
+                announceExportStatus(t(AppState.lang, 'exportPdfSuccess'));
             }, 1200);
         } catch (e) {
             console.error(e);
-            showToast(t(AppState.lang, 'printFailed'), "error");
+            showToast(t(AppState.lang, 'exportPdfError'), "error");
             setPdfLoading(false);
+            announceExportStatus(t(AppState.lang, 'exportPdfError'));
         }
     }
 
@@ -2764,6 +2850,8 @@
         };
 
         setXlsxLoading(true);
+        showToast(t(AppState.lang, 'exportXlsxStarting'));
+        announceExportStatus(t(AppState.lang, 'exportXlsxStarting'));
         const startTime = Date.now();
         const MIN_LOADING_TIME = 600; // ms: ensures animation is smooth and perceptible
 
@@ -2771,7 +2859,9 @@
             try {
                 await loadXLSX();
             } catch (e) {
-                showToast(t(AppState.lang, 'libNotLoaded'), "error");
+                showToast(t(AppState.lang, 'exportXlsxError'), "error");
+                setXlsxLoading(false);
+                announceExportStatus(t(AppState.lang, 'exportXlsxError'));
                 return;
             }
 
@@ -2939,10 +3029,13 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Loan Calculation");
             XLSX.writeFile(wb, `Loan_Calculation_${Date.now()}.xlsx`);
+            showToast(t(AppState.lang, 'exportXlsxSuccess'), "success");
+            announceExportStatus(t(AppState.lang, 'exportXlsxSuccess'));
 
         } catch (e) {
             console.error(e);
-            showToast(t(AppState.lang, 'exportFailed'), "error");
+            showToast(t(AppState.lang, 'exportXlsxError'), "error");
+            announceExportStatus(t(AppState.lang, 'exportXlsxError'));
         } finally {
             const elapsed = Date.now() - startTime;
             const remaining = Math.max(0, MIN_LOADING_TIME - elapsed);

@@ -12,6 +12,8 @@ let _ssAppState = null;
 let _ssDateInputs = null;
 let _ssFormInputs = null;
 let _ssAppCalculate = null;
+let _ssLastSolution = null;
+let _ssLastInputs = null;
 
 /**
  * Compute the default CD interest accrual date from a booking date.
@@ -664,6 +666,23 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
         });
     }
 
+    // --- Offer Action Buttons (Copy & Print) ---
+    const ssCopyBtn = document.getElementById('ss-copy-btn');
+    if (ssCopyBtn) {
+        ssCopyBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('light');
+            copySelfSufficientOffer();
+        });
+    }
+
+    const ssPrintBtn = document.getElementById('ss-print-btn');
+    if (ssPrintBtn) {
+        ssPrintBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('light');
+            printSelfSufficientOffer();
+        });
+    }
+
     // --- Add CD1 Button ---
     const addCd1Btn = document.getElementById('ss-add-cd-btn');
     if (addCd1Btn) {
@@ -954,6 +973,8 @@ function updateSelfSufficient(showError = false) {
         .filter(c => c.amount > 0 && c.rate > 0);
 
     if (validCd1s.length === 0 || isNaN(loanRate) || loanRate <= 0 || isNaN(loanPeriod) || loanPeriod <= 0 || isNaN(td2R) || td2R <= 0) {
+        _ssLastSolution = null;
+        _ssLastInputs = null;
         if (ssResults) {
             ssResults.classList.add('opacity-0');
             ssResults.classList.remove('opacity-100');
@@ -1000,6 +1021,8 @@ function updateSelfSufficient(showError = false) {
     );
 
     if (!solution.valid) {
+        _ssLastSolution = null;
+        _ssLastInputs = null;
         if (ssResults) {
             ssResults.classList.add('opacity-0');
             ssResults.classList.remove('opacity-100');
@@ -1013,6 +1036,8 @@ function updateSelfSufficient(showError = false) {
     }
 
     if (solution.exceedsCollateralLimit) {
+        _ssLastSolution = null;
+        _ssLastInputs = null;
         if (ssResults) {
             ssResults.classList.add('opacity-0');
             ssResults.classList.remove('opacity-100');
@@ -1029,11 +1054,22 @@ function updateSelfSufficient(showError = false) {
         return;
     }
 
-    // 4. Display results
+    // 4. Save state & Display results
+    _ssLastSolution = solution;
+    _ssLastInputs = {
+        validCd1s,
+        maxCd1Rate,
+        loanRate,
+        loanPeriod,
+        td2R,
+        bookingDate,
+        freq
+    };
+
     if (ssResults) {
         ssResults.classList.remove('opacity-0');
         ssResults.classList.add('opacity-100');
-        ssResults.style.maxHeight = '800px';
+        ssResults.style.maxHeight = '1000px';
     }
     if (ssError) ssError.classList.add('hidden');
 
@@ -1219,6 +1255,493 @@ function resetSelfSufficient() {
     if (bufferRow) bufferRow.classList.add('hidden');
     const leftoverRow = document.getElementById('ss-net-leftover-row');
     if (leftoverRow) leftoverRow.classList.add('hidden');
+
+    _ssLastSolution = null;
+    _ssLastInputs = null;
+}
+
+/**
+ * Copy formatted client offer to clipboard (WhatsApp/Email friendly)
+ */
+function copySelfSufficientOffer() {
+    if (!_ssLastSolution || !_ssLastInputs) {
+        if (typeof showToast === 'function') {
+            showToast(t(_ssAppState?.lang || 'en', 'errorCheckInputs'), 'error');
+        }
+        return;
+    }
+
+    const sol = _ssLastSolution;
+    const inp = _ssLastInputs;
+    const lang = _ssAppState?.lang || 'en';
+    const isAr = lang === 'ar';
+    const curr = isAr ? 'ج.م' : 'EGP';
+
+    const cd1Total = inp.validCd1s.reduce((sum, c) => sum + (c.amount || 0), 0);
+    const cd1Rate = inp.maxCd1Rate || 0;
+    const td2 = sol.td2 || 0;
+    const td2Rate = inp.td2R || 0;
+    const totalTds = sol.totalTdsAtEnd || 0;
+    const months = inp.loanPeriod || 36;
+    const monthlyReturn = sol.monthlyTdInterest || 0;
+    const installment = sol.installment || 0;
+    const surplus = sol.monthlySurplus || 0;
+    const simpleAlt = sol.simpleInterestAlt || 0;
+    const netBenefit = sol.netBenefit || 0;
+    const effectiveRate = sol.effectiveRate || 0;
+
+    const today = new Date();
+    const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+
+    let text = '';
+    if (isAr) {
+        text = `📌 *عرض تمويل استثماري (برنامج التضاعف الذاتي)*
+📅 التاريخ: ${dateStr}
+
+1️⃣ *الخطة الاستثمارية:*
+• شهادتك الحالية (CD₁): ${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)
+• الشهادة الجديدة المضافة (CD₂): ${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)
+⭐ *إجمالي شهاداتك:* ${fmt(totalTds)} ${curr}
+⏳ المدة: ${months} شهر
+
+2️⃣ *الموقف الشهري (بدون دفع أي مبالغ):*
+• عائد الشهادات شهرياً: ${fmt(monthlyReturn)} ${curr}
+• قسط القرض الشهري: ${fmt(installment)} ${curr}
+💰 *الفائض النقدي في حسابك:* +${fmt(surplus)} ${curr} / شهرياً
+✔ لا تدفع أي مليم من جيبك (القسط مغطى بالكامل من عوائد الشهادات تلقائياً)
+
+3️⃣ *أرباحك في نهاية المدة:*
+• إجمالي أموالك بالبرنامج: ${fmt(totalTds)} ${curr}
+• في حال عدم الاشتراك: ${fmt(simpleAlt)} ${curr}
+🎯 *صافي الربح الإضافي لك:* +${fmt(netBenefit)} ${curr}
+📈 العائد الفعلي المحقق: ${effectiveRate.toFixed(2)}% (مقابل ${cd1Rate.toFixed(2)}%)
+
+*العرض استرشادي طبقاً لأسعار العوائد والتعريفة المصرفية السارية.`;
+    } else {
+        text = `📌 *Investment Loan Proposal (Self-Sufficient Program)*
+📅 Date: ${dateStr}
+
+1️⃣ *The Investment Plan:*
+• Your Existing Certificate (CD₁): ${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)
+• New Certificate Added (CD₂): ${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)
+⭐ *Total Certificates Owned:* ${fmt(totalTds)} ${curr}
+⏳ Duration: ${months} Months
+
+2️⃣ *Monthly Cashflow (0 Out-of-Pocket):*
+• Monthly Returns from Certificates: ${fmt(monthlyReturn)} ${curr}
+• Monthly Loan Installment: ${fmt(installment)} ${curr}
+💰 *Cash Surplus in Your Account:* +${fmt(surplus)} ${curr} / Month
+✔ You pay 0.00 EGP out-of-pocket (Installment is 100% covered by CD returns)
+
+3️⃣ *Your Net Benefit at Maturity:*
+• Total Value with this Program: ${fmt(totalTds)} ${curr}
+• Total Value without Program: ${fmt(simpleAlt)} ${curr}
+🎯 *Net Extra Profit:* +${fmt(netBenefit)} ${curr}
+📈 Effective Return: ${effectiveRate.toFixed(2)}% (vs. ${cd1Rate.toFixed(2)}%)
+
+*Indicative proposal based on prevailing bank interest rates and tariffs.`;
+    }
+
+    const copyBtn = document.getElementById('ss-copy-btn');
+    const copyIcon = copyBtn?.querySelector('.ss-copy-icon');
+    const checkIcon = copyBtn?.querySelector('.ss-check-icon');
+    const textSpan = copyBtn?.querySelector('.ss-copy-text');
+
+    const onSuccess = () => {
+        if (copyIcon && checkIcon) {
+            copyIcon.classList.add('hidden');
+            checkIcon.classList.remove('hidden');
+        }
+        if (textSpan) {
+            textSpan.textContent = isAr ? 'تم النسخ!' : 'Copied!';
+        }
+        if (typeof showToast === 'function') {
+            showToast(t(lang, 'ssOfferCopied'), 'success');
+        }
+        if (typeof haptic !== 'undefined') haptic('light');
+
+        setTimeout(() => {
+            if (copyIcon && checkIcon) {
+                copyIcon.classList.remove('hidden');
+                checkIcon.classList.add('hidden');
+            }
+            if (textSpan) {
+                textSpan.textContent = t(lang, 'ssCopyOfferBtn');
+            }
+        }, 2000);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+            fallbackCopyText(text, onSuccess);
+        });
+    } else {
+        fallbackCopyText(text, onSuccess);
+    }
+}
+
+function fallbackCopyText(text, callback) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+        document.execCommand('copy');
+        if (callback) callback();
+    } catch (e) {
+        console.error('Copy failed:', e);
+    }
+    document.body.removeChild(ta);
+}
+
+/**
+ * Print simplified 1-page A4 client offer sheet
+ */
+function printSelfSufficientOffer() {
+    if (!_ssLastSolution || !_ssLastInputs) {
+        if (typeof showToast === 'function') {
+            showToast(t(_ssAppState?.lang || 'en', 'errorCheckInputs'), 'error');
+        }
+        return;
+    }
+
+    const printBtn = document.getElementById('ss-print-btn');
+    const spinner = printBtn?.querySelector('.ss-print-spinner');
+    const icon = printBtn?.querySelector('.ss-print-icon');
+    const textSpan = printBtn?.querySelector('.ss-print-text');
+    const lang = _ssAppState?.lang || 'en';
+    const isAr = lang === 'ar';
+    const curr = isAr ? 'ج.م' : 'EGP';
+
+    const setSsPrintLoading = (loading) => {
+        if (!printBtn) return;
+        printBtn.disabled = loading;
+        printBtn.setAttribute('aria-busy', loading ? 'true' : 'false');
+        if (spinner) spinner.classList.toggle('hidden', !loading);
+        if (icon) icon.classList.toggle('hidden', loading);
+        if (textSpan) textSpan.textContent = loading ? t(lang, 'ssPrintingOffer') : t(lang, 'ssPrintOfferBtn');
+    };
+
+    setSsPrintLoading(true);
+    if (typeof showToast === 'function') {
+        showToast(t(lang, 'ssPrintOfferStarting'));
+    }
+    if (typeof announceExportStatus === 'function') {
+        announceExportStatus(t(lang, 'ssPrintOfferStarting'));
+    }
+
+    try {
+        let frame = document.getElementById('print-frame');
+        if (!frame) {
+            frame = document.createElement('iframe');
+            frame.id = 'print-frame';
+            frame.style.cssText = 'position:absolute; width:0; height:0; border:0; visibility:hidden;';
+            document.body.appendChild(frame);
+        }
+
+        const sol = _ssLastSolution;
+        const inp = _ssLastInputs;
+
+    const cd1Total = inp.validCd1s.reduce((sum, c) => sum + (c.amount || 0), 0);
+    const cd1Rate = inp.maxCd1Rate || 0;
+    const td2 = sol.td2 || 0;
+    const td2Rate = inp.td2R || 0;
+    const totalTds = sol.totalTdsAtEnd || 0;
+    const months = inp.loanPeriod || 36;
+    const years = (months / 12).toFixed(months % 12 === 0 ? 0 : 1);
+    const monthlyReturn = sol.monthlyTdInterest || 0;
+    const installment = sol.installment || 0;
+    const surplus = sol.monthlySurplus || 0;
+    const simpleAlt = sol.simpleInterestAlt || 0;
+    const netBenefit = sol.netBenefit || 0;
+    const effectiveRate = sol.effectiveRate || 0;
+
+    const today = new Date();
+    const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+
+    const doc = frame.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head></head><body></body></html>');
+    doc.close();
+
+    const html = doc.documentElement;
+    html.lang = isAr ? 'ar' : 'en';
+    html.dir = isAr ? 'rtl' : 'ltr';
+
+    const head = doc.head;
+    const meta = doc.createElement('meta');
+    meta.charset = 'UTF-8';
+    head.appendChild(meta);
+
+    const title = doc.createElement('title');
+    title.textContent = isAr ? 'عرض تمويل استثماري' : 'Investment Loan Proposal';
+    head.appendChild(title);
+
+    const style = doc.createElement('style');
+    style.textContent = `
+        @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", "Segoe UI Arabic", sans-serif;
+            color: #111827;
+            background: #fff;
+            padding: 10px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .offer-container {
+            max-width: 720px;
+            margin: 0 auto;
+            border: 2px solid #059669;
+            border-radius: 12px;
+            padding: 20px 24px;
+            background: #fff;
+        }
+        .header {
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-title h1 {
+            font-size: 18px;
+            font-weight: 800;
+            color: #065f46;
+            margin-bottom: 3px;
+        }
+        .header-title p {
+            font-size: 13px;
+            color: #4b5563;
+            font-weight: 600;
+        }
+        .header-date {
+            text-align: ${isAr ? 'left' : 'right'};
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .section-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+        }
+        .section-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #065f46;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+        .item-label {
+            color: #374151;
+            font-weight: 500;
+        }
+        .item-value {
+            font-weight: 700;
+            color: #111827;
+        }
+        .highlight-box {
+            background: #ecfdf5;
+            border: 1.5px solid #a7f3d0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .highlight-label {
+            font-weight: 800;
+            color: #065f46;
+            font-size: 13.5px;
+        }
+        .highlight-value {
+            font-weight: 800;
+            color: #047857;
+            font-size: 15px;
+        }
+        .note-badge {
+            background: #f0fdf4;
+            color: #166534;
+            border-left: 3px solid #16a34a;
+            padding: 6px 10px;
+            margin-top: 8px;
+            font-size: 11.5px;
+            font-weight: 600;
+            border-radius: 0 6px 6px 0;
+        }
+        html[dir="rtl"] .note-badge {
+            border-left: none;
+            border-right: 3px solid #16a34a;
+            border-radius: 6px 0 0 6px;
+        }
+        .disclaimer {
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 1px dashed #d1d5db;
+            font-size: 10.5px;
+            color: #6b7280;
+            text-align: center;
+            line-height: 1.4;
+        }
+    `;
+    head.appendChild(style);
+
+    const body = doc.body;
+
+    const planTitle = isAr ? '1️⃣ الخطة الاستثمارية' : '1️⃣ THE INVESTMENT PLAN';
+    const existingCdLabel = isAr ? 'شهادتك الحالية (CD₁):' : 'Your Existing Certificate (CD₁):';
+    const newCdLabel = isAr ? 'الشهادة الجديدة المضافة (CD₂):' : 'New Certificate Added (CD₂):';
+    const totalCdsLabel = isAr ? 'إجمالي شهاداتك الجديدة:' : 'Total Certificates Owned:';
+    const durationLabel = isAr ? 'مدة الاستثمار:' : 'Duration:';
+    const durationVal = isAr ? `${months} شهر (${years} سنوات)` : `${months} Months (${years} Years)`;
+
+    const cashflowTitle = isAr ? '2️⃣ الموقف الشهري (بدون دفع أي مبالغ)' : '2️⃣ MONTHLY CASHFLOW (0 OUT-OF-POCKET)';
+    const monthlyReturnsLabel = isAr ? 'عائد الشهادات شهرياً:' : 'Monthly Returns from Certificates:';
+    const loanInstallmentLabel = isAr ? 'قسط القرض الشهري:' : 'Monthly Loan Installment:';
+    const cashSurplusLabel = isAr ? 'الفائض الشهري في حسابك:' : 'Net Monthly Cash Surplus:';
+    const surplusVal = `+${fmt(surplus)} ${curr} ${isAr ? '/ شهرياً' : '/ Month'}`;
+    const zeroCostNote = isAr
+        ? '✔ لا تدفع أي مليم من جيبك (القسط الشهري مغطى بالكامل من عوائد الشهادات تلقائياً)'
+        : '✔ You pay 0.00 EGP out-of-pocket (Installment is 100% covered by CD returns automatically)';
+
+    const benefitTitle = isAr ? '3️⃣ أرباحك في نهاية المدة' : '3️⃣ NET BENEFIT AT MATURITY';
+    const valWithProgramLabel = isAr ? 'إجمالي أموالك بالبرنامج:' : 'Total Assets with this Program:';
+    const valWithoutProgramLabel = isAr ? 'في حال عدم الاشتراك (الشهادة فقط):' : 'Total Assets without Program:';
+    const netProfitLabel = isAr ? 'صافي الربح الإضافي لك:' : 'Net Extra Profit:';
+    const effectiveReturnLabel = isAr ? 'العائد الفعلي المحقق:' : 'Effective Return Rate:';
+    const effectiveVal = `${effectiveRate.toFixed(2)}% (${isAr ? 'مقابل' : 'vs'} ${cd1Rate.toFixed(2)}%)`;
+
+    const disclaimerText = isAr
+        ? '* هذا العرض استرشادي وخاضع لأسعار العوائد والتعريفة المصرفية السارية وقت التنفيذ.'
+        : '* Indicative proposal based on prevailing bank interest rates and tariffs at the time of execution.';
+
+    body.innerHTML = `
+        <div class="offer-container">
+            <div class="header">
+                <div class="header-title">
+                    <h1>${isAr ? 'عرض تمويل استثماري (برنامج التضاعف الذاتي)' : 'Investment Loan Proposal (Self-Sufficient Program)'}</h1>
+                    <p>${isAr ? 'تضاعف الأوعية الادخارية بدون أعباء سداد شهرية' : 'Certificate of Deposit Doubling with Zero Monthly Burden'}</p>
+                </div>
+                <div class="header-date">
+                    <div><strong>${isAr ? 'التاريخ:' : 'Date:'}</strong> ${dateStr}</div>
+                </div>
+            </div>
+
+            <!-- Section 1 -->
+            <div class="section-card">
+                <div class="section-title">${planTitle}</div>
+                <div class="item-row">
+                    <span class="item-label">${existingCdLabel}</span>
+                    <span class="item-value">${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${newCdLabel}</span>
+                    <span class="item-value">${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${durationLabel}</span>
+                    <span class="item-value">${durationVal}</span>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">⭐ ${totalCdsLabel}</span>
+                    <span class="highlight-value">${fmt(totalTds)} ${curr}</span>
+                </div>
+            </div>
+
+            <!-- Section 2 -->
+            <div class="section-card">
+                <div class="section-title">${cashflowTitle}</div>
+                <div class="item-row">
+                    <span class="item-label">${monthlyReturnsLabel}</span>
+                    <span class="item-value">${fmt(monthlyReturn)} ${curr}</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${loanInstallmentLabel}</span>
+                    <span class="item-value">-${fmt(installment)} ${curr}</span>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">💰 ${cashSurplusLabel}</span>
+                    <span class="highlight-value" style="color:#059669;">${surplusVal}</span>
+                </div>
+                <div class="note-badge">${zeroCostNote}</div>
+            </div>
+
+            <!-- Section 3 -->
+            <div class="section-card" style="margin-bottom: 6px;">
+                <div class="section-title">${benefitTitle}</div>
+                <div class="item-row">
+                    <span class="item-label">${valWithProgramLabel}</span>
+                    <span class="item-value">${fmt(totalTds)} ${curr}</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${valWithoutProgramLabel}</span>
+                    <span class="item-value">${fmt(simpleAlt)} ${curr}</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${effectiveReturnLabel}</span>
+                    <span class="item-value" style="color:#047857;">${effectiveVal}</span>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">🎯 ${netProfitLabel}</span>
+                    <span class="highlight-value" style="color:#047857;">+${fmt(netBenefit)} ${curr}</span>
+                </div>
+            </div>
+
+            <div class="disclaimer">${disclaimerText}</div>
+        </div>
+    `;
+
+        // Trigger print from inside iframe context to prevent freezing parent window JS event loop
+        const printScript = doc.createElement('script');
+        printScript.textContent = 'setTimeout(() => { window.focus(); window.print(); }, 400);';
+        body.appendChild(printScript);
+
+        // Restore button after print has been handed to browser print dialog (identical to loan summary print)
+        setTimeout(() => {
+            setSsPrintLoading(false);
+            if (typeof showToast === 'function') {
+                showToast(isAr ? 'تم تجهيز العرض للطباعة.' : 'Client offer ready for print.', 'success');
+            }
+            if (typeof announceExportStatus === 'function') {
+                announceExportStatus(isAr ? 'تم تجهيز العرض للطباعة.' : 'Client offer ready for print.');
+            }
+        }, 1200);
+    } catch (e) {
+        console.error('Error generating print offer:', e);
+        setSsPrintLoading(false);
+        if (typeof showToast === 'function') {
+            showToast(t(lang, 'exportPdfError'), 'error');
+        }
+    }
 }
 
 // Expose globals for external module coordination
@@ -1228,4 +1751,6 @@ window.updateTenorAdvisoryAndMatchButton = updateTenorAdvisoryAndMatchButton;
 window.ssUpdateFirstInstDateDisplay = ssUpdateFirstInstDateDisplay;
 window.ssCalculateLoanEndDate = ssCalculateLoanEndDate;
 window.ssUpdateLoanEndDateDisplay = ssUpdateLoanEndDateDisplay;
+window.copySelfSufficientOffer = copySelfSufficientOffer;
+window.printSelfSufficientOffer = printSelfSufficientOffer;
 
