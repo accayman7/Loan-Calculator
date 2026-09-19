@@ -1503,6 +1503,8 @@ function drawChart(principal, interest, lang) {
             <!-- Donut Visual -->
             <div class="donut-visual">
                 <svg viewBox="0 0 200 200" class="w-full h-full overflow-visible" role="img" aria-label="${pLabel}: ${pPct}, ${iLabel}: ${iPct}">
+                    <!-- Background Guide Track -->
+                    <circle cx="100" cy="100" r="72" stroke="currentColor" stroke-width="32" fill="none" class="text-gray-100 dark:text-gray-800/80" />
                     <g>
                         <path id="${uid}_p" d="" fill="#3b82f6" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
                             <title>${pLabel}: ${pPct} (${pAmt})</title>
@@ -1553,18 +1555,46 @@ function drawChart(principal, interest, lang) {
     const cv = document.getElementById(`${uid}_cval`);
 
     let animFrameId = null;
+    let observer = null;
+    let safetyTimer = null;
+    let animStarted = false;
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (prefersReducedMotion) {
-        if (sp) sp.setAttribute('d', pPathFinal);
-        if (si && iFrac > 0) si.setAttribute('d', iPathFinal);
-        if (cv) cv.textContent = pPct;
-    } else {
-        const duration = 700;
-        const startTime = performance.now();
+    function checkInView() {
+        if (animStarted) return;
+        const rect = container.getBoundingClientRect();
+        // Trigger if chart is visible within viewport
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+            startAnimation();
+        }
+    }
+
+    function startAnimation() {
+        if (animStarted) return;
+        animStarted = true;
+        if (observer) {
+            observer.disconnect();
+            observer = null;
+        }
+        window.removeEventListener('scroll', checkInView);
+        if (safetyTimer) {
+            clearTimeout(safetyTimer);
+            safetyTimer = null;
+        }
+
+        if (prefersReducedMotion) {
+            if (sp) sp.setAttribute('d', pPathFinal);
+            if (si && iFrac > 0) si.setAttribute('d', iPathFinal);
+            if (cv) cv.textContent = pPct;
+            return;
+        }
+
+        const duration = 750;
+        let startTime = null;
 
         function step(now) {
-            const elapsed = now - startTime;
+            if (startTime === null) startTime = now;
+            const elapsed = Math.max(0, now - startTime);
             const rawProgress = Math.min(1, elapsed / duration);
             // Ease-out cubic: 1 - (1 - t)^3
             const progress = 1 - Math.pow(1 - rawProgress, 3);
@@ -1591,6 +1621,38 @@ function drawChart(principal, interest, lang) {
             }
         }
         animFrameId = requestAnimationFrame(step);
+    }
+
+    // Smart viewport-aware animation trigger:
+    // Only runs the progress-ring sweep when the chart enters the user's viewport
+    if (prefersReducedMotion) {
+        startAnimation();
+    } else {
+        // Immediate check: if already in view (e.g. desktop or user already scrolled down), animate right away
+        checkInView();
+
+        if (!animStarted) {
+            if (typeof IntersectionObserver !== 'undefined') {
+                observer = new IntersectionObserver((entries) => {
+                    for (const entry of entries) {
+                        if (entry.isIntersecting) {
+                            startAnimation();
+                            break;
+                        }
+                    }
+                }, {
+                    threshold: 0.2 // Trigger when at least 20% of chart is visible in viewport
+                });
+                observer.observe(container);
+            }
+
+            window.addEventListener('scroll', checkInView, { passive: true });
+
+            // Fallback safety timer: ensures animation runs even if observer is throttled or delayed
+            safetyTimer = setTimeout(() => {
+                if (!animStarted) startAnimation();
+            }, 2500);
+        }
     }
 
     // Interactive Two-Way Hover Wiring
@@ -1639,6 +1701,15 @@ function drawChart(principal, interest, lang) {
 
     chartInst = {
         destroy() {
+            if (observer) {
+                observer.disconnect();
+                observer = null;
+            }
+            window.removeEventListener('scroll', checkInView);
+            if (safetyTimer) {
+                clearTimeout(safetyTimer);
+                safetyTimer = null;
+            }
             if (animFrameId) {
                 cancelAnimationFrame(animFrameId);
                 animFrameId = null;
