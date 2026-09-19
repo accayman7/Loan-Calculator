@@ -670,6 +670,10 @@ html[data-theme="dark"] #message-box.toast-success {
 }
 
 /* --- Telegram-style Theme Transition (View Transition API + CSS Keyframes) --- */
+::view-transition-group(root) {
+    animation: none;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
     animation: none;

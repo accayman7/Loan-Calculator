@@ -741,13 +741,19 @@ const ScrollLock = (() => {
         if (updateBanner) updateBanner.style.paddingRight = '';
         const messageBox = document.getElementById('message-box');
         if (messageBox) messageBox.style.paddingRight = '';
+        document.querySelectorAll('.modal').forEach(m => {
+            m.style.paddingRight = '';
+        });
+        const datePickerBackdrop = document.getElementById('date-picker-backdrop');
+        if (datePickerBackdrop) datePickerBackdrop.style.paddingRight = '';
     }
 
     function enable() {
         lockCount++;
         if (lockCount > 1 && document.body.classList.contains('scroll-lock')) return; // Already locked
 
-        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        // Use getBoundingClientRect().width on documentElement for exact high-DPI subpixel precision
+        const scrollbarWidth = window.innerWidth - document.documentElement.getBoundingClientRect().width;
         if (scrollbarWidth > 0) {
             const pad = `${scrollbarWidth}px`;
             document.body.style.paddingRight = pad;
@@ -759,6 +765,11 @@ const ScrollLock = (() => {
             if (messageBox && !messageBox.classList.contains('hidden')) {
                 messageBox.style.paddingRight = pad;
             }
+            document.querySelectorAll('.modal').forEach(m => {
+                m.style.paddingRight = pad;
+            });
+            const datePickerBackdrop = document.getElementById('date-picker-backdrop');
+            if (datePickerBackdrop) datePickerBackdrop.style.paddingRight = pad;
         }
         document.body.classList.add('scroll-lock');
     }
@@ -1358,18 +1369,6 @@ function toggleModal(modal, forceOpen) {
     if (isOpening && !currentlyClosed) return;
     if (!isOpening && currentlyClosed) return;
 
-    modal.classList.toggle('pointer-events-none', !isOpening);
-
-    const overlay = modal.querySelector('.modal-overlay');
-    if (overlay) overlay.classList.toggle('opacity-0', !isOpening);
-
-    const container = modal.querySelector('.modal-container');
-    if (container) {
-        container.classList.toggle('translate-y-full', !isOpening);
-        container.classList.toggle('md:opacity-0', !isOpening);
-        container.classList.toggle('md:scale-95', !isOpening);
-    }
-
     const modalId = modal.id || 'unknown-modal';
 
     // Clear any pending close timer for this specific modal
@@ -1389,7 +1388,21 @@ function toggleModal(modal, forceOpen) {
             existingTooltip.remove();
         }
 
+        // Enable scroll lock first so layout padding is established before modal enters
         ScrollLock.enable();
+
+        modal.classList.toggle('pointer-events-none', false);
+
+        const overlay = modal.querySelector('.modal-overlay');
+        if (overlay) overlay.classList.toggle('opacity-0', false);
+
+        const container = modal.querySelector('.modal-container');
+        if (container) {
+            container.classList.toggle('translate-y-full', false);
+            container.classList.toggle('md:opacity-0', false);
+            container.classList.toggle('md:scale-95', false);
+        }
+
         attachModalSwipeDismiss(modal);
 
         // Register with in-memory BackHandler
@@ -1397,6 +1410,18 @@ function toggleModal(modal, forceOpen) {
             BackHandler.push(modalId, () => toggleModal(modal, false));
         }
     } else {
+        modal.classList.toggle('pointer-events-none', true);
+
+        const overlay = modal.querySelector('.modal-overlay');
+        if (overlay) overlay.classList.toggle('opacity-0', true);
+
+        const container = modal.querySelector('.modal-container');
+        if (container) {
+            container.classList.toggle('translate-y-full', true);
+            container.classList.toggle('md:opacity-0', true);
+            container.classList.toggle('md:scale-95', true);
+        }
+
         removeModalSwipeDismiss();
 
         // Unregister from in-memory BackHandler immediately
@@ -1410,9 +1435,9 @@ function toggleModal(modal, forceOpen) {
         modal._closeTimer = setTimeout(() => {
             modal._closeTimer = null;
             ScrollLock.disable();
-            // Restore keyboard focus to launcher element
+            // Restore keyboard focus to launcher element without triggering scroll jump
             if (trigger && typeof trigger.focus === 'function' && document.contains(trigger)) {
-                try { trigger.focus(); } catch (_) {}
+                try { trigger.focus({ preventScroll: true }); } catch (_) {}
             }
         }, 300);
     }
