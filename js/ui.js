@@ -310,6 +310,10 @@ const txt = {
         whatsNewModalTitle: "What's New & App Guide",
         tabWhatsNew: "✨ What's New",
         tabAppFeatures: "🌟 App Guide",
+        wnNativeChartTitle: "Native Interactive Vector Chart",
+        wnNativeChartDesc: "Smooth radial progress-ring animation, live count-up percentage HUD, and dynamic hover contrast for dark and light modes.",
+        wnSmartScrollTitle: "Smart Auto-Scroll to Results",
+        wnSmartScrollDesc: "Clicking Calculate smoothly centers your loan summary and chart into view across all devices, with safe navbar clearance.",
         wnShareOfferTitle: "Shareable Client Proposals",
         wnShareOfferDesc: "Copy a ready-to-send proposal formatted for WhatsApp and Email with monthly surplus and net profit at maturity.",
         wnPrintOfferTitle: "1-Page Bank Print Summary",
@@ -648,6 +652,10 @@ const txt = {
         whatsNewModalTitle: "ما الجديد ودليل التطبيق",
         tabWhatsNew: "✨ ما الجديد",
         tabAppFeatures: "🌟 دليل التطبيق",
+        wnNativeChartTitle: "رسم بياني تفاعلي ومتحرك",
+        wnNativeChartDesc: "حركة دائرية انسيابية متزامنة مع عداد رقمي فوري، وتأثيرات بصرية تفاعلية متوافقة تماماً مع الوضعين الليلي والنهاري.",
+        wnSmartScrollTitle: "تمرير ذكي وتلقائي للنتائج",
+        wnSmartScrollDesc: "تمرير انسيابي وسلس إلى ملخص القرض والرسم البياني فور الضغط على زر الحساب لجميع الشاشات والهواتف دون حجب.",
         wnShareOfferTitle: "مشاركة عروض تمويل فورية",
         wnShareOfferDesc: "نسخ عرض مالي منسق وجاهز للإرسال عبر واتساب والإيميل يوضح الفائض الشهري وصافي الأرباح عند الاستحقاق.",
         wnPrintOfferTitle: "طباعة ملخص بنكي في صفحة واحدة",
@@ -1397,101 +1405,248 @@ function toggleModal(modal, forceOpen) {
     }
 }
 
-// Lazy loading promise for Chart.js
-let chartLoadPromise = null;
-
 /**
- * Lazy load Chart.js library on first use
- * @returns {Promise} Resolves when Chart.js is loaded
+ * Lightweight Native SVG Doughnut Chart Helpers
  */
-function loadChartJS() {
-    // Return existing promise if already loading
-    if (chartLoadPromise) return chartLoadPromise;
+function _polarToCartesian(cx, cy, r, angleInRadians) {
+    return {
+        x: cx + r * Math.cos(angleInRadians),
+        y: cy + r * Math.sin(angleInRadians)
+    };
+}
 
-    // Return immediately if already loaded
-    if (typeof Chart !== 'undefined') {
-        return Promise.resolve();
+function _describeDonutSegment(cx, cy, rInner, rOuter, startAngle, endAngle) {
+    const sweep = endAngle - startAngle;
+    if (isNaN(sweep) || sweep <= 0.0001) return '';
+    if (sweep >= 2 * Math.PI - 0.001) {
+        // Full circle donut: draw two semicircles to avoid SVG arc coordinate collapse
+        const mid = startAngle + Math.PI;
+        const p1 = _polarToCartesian(cx, cy, rOuter, startAngle);
+        const p2 = _polarToCartesian(cx, cy, rOuter, mid);
+        const p3 = _polarToCartesian(cx, cy, rInner, mid);
+        const p4 = _polarToCartesian(cx, cy, rInner, startAngle);
+        return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${rOuter} ${rOuter} 0 1 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} A ${rOuter} ${rOuter} 0 1 1 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} M ${p3.x.toFixed(2)} ${p3.y.toFixed(2)} A ${rInner} ${rInner} 0 1 0 ${p4.x.toFixed(2)} ${p4.y.toFixed(2)} A ${rInner} ${rInner} 0 1 0 ${p3.x.toFixed(2)} ${p3.y.toFixed(2)} Z`;
     }
 
-    chartLoadPromise = new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = './chart.js';
-        script.async = true;
+    const p1 = _polarToCartesian(cx, cy, rOuter, startAngle);
+    const p2 = _polarToCartesian(cx, cy, rOuter, endAngle);
+    const p3 = _polarToCartesian(cx, cy, rInner, endAngle);
+    const p4 = _polarToCartesian(cx, cy, rInner, startAngle);
+    const largeArc = sweep > Math.PI ? 1 : 0;
 
-        script.onload = () => {
-            if (DEBUG_MODE) console.log('Chart.js loaded lazily');
-            resolve();
-        };
-
-        script.onerror = () => {
-            chartLoadPromise = null; // Allow retry
-            reject(new Error('Failed to load Chart.js'));
-        };
-
-        document.head.appendChild(script);
-    });
-
-    return chartLoadPromise;
+    return [
+        `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`,
+        `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`,
+        `L ${p3.x.toFixed(2)} ${p3.y.toFixed(2)}`,
+        `A ${rInner} ${rInner} 0 ${largeArc} 0 ${p4.x.toFixed(2)} ${p4.y.toFixed(2)}`,
+        'Z'
+    ].join(' ');
 }
 
 /**
- * Draw pie chart - loads Chart.js lazily on first call
+ * Backward-compatible stub (Chart.js has been replaced with native SVG)
+ * @returns {Promise}
+ */
+function loadChartJS() {
+    return Promise.resolve();
+}
+
+/**
+ * Draw native SVG doughnut chart
  * @param {number} principal - Loan principal amount
  * @param {number} interest - Total interest amount
  * @param {string} lang - Language code for labels
  */
 function drawChart(principal, interest, lang) {
-    const canvas = document.getElementById('loan-chart');
-    if (!canvas) return; // Safety check
+    const container = document.getElementById('loan-chart');
+    if (!container) return;
 
-    // Load Chart.js lazily, then render
-    loadChartJS().then(() => {
-        renderChart(canvas, principal, interest, lang);
-    }).catch(err => {
-        console.error('Chart loading failed:', err);
-    });
-}
-
-/**
- * Internal chart rendering (called after Chart.js is loaded)
- */
-function renderChart(canvas, principal, interest, lang) {
-    const ctx = canvas.getContext('2d');
-    if (chartInst) chartInst.destroy();
-
-    const isDark = document.documentElement.classList.contains('dark');
-    const colorText = isDark ? '#e5e7eb' : '#374151';
-
-    let data = [1, 0];
-    let bgColors = ['#e5e7eb', '#e5e7eb'];
-
-    if (principal && principal > 0) {
-        data = [principal, interest];
-        bgColors = ['#3b82f6', '#ef4444'];
+    if (chartInst && typeof chartInst.destroy === 'function') {
+        chartInst.destroy();
+        chartInst = null;
     }
 
-    chartInst = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: [t(lang, 'chartLabelPrincipal'), t(lang, 'chartLabelInterest')],
-            datasets: [{
-                data: data,
-                backgroundColor: bgColors,
-                borderColor: isDark ? '#1f2937' : '#fff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: colorText, font: { family: 'system-ui, sans-serif' } }
-                }
-            },
-            responsive: true,
-            maintainAspectRatio: false
+    const P = Math.max(0, Number(principal) || 0);
+    const I = Math.max(0, Number(interest) || 0);
+    const total = P + I;
+
+    if (total <= 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const borderColor = isDark ? '#111827' : '#ffffff';
+
+    const pFrac = total > 0 ? P / total : 1;
+    const iFrac = total > 0 ? I / total : 0;
+
+    const pPct = (pFrac * 100).toFixed(1) + '%';
+    const iPct = (iFrac * 100).toFixed(1) + '%';
+    const pAmt = new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Math.round(P));
+    const iAmt = new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Math.round(I));
+
+    const pLabel = t(lang, 'chartLabelPrincipal') || (lang === 'ar' ? 'أصل القرض' : 'Principal');
+    const iLabel = t(lang, 'chartLabelInterest') || (lang === 'ar' ? 'الفوائد الإجمالية' : 'Interest');
+
+    const pAngle = pFrac * 2 * Math.PI;
+    const iAngle = iFrac * 2 * Math.PI;
+    const start = -Math.PI / 2;
+
+    const pPathFinal = _describeDonutSegment(100, 100, 56, 88, start, start + pAngle);
+    const iPathFinal = iFrac > 0 ? _describeDonutSegment(100, 100, 56, 88, start + pAngle, start + 2 * Math.PI) : '';
+
+    const uid = 'd_' + Math.random().toString(36).substr(2, 6);
+
+    container.innerHTML = `
+        <div class="donut-chart-container select-none">
+            <!-- Donut Visual -->
+            <div class="donut-visual">
+                <svg viewBox="0 0 200 200" class="w-full h-full overflow-visible" role="img" aria-label="${pLabel}: ${pPct}, ${iLabel}: ${iPct}">
+                    <g>
+                        <path id="${uid}_p" d="" fill="#3b82f6" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
+                            <title>${pLabel}: ${pPct} (${pAmt})</title>
+                        </path>
+                        ${iFrac > 0 ? `
+                        <path id="${uid}_i" d="" fill="#ef4444" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
+                            <title>${iLabel}: ${iPct} (${iAmt})</title>
+                        </path>` : ''}
+                    </g>
+                </svg>
+                <!-- Center Metric HUD -->
+                <div id="${uid}_center" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                    <span id="${uid}_clabel" class="text-[10px] sm:text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">${pLabel}</span>
+                    <span id="${uid}_cval" class="text-lg sm:text-2xl font-black text-gray-900 dark:text-gray-100 font-mono">0.0%</span>
+                </div>
+            </div>
+
+            <!-- Responsive Legend Grid -->
+            <div class="donut-legend-grid">
+                <!-- Principal Legend Item -->
+                <div id="${uid}_leg_p" class="donut-legend-item flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-xl cursor-pointer group">
+                    <span class="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[4px] sm:rounded-[5px] shadow-sm flex-shrink-0 group-hover:scale-110 transition-transform" style="background-color: #3b82f6;"></span>
+                    <div class="flex flex-col min-w-0 flex-1">
+                        <span class="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">${pLabel}</span>
+                        <div class="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 font-mono" dir="ltr">${pPct} <span class="font-normal text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs truncate">(${pAmt})</span></div>
+                    </div>
+                </div>
+
+                <!-- Interest Legend Item -->
+                ${iFrac > 0 ? `
+                <div id="${uid}_leg_i" class="donut-legend-item flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-xl cursor-pointer group">
+                    <span class="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[4px] sm:rounded-[5px] shadow-sm flex-shrink-0 group-hover:scale-110 transition-transform" style="background-color: #ef4444;"></span>
+                    <div class="flex flex-col min-w-0 flex-1">
+                        <span class="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors truncate">${iLabel}</span>
+                        <div class="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 font-mono" dir="ltr">${iPct} <span class="font-normal text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs truncate">(${iAmt})</span></div>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+
+    const sp = document.getElementById(`${uid}_p`);
+    const si = document.getElementById(`${uid}_i`);
+    const lp = document.getElementById(`${uid}_leg_p`);
+    const li = document.getElementById(`${uid}_leg_i`);
+    const cl = document.getElementById(`${uid}_clabel`);
+    const cv = document.getElementById(`${uid}_cval`);
+
+    let animFrameId = null;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) {
+        if (sp) sp.setAttribute('d', pPathFinal);
+        if (si && iFrac > 0) si.setAttribute('d', iPathFinal);
+        if (cv) cv.textContent = pPct;
+    } else {
+        const duration = 700;
+        const startTime = performance.now();
+
+        function step(now) {
+            const elapsed = now - startTime;
+            const rawProgress = Math.min(1, elapsed / duration);
+            // Ease-out cubic: 1 - (1 - t)^3
+            const progress = 1 - Math.pow(1 - rawProgress, 3);
+
+            const currPAngle = pAngle * progress;
+            const currIAngle = iAngle * progress;
+
+            if (sp) {
+                sp.setAttribute('d', _describeDonutSegment(100, 100, 56, 88, start, start + currPAngle));
+            }
+            if (si && iFrac > 0) {
+                si.setAttribute('d', _describeDonutSegment(100, 100, 56, 88, start + currPAngle, start + currPAngle + currIAngle));
+            }
+            if (cv) {
+                cv.textContent = (progress * pFrac * 100).toFixed(1) + '%';
+            }
+
+            if (rawProgress < 1) {
+                animFrameId = requestAnimationFrame(step);
+            } else {
+                if (sp) sp.setAttribute('d', pPathFinal);
+                if (si && iFrac > 0) si.setAttribute('d', iPathFinal);
+                if (cv) cv.textContent = pPct;
+            }
         }
-    });
+        animFrameId = requestAnimationFrame(step);
+    }
+
+    // Interactive Two-Way Hover Wiring
+    function setHover(target) {
+        if (target === 'p') {
+            if (sp) sp.style.transform = 'scale(1.05)';
+            if (si) si.style.opacity = '0.4';
+            if (cl) cl.textContent = pLabel;
+            if (cv) cv.textContent = pPct;
+        } else if (target === 'i') {
+            if (si) si.style.transform = 'scale(1.05)';
+            if (sp) sp.style.opacity = '0.4';
+            if (cl) cl.textContent = iLabel;
+            if (cv) cv.textContent = iPct;
+        }
+    }
+
+    function clearHover() {
+        if (sp) {
+            sp.style.transform = 'scale(1)';
+            sp.style.opacity = '1';
+        }
+        if (si) {
+            si.style.transform = 'scale(1)';
+            si.style.opacity = '1';
+        }
+        if (cl) cl.textContent = pLabel;
+        if (cv) cv.textContent = pPct;
+    }
+
+    if (sp) {
+        sp.onmouseenter = () => setHover('p');
+        sp.onmouseleave = clearHover;
+    }
+    if (lp) {
+        lp.onmouseenter = () => setHover('p');
+        lp.onmouseleave = clearHover;
+    }
+
+    if (si && li) {
+        si.onmouseenter = () => setHover('i');
+        si.onmouseleave = clearHover;
+        li.onmouseenter = () => setHover('i');
+        li.onmouseleave = clearHover;
+    }
+
+    chartInst = {
+        destroy() {
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+            }
+            if (container) container.innerHTML = '';
+            chartInst = null;
+        }
+    };
 }
 
 function formatCurrencyInput(input) {

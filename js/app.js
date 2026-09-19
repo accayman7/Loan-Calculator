@@ -2232,6 +2232,22 @@
                 summarySection.classList.remove('animate-success-pulse');
                 void summarySection.offsetWidth; // Force reflow
                 summarySection.classList.add('animate-success-pulse');
+
+                // Smart auto-scroll to loan summary if not already in comfortable view.
+                // Works seamlessly across mobile (stacked below fold) and PC/tablet
+                // (e.g. when secured loan details or extra options pushed calculate button down).
+                setTimeout(() => {
+                    const rect = summarySection.getBoundingClientRect();
+                    // Navbar height is 64px (h-16). If rect.top < 68, the summary header is obscured or scrolled off top.
+                    // If rect.top > 140, the summary header is pushed down below comfortable view.
+                    if (rect.top < 68 || rect.top > 140) {
+                        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                        summarySection.scrollIntoView({
+                            behavior: prefersReducedMotion ? 'auto' : 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }, 120);
             }
 
             if (typeof showScheduleUI === 'function') showScheduleUI(AppState.schedule, AppState.lang, false, isAdvanced);
