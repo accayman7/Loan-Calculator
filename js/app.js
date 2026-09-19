@@ -1058,8 +1058,6 @@
             });
         }
 
-        let themeTransitionTimer = null;
-
         themeOptions.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const newTheme = btn.dataset.themeValue;
@@ -1068,42 +1066,86 @@
                     return;
                 }
 
-                if (themeTransitionTimer) {
-                    clearTimeout(themeTransitionTimer);
-                    document.documentElement.classList.remove('theme-transitioning');
-                }
+                const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const isCurrentDark = AppState.theme === 'dark' || (AppState.theme === 'system' && sysDark);
+                const isNewDark = newTheme === 'dark' || (newTheme === 'system' && sysDark);
+                const isReverse = isCurrentDark && !isNewDark;
 
-                const performUpdate = (skipChart = false) => {
-                    AppState.theme = newTheme;
-                    localStorage.setItem('theme', AppState.theme);
-                    if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, skipChart);
-                    updateThemeMenuState(AppState.theme);
-                    closeMenu(themeMenu);
+                // Heavy work deferred to after animation
+                const finalize = () => {
+                    if (AppState.lastRes && AppState.lastRes.P && typeof drawChart === 'function') {
+                        drawChart(AppState.lastRes.P, AppState.lastRes.TI, document.documentElement.lang);
+                    }
                     if (typeof haptic !== 'undefined') haptic('medium');
-                };
-
-                const notifyUpdate = () => {
                     const label = t(AppState.lang, AppState.theme === 'system' ? 'themeSystem' : (AppState.theme === 'dark' ? 'themeDark' : 'themeLight'));
                     showToast(label);
                 };
 
-                // Accelerated Day/Night Theme Transition (Synchronized & GPU-Smooth)
-                document.documentElement.classList.add('theme-transitioning');
+                // Close the menu BEFORE starting view transition (keeps it out of screenshots)
+                closeMenu(themeMenu);
 
-                requestAnimationFrame(() => {
-                    performUpdate(true);
+                if (!document.startViewTransition) {
+                    // Crossfade fallback for Safari/iOS
+                    const overlay = document.createElement('div');
+                    const oldBg = isCurrentDark ? '#020617' : '#f9fafb';
+                    overlay.style.cssText = `
+                        position: fixed; inset: 0; z-index: ${Z_INDEX.OVERLAY};
+                        pointer-events: none; background: ${oldBg};
+                        opacity: 1; transition: opacity 0.5s ease-in-out;
+                    `;
+                    document.body.appendChild(overlay);
+                    void overlay.offsetHeight;
+                    document.body.classList.add('preload');
+                    AppState.theme = newTheme;
+                    localStorage.setItem('theme', AppState.theme);
+                    if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes);
+                    updateThemeMenuState(AppState.theme);
+                    void document.body.offsetHeight;
+                    document.body.classList.remove('preload');
+                    requestAnimationFrame(() => {
+                        overlay.style.opacity = '0';
+                        overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
+                    });
+                    finalize();
+                } else {
+                    try {
+                        // Set CSS custom properties for the keyframe animations BEFORE starting
+                        const rect = themeBtn.getBoundingClientRect();
+                        const x = rect.left + rect.width / 2;
+                        const y = rect.top + rect.height / 2;
+                        const endRadius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+                        const docEl = document.documentElement;
 
-                    themeTransitionTimer = setTimeout(() => {
-                        document.documentElement.classList.remove('theme-transitioning');
-                        themeTransitionTimer = null;
-                        requestAnimationFrame(() => {
-                            if (AppState.lastRes && AppState.lastRes.P && typeof drawChart === 'function') {
-                                drawChart(AppState.lastRes.P, AppState.lastRes.TI, document.documentElement.lang);
-                            }
-                            notifyUpdate();
+                        docEl.style.setProperty('--vt-x', `${x}px`);
+                        docEl.style.setProperty('--vt-y', `${y}px`);
+                        docEl.style.setProperty('--vt-radius', `${endRadius}px`);
+
+                        if (isReverse) docEl.classList.add('reverse-transition');
+
+                        // Minimal callback — CSS keyframes handle the animation automatically
+                        const transition = document.startViewTransition(() => {
+                            AppState.theme = newTheme;
+                            localStorage.setItem('theme', AppState.theme);
+                            if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, true);
+                            updateThemeMenuState(AppState.theme);
                         });
-                    }, 360);
-                });
+
+                        transition.finished.then(() => {
+                            docEl.classList.remove('reverse-transition');
+                            docEl.style.removeProperty('--vt-x');
+                            docEl.style.removeProperty('--vt-y');
+                            docEl.style.removeProperty('--vt-radius');
+                            finalize();
+                        });
+
+                    } catch (err) {
+                        AppState.theme = newTheme;
+                        localStorage.setItem('theme', AppState.theme);
+                        if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes);
+                        updateThemeMenuState(AppState.theme);
+                        finalize();
+                    }
+                }
             });
         });
 
