@@ -1082,18 +1082,17 @@
                 const isNewDark = newTheme === 'dark' || (newTheme === 'system' && sysDark);
                 const isReverse = isCurrentDark && !isNewDark;
 
-                // Heavy work deferred to after animation
                 const finalize = () => {
-                    if (AppState.lastRes && AppState.lastRes.P && typeof drawChart === 'function') {
-                        drawChart(AppState.lastRes.P, AppState.lastRes.TI, document.documentElement.lang);
-                    }
                     if (typeof haptic !== 'undefined') haptic('medium');
                     const label = t(AppState.lang, AppState.theme === 'system' ? 'themeSystem' : (AppState.theme === 'dark' ? 'themeDark' : 'themeLight'));
                     showToast(label);
                 };
 
-                // Close the menu BEFORE starting view transition (keeps it out of screenshots)
+                // Close the menu instantly before starting view transition (keeps it out of screenshots)
+                themeMenu.style.transition = 'none';
                 closeMenu(themeMenu);
+                void themeMenu.offsetHeight;
+                themeMenu.style.transition = '';
 
                 if (!document.startViewTransition) {
                     // Crossfade fallback for Safari/iOS
@@ -1109,7 +1108,7 @@
                     document.body.classList.add('preload');
                     AppState.theme = newTheme;
                     localStorage.setItem('theme', AppState.theme);
-                    if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes);
+                    if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, false);
                     updateThemeMenuState(AppState.theme);
                     void document.body.offsetHeight;
                     document.body.classList.remove('preload');
@@ -1131,18 +1130,21 @@
                         docEl.style.setProperty('--vt-y', `${y}px`);
                         docEl.style.setProperty('--vt-radius', `${endRadius}px`);
 
-                        if (isReverse) docEl.classList.add('reverse-transition');
+                        docEl.classList.add('view-transition-active');
+                        docEl.classList.add('preload');
 
                         // Minimal callback — CSS keyframes handle the animation automatically
                         const transition = document.startViewTransition(() => {
                             AppState.theme = newTheme;
                             localStorage.setItem('theme', AppState.theme);
-                            if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, true);
+                            if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, false);
                             updateThemeMenuState(AppState.theme);
+                            void docEl.offsetHeight;
                         });
 
                         transition.finished.then(() => {
-                            docEl.classList.remove('reverse-transition');
+                            docEl.classList.remove('preload');
+                            docEl.classList.remove('view-transition-active');
                             docEl.style.removeProperty('--vt-x');
                             docEl.style.removeProperty('--vt-y');
                             docEl.style.removeProperty('--vt-radius');
@@ -1152,7 +1154,7 @@
                     } catch (err) {
                         AppState.theme = newTheme;
                         localStorage.setItem('theme', AppState.theme);
-                        if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes);
+                        if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, false);
                         updateThemeMenuState(AppState.theme);
                         finalize();
                     }

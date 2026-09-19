@@ -1096,7 +1096,7 @@ function applyTheme(themeMode, lastRes, skipChart = false) {
     }
 
     if (!skipChart && lastRes && lastRes.P) {
-        drawChart(lastRes.P, lastRes.TI, document.documentElement.lang);
+        drawChart(lastRes.P, lastRes.TI, document.documentElement.lang, false);
     }
 }
 
@@ -1199,15 +1199,28 @@ function showToast(message, type = 'normal') {
     msgBox.textContent = message;
     msgBox.style.zIndex = "100";
 
+    const isDark = document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
+    if (type === 'error') {
+        msgBox.style.backgroundColor = '#dc2626';
+        msgBox.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+    } else if (type === 'success') {
+        msgBox.style.backgroundColor = '#16a34a';
+        msgBox.style.borderColor = '#22c55e';
+    } else {
+        msgBox.style.backgroundColor = isDark ? '#374151' : '#1f2937';
+        msgBox.style.borderColor = isDark ? '#4b5563' : '#374151';
+    }
+    msgBox.style.color = '#ffffff';
+
     const baseClasses = 'fixed top-24 left-0 right-0 mx-auto w-fit max-w-[90vw] z-[100] px-6 py-3 rounded-lg text-white font-medium shadow-2xl text-sm text-center transition duration-300 ease-out transform';
 
     let colorClasses;
     if (type === 'error') {
-        colorClasses = 'bg-red-600 border-2 border-white/20 font-bold';
+        colorClasses = 'toast-error bg-red-600 border-2 font-bold';
     } else if (type === 'success') {
-        colorClasses = 'bg-green-600 border border-green-500';
+        colorClasses = 'toast-success bg-green-600 border';
     } else {
-        colorClasses = 'bg-gray-800 dark:bg-gray-700 border border-gray-700 dark:border-gray-600';
+        colorClasses = 'toast-normal bg-gray-800 dark:bg-gray-700 border border-gray-700 dark:border-gray-600';
     }
 
     // Start state: hidden above, fully transparent
@@ -1457,7 +1470,7 @@ function loadChartJS() {
  * @param {number} interest - Total interest amount
  * @param {string} lang - Language code for labels
  */
-function drawChart(principal, interest, lang) {
+function drawChart(principal, interest, lang, animate = true) {
     const container = document.getElementById('loan-chart');
     if (!container) return;
 
@@ -1496,6 +1509,10 @@ function drawChart(principal, interest, lang) {
     const pPathFinal = _describeDonutSegment(100, 100, 56, 88, start, start + pAngle);
     const iPathFinal = iFrac > 0 ? _describeDonutSegment(100, 100, 56, 88, start + pAngle, start + 2 * Math.PI) : '';
 
+    const initialPD = animate ? '' : pPathFinal;
+    const initialID = animate ? '' : iPathFinal;
+    const initialVal = animate ? '0.0%' : pPct;
+
     const uid = 'd_' + Math.random().toString(36).substr(2, 6);
 
     container.innerHTML = `
@@ -1506,11 +1523,11 @@ function drawChart(principal, interest, lang) {
                     <!-- Background Guide Track -->
                     <circle cx="100" cy="100" r="72" stroke="currentColor" stroke-width="32" fill="none" class="text-gray-100 dark:text-gray-800/80" />
                     <g>
-                        <path id="${uid}_p" d="" fill="#3b82f6" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
+                        <path id="${uid}_p" d="${initialPD}" fill="#3b82f6" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
                             <title>${pLabel}: ${pPct} (${pAmt})</title>
                         </path>
                         ${iFrac > 0 ? `
-                        <path id="${uid}_i" d="" fill="#ef4444" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
+                        <path id="${uid}_i" d="${initialID}" fill="#ef4444" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
                             <title>${iLabel}: ${iPct} (${iAmt})</title>
                         </path>` : ''}
                     </g>
@@ -1518,7 +1535,7 @@ function drawChart(principal, interest, lang) {
                 <!-- Center Metric HUD -->
                 <div id="${uid}_center" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
                     <span id="${uid}_clabel" class="text-[10px] sm:text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">${pLabel}</span>
-                    <span id="${uid}_cval" class="text-lg sm:text-2xl font-black text-gray-900 dark:text-gray-100 font-mono">0.0%</span>
+                    <span id="${uid}_cval" class="text-lg sm:text-2xl font-black text-gray-900 dark:text-gray-100 font-mono">${initialVal}</span>
                 </div>
             </div>
 
@@ -1582,7 +1599,7 @@ function drawChart(principal, interest, lang) {
             safetyTimer = null;
         }
 
-        if (prefersReducedMotion) {
+        if (!animate || prefersReducedMotion) {
             if (sp) sp.setAttribute('d', pPathFinal);
             if (si && iFrac > 0) si.setAttribute('d', iPathFinal);
             if (cv) cv.textContent = pPct;
@@ -1625,7 +1642,7 @@ function drawChart(principal, interest, lang) {
 
     // Smart viewport-aware animation trigger:
     // Only runs the progress-ring sweep when the chart enters the user's viewport
-    if (prefersReducedMotion) {
+    if (!animate || prefersReducedMotion) {
         startAnimation();
     } else {
         // Immediate check: if already in view (e.g. desktop or user already scrolled down), animate right away
