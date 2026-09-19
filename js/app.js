@@ -1058,6 +1058,8 @@
             });
         }
 
+        let themeTransitionTimer = null;
+
         themeOptions.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const newTheme = btn.dataset.themeValue;
@@ -1066,58 +1068,42 @@
                     return;
                 }
 
-                const performUpdate = () => {
+                if (themeTransitionTimer) {
+                    clearTimeout(themeTransitionTimer);
+                    document.documentElement.classList.remove('theme-transitioning');
+                }
+
+                const performUpdate = (skipChart = false) => {
                     AppState.theme = newTheme;
                     localStorage.setItem('theme', AppState.theme);
-                    if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes);
+                    if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, skipChart);
                     updateThemeMenuState(AppState.theme);
                     closeMenu(themeMenu);
                     if (typeof haptic !== 'undefined') haptic('medium');
+                };
 
+                const notifyUpdate = () => {
                     const label = t(AppState.lang, AppState.theme === 'system' ? 'themeSystem' : (AppState.theme === 'dark' ? 'themeDark' : 'themeLight'));
                     showToast(label);
                 };
 
-                const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const isCurrentDark = AppState.theme === 'dark' || (AppState.theme === 'system' && sysDark);
-                const isNewDark = newTheme === 'dark' || (newTheme === 'system' && sysDark);
-                const isReverse = isCurrentDark && !isNewDark;
+                // Accelerated Day/Night Theme Transition (Synchronized & GPU-Smooth)
+                document.documentElement.classList.add('theme-transitioning');
 
-                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !document.startViewTransition) {
-                    performUpdate();
-                    return;
-                }
+                requestAnimationFrame(() => {
+                    performUpdate(true);
 
-                try {
-                    let rect = themeBtn ? themeBtn.getBoundingClientRect() : { left: window.innerWidth / 2, top: 0, width: 0, height: 0 };
-                    let x = e.clientX || (rect.left + rect.width / 2);
-                    let y = e.clientY || (rect.top + rect.height / 2);
-
-                    const right = window.innerWidth - x;
-                    const bottom = window.innerHeight - y;
-                    const maxRadius = Math.hypot(Math.max(x, right), Math.max(y, bottom));
-
-                    document.documentElement.style.setProperty('--vt-x', `${x}px`);
-                    document.documentElement.style.setProperty('--vt-y', `${y}px`);
-                    document.documentElement.style.setProperty('--vt-radius', `${maxRadius}px`);
-                    document.documentElement.classList.remove('vt-reverse');
-                    if (isReverse) {
-                        document.documentElement.classList.add('vt-reverse');
-                    }
-
-                    const transition = document.startViewTransition(() => {
-                        performUpdate();
-                    });
-
-                    transition.finished.finally(() => {
-                        document.documentElement.classList.remove('vt-reverse');
-                        document.documentElement.style.removeProperty('--vt-x');
-                        document.documentElement.style.removeProperty('--vt-y');
-                        document.documentElement.style.removeProperty('--vt-radius');
-                    });
-                } catch (err) {
-                    performUpdate();
-                }
+                    themeTransitionTimer = setTimeout(() => {
+                        document.documentElement.classList.remove('theme-transitioning');
+                        themeTransitionTimer = null;
+                        requestAnimationFrame(() => {
+                            if (AppState.lastRes && AppState.lastRes.P && typeof drawChart === 'function') {
+                                drawChart(AppState.lastRes.P, AppState.lastRes.TI, document.documentElement.lang);
+                            }
+                            notifyUpdate();
+                        });
+                    }, 360);
+                });
             });
         });
 

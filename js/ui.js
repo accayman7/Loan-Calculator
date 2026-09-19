@@ -1063,7 +1063,7 @@ function initTheme(lastRes) {
     ensureDropdownFocusStyles();
 }
 
-function applyTheme(themeMode, lastRes) {
+function applyTheme(themeMode, lastRes, skipChart = false) {
     const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const shouldBeDark = themeMode === 'dark' || (themeMode === 'system' && isSystemDark);
 
@@ -1077,7 +1077,7 @@ function applyTheme(themeMode, lastRes) {
         document.getElementById('meta-theme-color')?.setAttribute('content', '#f9fafb');
     }
 
-    if (lastRes && lastRes.P) {
+    if (!skipChart && lastRes && lastRes.P) {
         drawChart(lastRes.P, lastRes.TI, document.documentElement.lang);
     }
 }
