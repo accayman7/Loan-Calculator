@@ -241,7 +241,7 @@
 
     // --- Helper Logic ---
 
-    function setLoanType(type) {
+    function setLoanType(type, options = {}) {
         AppState.loanType = type;
         const unsecuredBtn = document.getElementById('loan-type-unsecured-btn');
         const securedBtn = document.getElementById('loan-type-secured-btn');
@@ -258,9 +258,20 @@
                 securedBtn.className = 'loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
             }
             if (collateralSection) {
-                collateralSection.classList.remove('max-h-0', 'opacity-0');
-                collateralSection.style.maxHeight = '1200px';
-                collateralSection.classList.add('opacity-100');
+                if (options.immediate) {
+                    collateralSection.style.transition = 'none';
+                    collateralSection.classList.remove('max-h-0', 'opacity-0');
+                    collateralSection.style.maxHeight = '1200px';
+                    collateralSection.classList.add('opacity-100');
+                    void collateralSection.offsetHeight;
+                    setTimeout(() => {
+                        collateralSection.style.transition = '';
+                    }, 500);
+                } else {
+                    collateralSection.classList.remove('max-h-0', 'opacity-0');
+                    collateralSection.style.maxHeight = '1200px';
+                    collateralSection.classList.add('opacity-100');
+                }
             }
             if (freqContainer) {
                 freqContainer.classList.remove('hidden');
@@ -2328,7 +2339,15 @@
         if (historyBtn && historyModal) {
             historyBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
-                const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
+                let history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
+                let migrated = false;
+                history.forEach((item, idx) => {
+                    if (!item.id) {
+                        item.id = 'calc_' + (Date.parse(item.date) || Date.now()) + '_' + idx;
+                        migrated = true;
+                    }
+                });
+                if (migrated) localStorage.setItem('loanHistory', JSON.stringify(history));
                 if (typeof renderHistoryList === 'function') renderHistoryList(history, AppState.lang);
                 if (typeof toggleModal === 'function') toggleModal(historyModal, true);
             });
@@ -2344,53 +2363,54 @@
                     if (deleteBtn) {
                         e.stopPropagation();
                         const card = deleteBtn.closest('.history-card');
-                        const index = parseInt(deleteBtn.dataset.index);
-                        if (isNaN(index) || !card) return;
+                        const targetId = deleteBtn.dataset.id;
+                        const targetIndex = parseInt(deleteBtn.dataset.index, 10);
+                        if (!card) return;
                         if (typeof haptic !== 'undefined') haptic('light');
 
-                        // Hide overflow to prevent horizontal scrollbar
+                        // Immediately delete from storage using unique ID (or fallback to index)
+                        let history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
+                        if (targetId) {
+                            history = history.filter(it => (it.id || `legacy_${history.indexOf(it)}`) !== targetId);
+                        } else if (!isNaN(targetIndex)) {
+                            history.splice(targetIndex, 1);
+                        }
+                        localStorage.setItem('loanHistory', JSON.stringify(history));
+
+                        // Hide overflow to prevent horizontal scrollbar during slide
                         historyList.style.overflowX = 'hidden';
 
                         // Animate the card out
-                        card.style.transition = 'all 0.3s ease-out';
+                        card.style.transition = 'all 0.25s ease-out';
                         card.style.transform = 'translateX(100%)';
                         card.style.opacity = '0';
+                        card.style.maxHeight = card.offsetHeight + 'px';
+                        card.style.overflow = 'hidden';
 
-                        // After slide-out, collapse height
                         setTimeout(() => {
-                            card.style.maxHeight = card.offsetHeight + 'px';
-                            card.style.overflow = 'hidden';
-                            card.offsetHeight; // Force reflow
                             card.style.maxHeight = '0';
                             card.style.marginBottom = '0';
                             card.style.padding = '0';
                             card.style.border = 'none';
-                        }, 250);
 
-                        // After collapse, actually remove from storage
-                        setTimeout(() => {
-                            const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
-                            history.splice(index, 1);
-                            localStorage.setItem('loanHistory', JSON.stringify(history));
-
-                            // If this was the last item, close the modal instead of showing empty state
-                            if (history.length === 0) {
-                                if (typeof toggleModal === 'function') toggleModal(historyModal);
-                            } else {
-                                if (typeof renderHistoryList === 'function') renderHistoryList(history, AppState.lang);
-                            }
-                        }, 500);
+                            setTimeout(() => {
+                                card.remove();
+                                if (history.length === 0) {
+                                    if (typeof toggleModal === 'function') toggleModal(historyModal, false);
+                                }
+                            }, 200);
+                        }, 150);
                         return;
                     }
 
                     // Check if card was clicked (load action)
                     const card = e.target.closest('.history-card');
                     if (card) {
-                        const index = parseInt(card.dataset.index);
-                        if (isNaN(index)) return;
+                        const targetId = card.dataset.id;
+                        const targetIndex = parseInt(card.dataset.index, 10);
                         if (typeof haptic !== 'undefined') haptic('medium');
                         const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
-                        const item = history[index];
+                        const item = targetId ? history.find(it => (it.id || `legacy_${history.indexOf(it)}`) === targetId) : history[targetIndex];
                         if (item) {
                             AppState.activeKey = item.activeKey || 'installment';
                             const radio = document.querySelector(`input[name="calc-target"][value="${AppState.activeKey}"]`);
@@ -2467,6 +2487,7 @@
                 const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
                 const isAdvanced = document.getElementById('advanced-toggle').checked;
                 const entry = {
+                    id: 'calc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                     date: new Date().toISOString(),
                     activeKey: AppState.activeKey,
                     values: {

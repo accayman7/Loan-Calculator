@@ -175,6 +175,23 @@ function testCountCdPaymentsBeforeM1() {
     TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 1, 10), new Date(2026, 1, 10)), 1, 'Same date returns 1 payment');
     TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 0, 10), new Date(2026, 2, 15)), 3, 'Jan 10 to Mar 15 returns 3 payments');
     TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 0, 20), new Date(2026, 1, 15)), 1, 'Jan 20 to Feb 15 returns 1 payment');
+
+    // Month-end clamping tests: Jan 31 accrual with Mar 5 M1
+    // Payments: Jan 31 (count=1), Feb 28 (count=2), Mar 31 is after Mar 5
+    TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 0, 31), new Date(2026, 2, 5)), 2, 'Jan 31 accrual with Mar 5 M1 produces 2 payments (Jan 31, Feb 28)');
+    // Jan 31 accrual with Feb 28 M1
+    TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 0, 31), new Date(2026, 1, 28)), 2, 'Jan 31 accrual with Feb 28 M1 produces 2 payments (Jan 31, Feb 28)');
+    // Jan 31 accrual with Feb 27 M1
+    TestRunner.assertEqual(countCdPaymentsBeforeM1(new Date(2026, 0, 31), new Date(2026, 1, 27)), 1, 'Jan 31 accrual with Feb 27 M1 produces 1 payment (Jan 31)');
+
+    // Direct addMonthsClamped unit checks
+    const jan31 = new Date(2026, 0, 31);
+    const febClamped = addMonthsClamped(jan31, 1);
+    TestRunner.assertEqual(febClamped.getMonth(), 1, 'Jan 31 + 1 mo is Feb');
+    TestRunner.assertEqual(febClamped.getDate(), 28, 'Jan 31 + 1 mo clamps to Feb 28');
+    const marClamped = addMonthsClamped(jan31, 2);
+    TestRunner.assertEqual(marClamped.getMonth(), 2, 'Jan 31 + 2 mo is Mar');
+    TestRunner.assertEqual(marClamped.getDate(), 31, 'Jan 31 + 2 mo preserves day 31');
 }
 
 function testQuarterEndInRange() {

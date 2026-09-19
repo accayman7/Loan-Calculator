@@ -64,8 +64,20 @@ function ssDefaultCdMaturityDate(bookingDate, cdInterestDate = null) {
  */
 function ssCalculateRemainingMonths(bookingDate, maturityDate) {
     if (!bookingDate || !maturityDate) return 0;
-    let months = (maturityDate.getFullYear() - bookingDate.getFullYear()) * 12 + (maturityDate.getMonth() - bookingDate.getMonth());
-    if (maturityDate.getDate() < bookingDate.getDate()) {
+    const bk = new Date(bookingDate);
+    const mat = new Date(maturityDate);
+    let months = (mat.getFullYear() - bk.getFullYear()) * 12 + (mat.getMonth() - bk.getMonth());
+    if (months <= 0) return 0;
+
+    // Use addMonthsClamped (from logic.js) or fallback to test if maturityDate reaches the full month
+    const clampedTarget = (typeof addMonthsClamped === 'function')
+        ? addMonthsClamped(bk, months)
+        : (() => {
+            const y = bk.getFullYear(), m = bk.getMonth() + months, d = bk.getDate();
+            return new Date(y, m, Math.min(d, new Date(y, m + 1, 0).getDate()));
+        })();
+
+    if (mat < clampedTarget) {
         months -= 1;
     }
     return Math.max(0, months);
@@ -638,18 +650,52 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
             animateToggleBounce(e.target);
 
             if (e.target.checked) {
-                ssSection.classList.remove('max-h-0', 'opacity-0');
-                ssSection.style.maxHeight = '2400px';
-                ssSection.classList.add('opacity-100');
-
-                // Self-Sufficient mode is inherently a Secured Loan
+                // 1. Expand collateralSection immediately without 300ms transition lag
+                // so it doesn't cause a delayed layout push while the user is viewing SS mode
                 if (typeof window.setLoanType === 'function') {
-                    window.setLoanType('secured');
+                    window.setLoanType('secured', { immediate: true });
                 } else {
                     const securedBtn = document.getElementById('loan-type-secured-btn');
                     if (securedBtn) securedBtn.click();
                 }
+
+                // 2. Expand Self-Sufficient section immediately without transition lag
+                // so dimensions and element positions are 100% computed with zero lag
+                ssSection.style.transition = 'none';
+                ssSection.classList.remove('max-h-0', 'opacity-0');
+                ssSection.style.maxHeight = '2400px';
+                ssSection.classList.add('opacity-100');
+                void ssSection.offsetHeight; // Force layout reflow
+                setTimeout(() => {
+                    ssSection.style.transition = '';
+                }, 500);
+
+                // 3. Smoothly scroll directly to the Self-Sufficient mode card & input fields
+                const targetCard = ssSection.closest('.rounded-xl') || ssSection;
+                requestAnimationFrame(() => {
+                    const navEl = document.querySelector('nav');
+                    const navH = navEl ? navEl.offsetHeight : 64;
+                    const toastEl = document.getElementById('message-box');
+                    const toastVisible = toastEl && !toastEl.classList.contains('hidden') && toastEl.classList.contains('opacity-100');
+                    const toastBottom = toastVisible ? toastEl.getBoundingClientRect().bottom + 8 : 0;
+                    const clearance = Math.max(navH + 12, toastBottom);
+
+                    const targetTop = targetCard.getBoundingClientRect().top + (window.pageYOffset || document.documentElement.scrollTop);
+                    const scrollDest = Math.max(0, targetTop - clearance);
+
+                    targetCard.style.scrollMarginTop = clearance + 'px';
+                    window.scrollTo({ top: scrollDest, behavior: 'smooth' });
+
+                    // Fail-safe check in case browser aborts smooth scroll animation
+                    setTimeout(() => {
+                        const currentTop = targetCard.getBoundingClientRect().top;
+                        if (Math.abs(currentTop - clearance) > 40) {
+                            window.scrollTo({ top: scrollDest, behavior: 'smooth' });
+                        }
+                    }, 350);
+                });
             } else {
+                ssSection.style.transition = '';
                 ssSection.classList.add('max-h-0', 'opacity-0');
                 ssSection.style.maxHeight = '0';
                 ssSection.classList.remove('opacity-100');
@@ -1121,7 +1167,7 @@ function updateSelfSufficient(showError = false) {
     benefitEl.textContent = fmt(solution.netBenefit);
     benefitEl.className = `font-bold text-base select-text ${solution.netBenefit >= 0 ? 'text-green-600' : 'text-red-600'}`;
 
-    const vsLabel = _ssAppState.lang === 'ar' ? 'مقابل' : 'vs';
+    const vsLabel = t(_ssAppState?.lang || 'en', 'vsLabel');
     document.getElementById('ss-effective-rate-display').textContent = solution.effectiveRate.toFixed(2) + '%  (' + vsLabel + ' ' + maxCd1Rate.toFixed(2) + '%)';
 
     // 5. Auto-fill gross loan into main calculator when user clicked SS Calculate button
@@ -1371,16 +1417,22 @@ function copySelfSufficientOffer() {
         }, 2000);
     };
 
+    const onFail = () => {
+        if (typeof showToast === 'function') {
+            showToast(t(lang, 'ssOfferCopyError'), 'error');
+        }
+    };
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
-            fallbackCopyText(text, onSuccess);
+            fallbackCopyText(text, onSuccess, onFail);
         });
     } else {
-        fallbackCopyText(text, onSuccess);
+        fallbackCopyText(text, onSuccess, onFail);
     }
 }
 
-function fallbackCopyText(text, callback) {
+function fallbackCopyText(text, successCb, failCb) {
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';
@@ -1389,11 +1441,14 @@ function fallbackCopyText(text, callback) {
     document.body.appendChild(ta);
     ta.focus();
     ta.select();
+    let ok = false;
     try {
-        document.execCommand('copy');
-        if (callback) callback();
+        ok = document.execCommand('copy');
+        if (ok && successCb) successCb();
+        else if (!ok && failCb) failCb();
     } catch (e) {
         console.error('Copy failed:', e);
+        if (failCb) failCb();
     }
     document.body.removeChild(ta);
 }
@@ -1753,4 +1808,12 @@ window.ssCalculateLoanEndDate = ssCalculateLoanEndDate;
 window.ssUpdateLoanEndDateDisplay = ssUpdateLoanEndDateDisplay;
 window.copySelfSufficientOffer = copySelfSufficientOffer;
 window.printSelfSufficientOffer = printSelfSufficientOffer;
+
+
+
+
+
+
+
+
 

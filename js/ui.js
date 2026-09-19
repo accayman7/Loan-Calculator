@@ -333,7 +333,12 @@ const txt = {
         featOfflineTitle: "100% Private & Offline",
         featOfflineDesc: "Runs completely offline on your device. Your financial numbers are never sent anywhere.",
         whatsNewGotIt: "Got it!",
-        viewWhatsNewBtn: "✨ What's New & App Guide"
+        viewWhatsNewBtn: "✨ What's New & App Guide",
+        vsLabel: "vs",
+        ssOfferCopied: "Client offer copied to clipboard!",
+        ssOfferCopyError: "Failed to copy client offer. Please copy manually.",
+        ssCopyOfferBtn: "Copy Client Offer",
+        ssPrintOfferBtn: "Print Client Offer"
     },
     ar: {
         appTitle: "حاسبة القروض",
@@ -666,7 +671,12 @@ const txt = {
         featOfflineTitle: "خصوصية تامة وبدون إنترنت",
         featOfflineDesc: "يعمل التطبيق محلياً بالكامل على جهازك دون اتصال؛ لا يتم إرسال أو مشاركة أي بيانات نهائياً.",
         whatsNewGotIt: "فهمت!",
-        viewWhatsNewBtn: "✨ ما الجديد ودليل التطبيق"
+        viewWhatsNewBtn: "✨ ما الجديد ودليل التطبيق",
+        vsLabel: "مقابل",
+        ssOfferCopied: "تم نسخ عرض العميل بنجاح!",
+        ssOfferCopyError: "فشل نسخ عرض العميل، يرجى النسخ يدوياً.",
+        ssCopyOfferBtn: "نسخ عرض العميل",
+        ssPrintOfferBtn: "طباعة عرض العميل"
     }
 };
 
@@ -1348,6 +1358,9 @@ function toggleModal(modal, forceOpen) {
     }
 
     if (isOpening) {
+        // Capture active trigger element for WCAG focus restoration on close
+        modal._triggerEl = document.activeElement;
+
         // Clean up any visible tutorial tooltip when opening a modal
         const existingTooltip = document.querySelector('.tutorial-tooltip');
         if (existingTooltip) {
@@ -1370,9 +1383,16 @@ function toggleModal(modal, forceOpen) {
             BackHandler.pop(modalId);
         }
 
+        const trigger = modal._triggerEl;
+        modal._triggerEl = null;
+
         modal._closeTimer = setTimeout(() => {
             modal._closeTimer = null;
             ScrollLock.disable();
+            // Restore keyboard focus to launcher element
+            if (trigger && typeof trigger.focus === 'function' && document.contains(trigger)) {
+                try { trigger.focus(); } catch (_) {}
+            }
         }, 300);
     }
 }
@@ -1671,11 +1691,12 @@ function renderHistoryList(history, lang) {
             ? (lang === 'ar' ? '/ربع' : '/qtr')
             : (lang === 'ar' ? '/شهر' : '/mo');
         const safeIndex = parseInt(index, 10);
+        const itemId = item.id || `legacy_${safeIndex}`;
         return `
-        <div class="history-card bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-[0.98]" data-index="${safeIndex}">
+        <div class="history-card bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-[0.98]" data-id="${escapeHtml(itemId)}" data-index="${safeIndex}">
             <div class="flex justify-between items-start mb-2">
                 <p class="text-xs text-gray-400">${escapeHtml(date)}</p>
-                <button class="delete-btn p-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors" data-index="${safeIndex}" title="${escapeHtml(t(lang, 'deleteBtn'))}">
+                <button class="delete-btn p-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors" data-id="${escapeHtml(itemId)}" data-index="${safeIndex}" title="${escapeHtml(t(lang, 'deleteBtn'))}">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 </button>
             </div>

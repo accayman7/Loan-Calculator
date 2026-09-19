@@ -132,6 +132,27 @@ function getNextQuarterlyDate(bookingDate) {
 /**
  * Count how many monthly CD interest payments fall on or before m1Date,
  * starting from firstAccrualDate and stepping one calendar month at a time.
+/**
+ * Helper to add N calendar months to a base date, clamping the day to the last valid
+ * day of the target month (e.g. Jan 31 + 1 month -> Feb 28/29, Mar 31 + 1 month -> Apr 30).
+ * Prevents native JS rollover bugs (e.g. Jan 31 -> Feb 31 -> Mar 3).
+ *
+ * @param {Date} baseDate
+ * @param {number} monthsToAdd
+ * @returns {Date}
+ */
+function addMonthsClamped(baseDate, monthsToAdd) {
+    if (!baseDate) return new Date();
+    const year = baseDate.getFullYear();
+    const targetMonth = baseDate.getMonth() + monthsToAdd;
+    const targetDay = baseDate.getDate();
+    // Day 0 of next month is the last day of targetMonth
+    const lastDayInTargetMonth = new Date(year, targetMonth + 1, 0).getDate();
+    return new Date(year, targetMonth, Math.min(targetDay, lastDayInTargetMonth));
+}
+
+/**
+ * Count how many CD interest payments fall on or before the first loan installment date (M1).
  * Each payment equals exactly one month of interest regardless of actual days.
  *
  * @param {Date} firstAccrualDate - First scheduled interest payment date
@@ -141,15 +162,14 @@ function getNextQuarterlyDate(bookingDate) {
 function countCdPaymentsBeforeM1(firstAccrualDate, m1Date) {
     if (!firstAccrualDate || !m1Date) return 0;
     let count = 0;
-    let d = new Date(firstAccrualDate);
     // Use numeric comparison to avoid timezone edge cases
     const m1Num = m1Date.getFullYear() * 10000 + (m1Date.getMonth() + 1) * 100 + m1Date.getDate();
     while (true) {
+        const d = addMonthsClamped(firstAccrualDate, count);
         const dNum = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
         if (dNum > m1Num) break;
         count++;
-        // Advance exactly one calendar month
-        d = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        if (count > 1200) break; // Guard against infinite loop
     }
     return count;
 }
@@ -554,15 +574,15 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
     let daysElapsed = 0;
 
     if (lastPaidDate) {
-        daysElapsed = days360(lastPaidDate, settlementDate);
+        daysElapsed = Math.max(0, days360(lastPaidDate, settlementDate));
         const daysInPeriod = days360(lastPaidDate, nextInstallmentDate);
         if (daysInPeriod > 0 && daysElapsed > 0) {
             accruedInterestInt = roundInt((nextInstallmentInterestInt / daysInPeriod) * daysElapsed);
         }
     } else {
         const dailyRate = annualRate / 100 / 360;
-        daysElapsed = days360(new Date(settlementDate.getFullYear(), settlementDate.getMonth(), 1), settlementDate);
-        accruedInterestInt = roundInt(principalBalanceInt * dailyRate * Math.max(0, daysElapsed));
+        daysElapsed = Math.max(0, days360(new Date(settlementDate.getFullYear(), settlementDate.getMonth(), 1), settlementDate));
+        accruedInterestInt = roundInt(principalBalanceInt * dailyRate * daysElapsed);
     }
 
     // Calculate settlement stamp (quarter's stamp based on HIGHEST principal in the quarter)

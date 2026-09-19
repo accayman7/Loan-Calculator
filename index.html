@@ -22,8 +22,8 @@
         content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
 
     <!-- XLSX is loaded lazily on first export for faster initial load -->
-    <!-- Chart.js is loaded lazily on first calculation for faster initial load -->
-    <script src="./tailwind.js"></script>
+    <!-- Pre-compiled static Tailwind CSS (48KB vs 407KB runtime) for faster startup & full offline PWA support -->
+    <link rel="stylesheet" href="./tailwind.css">
 
     <!-- App scripts - executes in order -->
     <!-- Core Scripts -->
@@ -56,25 +56,6 @@
         })();
     </script>
 
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-                    },
-                    colors: {
-                        gray: { 850: '#1f2937', 900: '#111827', 950: '#020617' }
-                    },
-                    boxShadow: {
-                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
-                    }
-                }
-            }
-        }
-    </script>
 
     <style>
         html {

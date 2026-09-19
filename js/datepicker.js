@@ -382,13 +382,15 @@
         // Clear content
         scrollEl.innerHTML = '';
 
+        const fragment = document.createDocumentFragment();
+
         // Add padding items for scroll centering
         const paddingCount = Math.floor(VISIBLE_ITEMS / 2);
 
         for (let i = 0; i < paddingCount; i++) {
             const padItem = document.createElement('div');
             padItem.className = 'date-picker-item padding';
-            scrollEl.appendChild(padItem);
+            fragment.appendChild(padItem);
         }
 
         // #4: Add items with proper ARIA semantics
@@ -408,14 +410,16 @@
                 itemEl.setAttribute('aria-disabled', 'true');
             }
 
-            scrollEl.appendChild(itemEl);
+            fragment.appendChild(itemEl);
         });
 
         for (let i = 0; i < paddingCount; i++) {
             const padItem = document.createElement('div');
             padItem.className = 'date-picker-item padding';
-            scrollEl.appendChild(padItem);
+            fragment.appendChild(padItem);
         }
+
+        scrollEl.appendChild(fragment);
 
         // #5: Measure actual item height & Align Scroll (Fix #1 & #2)
         // Ensure snap is enabled initially
@@ -1459,7 +1463,9 @@
 
             // Tab focus trap
             if (e.key === 'Tab') {
-                const focusables = Array.from(modalContent.querySelectorAll(focusableSelector));
+                const focusables = Array.from(modalContent.querySelectorAll(focusableSelector)).filter(el => {
+                    return el.offsetParent !== null && !el.disabled && getComputedStyle(el).visibility !== 'hidden';
+                });
                 if (focusables.length === 0) return;
 
                 const first = focusables[0];

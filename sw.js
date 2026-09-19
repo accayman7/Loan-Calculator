@@ -11,7 +11,7 @@ const PRE_CACHE = [
   './manifest.json',
   './icon.png',
   './chart.js',
-  './tailwind.js',
+  './tailwind.css',
   './js/version.js',
   './js/logic.js',
   './js/ui.js',
