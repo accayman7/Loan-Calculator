@@ -1320,18 +1320,17 @@
 
                 <div id="visuals-section"
                     class="bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-xl shadow-lg hover-card border border-gray-100 dark:border-gray-800 transition-colors relative">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4" data-lang-key="chartTitle">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100" data-lang-key="chartTitle">
                         Distribution</h3>
 
-                    <div class="min-h-[220px] sm:h-64 w-full relative flex items-center justify-center">
-                        <div id="loan-chart" class="w-full flex items-center justify-center"></div>
-                        <div id="chart-empty-state"
-                            class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-10">
-                            <span class="text-gray-400 font-medium text-sm" data-lang-key="enterDetailsToSeeChart">Enter details to see chart</span>
+                    <!-- Collapsible Chart Area: starts compact/collapsed when empty, expands smoothly on calculation -->
+                    <div id="chart-collapsible-wrapper">
+                        <div class="pt-4 pb-2 w-full flex items-center justify-center">
+                            <div id="loan-chart" class="w-full flex items-center justify-center"></div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
                         <button type="button" id="schedule-button"
                             class="flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled>
@@ -1455,7 +1454,7 @@
         <div
             class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
         </div>
-        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
+        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto scrollbar-hide transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
             style="padding-bottom: env(safe-area-inset-bottom);">
             <div class="modal-content py-6 text-left px-6">
                 <div class="relative flex items-center justify-center pb-3 mb-2">

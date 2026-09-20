@@ -766,12 +766,35 @@ function runAllTests() {
     testCalculateLoanQuarterly();
     testGenerateScheduleQuarterly();
 
+    // Western Numerals Rule: guarantee English/Latin 0-9 digits across all number formatting
+    testWesternNumberFormatting();
+
     console.log('\n=== Test Results ===');
 
     const summary = TestRunner.getSummary();
     console.log(`Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}`);
 
     return summary;
+}
+
+function testWesternNumberFormatting() {
+    console.log('\n--- Testing Western Numeral Formatting Rule ---');
+
+    const latinRegex = /^[0-9,.-]+$/;
+    const arabicIndicRegex = /[٠-٩]/;
+
+    const testValues = [0, 100, 1000, 1000000, 393550.25, 987654321.09, -5000.5];
+
+    testValues.forEach(val => {
+        const formatted = fmt(val);
+        TestRunner.assertTrue(latinRegex.test(formatted), `fmt(${val}) output "${formatted}" contains only Latin digits and punctuation`);
+        TestRunner.assertFalse(arabicIndicRegex.test(formatted), `fmt(${val}) output "${formatted}" does NOT contain Arabic-Indic numerals`);
+    });
+
+    // Formatting with Egyptian Arabic locale with -u-nu-latn tag must yield Latin digits
+    const pAmt = new Intl.NumberFormat('ar-EG-u-nu-latn').format(1000000);
+    TestRunner.assertFalse(arabicIndicRegex.test(pAmt), `ar-EG-u-nu-latn output "${pAmt}" must not contain Arabic-Indic numerals`);
+    TestRunner.assertTrue(/[0-9]/.test(pAmt), `ar-EG-u-nu-latn output "${pAmt}" contains Latin digits`);
 }
 
 // Export for browser use

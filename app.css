@@ -642,21 +642,9 @@ html[data-theme="dark"] #message-box.toast-success {
     transition-duration: 300ms;
 }
 
-/* GPU acceleration for sticky positioning */
+/* Sticky positioning optimization without 3D layer displacement */
 .sticky-optimized {
     will-change: scroll-position;
-    contain: layout style;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-}
-
-/* During view transitions, suppress containment & transforms that cause flash artifacts.
-   .view-transition-active is toggled by JS during startViewTransition. */
-.view-transition-active .sticky-optimized {
-    contain: none !important;
-    transform: none !important;
-    -webkit-transform: none !important;
-    will-change: auto !important;
 }
 
 .preload,
@@ -2227,18 +2215,32 @@ html[dir="rtl"] .tutorial-tooltip.from-radio.pulse {
     }
 }
 
+/* Animated Collapsible Distribution Card */
+#chart-collapsible-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+}
+
+#chart-collapsible-wrapper.expanded {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+#chart-collapsible-wrapper > div {
+    min-height: 0;
+    overflow: hidden;
+}
+
 .donut-slice {
-    transform-origin: 100px 100px;
-    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease, filter 0.2s ease;
+    pointer-events: none;
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, filter 0.25s ease;
 }
 
-.donut-slice.hovered {
-    transform: scale(1.05);
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
-}
-
-.donut-slice.dimmed {
-    opacity: 0.4;
+.donut-hit-area {
+    pointer-events: fill;
+    cursor: pointer;
 }
 
 .donut-legend-item {

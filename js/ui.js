@@ -734,26 +734,28 @@ const ScrollLock = (() => {
     function release() {
         lockCount = 0;
         document.body.classList.remove('scroll-lock');
-        document.body.style.paddingRight = '';
-        const nav = document.querySelector('nav');
-        if (nav) nav.style.paddingRight = '';
-        const updateBanner = document.getElementById('update-banner');
-        if (updateBanner) updateBanner.style.paddingRight = '';
-        const messageBox = document.getElementById('message-box');
-        if (messageBox) messageBox.style.paddingRight = '';
-        document.querySelectorAll('.modal').forEach(m => {
-            m.style.paddingRight = '';
+        ['paddingRight', 'paddingLeft'].forEach(prop => {
+            document.body.style[prop] = '';
+            const nav = document.querySelector('nav');
+            if (nav) nav.style[prop] = '';
+            const updateBanner = document.getElementById('update-banner');
+            if (updateBanner) updateBanner.style[prop] = '';
+            const messageBox = document.getElementById('message-box');
+            if (messageBox) messageBox.style[prop] = '';
+            const mobileBackdrop = document.getElementById('mobile-picker-backdrop');
+            if (mobileBackdrop) mobileBackdrop.style[prop] = '';
         });
-        const datePickerBackdrop = document.getElementById('date-picker-backdrop');
-        if (datePickerBackdrop) datePickerBackdrop.style.paddingRight = '';
     }
 
     function enable() {
         lockCount++;
         if (lockCount > 1 && document.body.classList.contains('scroll-lock')) return; // Already locked
 
-        // Use getBoundingClientRect().width on documentElement for exact high-DPI subpixel precision
-        const scrollbarWidth = window.innerWidth - document.documentElement.getBoundingClientRect().width;
+        const docEl = document.documentElement;
+        // In desktop browsers (Windows/Linux/macOS), vertical scrollbar is on the right edge
+        // regardless of page direction (LTR or RTL). Padding must always compensate on the right.
+        const scrollbarWidth = Math.max(0, window.innerWidth - docEl.clientWidth);
+
         if (scrollbarWidth > 0) {
             const pad = `${scrollbarWidth}px`;
             document.body.style.paddingRight = pad;
@@ -765,11 +767,6 @@ const ScrollLock = (() => {
             if (messageBox && !messageBox.classList.contains('hidden')) {
                 messageBox.style.paddingRight = pad;
             }
-            document.querySelectorAll('.modal').forEach(m => {
-                m.style.paddingRight = pad;
-            });
-            const datePickerBackdrop = document.getElementById('date-picker-backdrop');
-            if (datePickerBackdrop) datePickerBackdrop.style.paddingRight = pad;
         }
         document.body.classList.add('scroll-lock');
     }
@@ -1239,13 +1236,16 @@ function showToast(message, type = 'normal') {
     msgBox.classList.remove('hidden');
 
     // Inherit scrollbar padding if a modal is currently open
+    const isRTL = document.documentElement.dir === 'rtl' || document.documentElement.getAttribute('dir') === 'rtl';
+    const paddingProp = isRTL ? 'paddingLeft' : 'paddingRight';
     if (document.body.classList.contains('scroll-lock')) {
-        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
         if (scrollbarWidth > 0) {
-            msgBox.style.paddingRight = `${scrollbarWidth}px`;
+            msgBox.style[paddingProp] = `${scrollbarWidth}px`;
         }
     } else {
         msgBox.style.paddingRight = '';
+        msgBox.style.paddingLeft = '';
     }
 
     void msgBox.offsetWidth; // Force reflow
@@ -1453,7 +1453,7 @@ function _polarToCartesian(cx, cy, r, angleInRadians) {
     };
 }
 
-function _describeDonutSegment(cx, cy, rInner, rOuter, startAngle, endAngle) {
+function _describeDonutSegment(cx, cy, rInner, rOuter, startAngle, endAngle, gapWidth = 0) {
     const sweep = endAngle - startAngle;
     if (isNaN(sweep) || sweep <= 0.0001) return '';
     if (sweep >= 2 * Math.PI - 0.001) {
@@ -1466,17 +1466,48 @@ function _describeDonutSegment(cx, cy, rInner, rOuter, startAngle, endAngle) {
         return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${rOuter} ${rOuter} 0 1 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} A ${rOuter} ${rOuter} 0 1 1 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} M ${p3.x.toFixed(2)} ${p3.y.toFixed(2)} A ${rInner} ${rInner} 0 1 0 ${p4.x.toFixed(2)} ${p4.y.toFixed(2)} A ${rInner} ${rInner} 0 1 0 ${p3.x.toFixed(2)} ${p3.y.toFixed(2)} Z`;
     }
 
-    const p1 = _polarToCartesian(cx, cy, rOuter, startAngle);
-    const p2 = _polarToCartesian(cx, cy, rOuter, endAngle);
-    const p3 = _polarToCartesian(cx, cy, rInner, endAngle);
-    const p4 = _polarToCartesian(cx, cy, rInner, startAngle);
-    const largeArc = sweep > Math.PI ? 1 : 0;
+    if (!gapWidth || gapWidth <= 0) {
+        const p1 = _polarToCartesian(cx, cy, rOuter, startAngle);
+        const p2 = _polarToCartesian(cx, cy, rOuter, endAngle);
+        const p3 = _polarToCartesian(cx, cy, rInner, endAngle);
+        const p4 = _polarToCartesian(cx, cy, rInner, startAngle);
+        const largeArc = sweep > Math.PI ? 1 : 0;
+
+        return [
+            `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`,
+            `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`,
+            `L ${p3.x.toFixed(2)} ${p3.y.toFixed(2)}`,
+            `A ${rInner} ${rInner} 0 ${largeArc} 0 ${p4.x.toFixed(2)} ${p4.y.toFixed(2)}`,
+            'Z'
+        ].join(' ');
+    }
+
+    // Parallel cut geometry:
+    // Straight cut lines parallel to the radial partition ray at uniform perpendicular offset w = gapWidth / 2.
+    // Facing edges of adjacent slices are separated by exact constant distance 2 * w = gapWidth across the entire ring.
+    const maxW = rInner * Math.sin(sweep * 0.25);
+    const w = Math.min(gapWidth / 2, Math.max(0, maxW));
+
+    const a1_out = startAngle + Math.asin(w / rOuter);
+    const a1_in  = startAngle + Math.asin(w / rInner);
+    const a2_out = endAngle - Math.asin(w / rOuter);
+    const a2_in  = endAngle - Math.asin(w / rInner);
+
+    if (a2_out <= a1_out || a2_in <= a1_in) return '';
+
+    const p1_out = _polarToCartesian(cx, cy, rOuter, a1_out);
+    const p2_out = _polarToCartesian(cx, cy, rOuter, a2_out);
+    const p2_in  = _polarToCartesian(cx, cy, rInner, a2_in);
+    const p1_in  = _polarToCartesian(cx, cy, rInner, a1_in);
+
+    const sweepOut = a2_out - a1_out;
+    const sweepIn  = a2_in - a1_in;
 
     return [
-        `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`,
-        `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`,
-        `L ${p3.x.toFixed(2)} ${p3.y.toFixed(2)}`,
-        `A ${rInner} ${rInner} 0 ${largeArc} 0 ${p4.x.toFixed(2)} ${p4.y.toFixed(2)}`,
+        `M ${p1_out.x.toFixed(2)} ${p1_out.y.toFixed(2)}`,
+        `A ${rOuter} ${rOuter} 0 ${sweepOut > Math.PI ? 1 : 0} 1 ${p2_out.x.toFixed(2)} ${p2_out.y.toFixed(2)}`,
+        `L ${p2_in.x.toFixed(2)} ${p2_in.y.toFixed(2)}`,
+        `A ${rInner} ${rInner} 0 ${sweepIn > Math.PI ? 1 : 0} 0 ${p1_in.x.toFixed(2)} ${p1_in.y.toFixed(2)}`,
         'Z'
     ].join(' ');
 }
@@ -1513,16 +1544,13 @@ function drawChart(principal, interest, lang, animate = true) {
         return;
     }
 
-    const isDark = document.documentElement.classList.contains('dark');
-    const borderColor = isDark ? '#111827' : '#ffffff';
-
     const pFrac = total > 0 ? P / total : 1;
     const iFrac = total > 0 ? I / total : 0;
 
     const pPct = (pFrac * 100).toFixed(1) + '%';
     const iPct = (iFrac * 100).toFixed(1) + '%';
-    const pAmt = new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Math.round(P));
-    const iAmt = new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Math.round(I));
+    const pAmt = new Intl.NumberFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US').format(Math.round(P));
+    const iAmt = new Intl.NumberFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US').format(Math.round(I));
 
     const pLabel = t(lang, 'chartLabelPrincipal') || (lang === 'ar' ? 'أصل القرض' : 'Principal');
     const iLabel = t(lang, 'chartLabelInterest') || (lang === 'ar' ? 'الفوائد الإجمالية' : 'Interest');
@@ -1531,8 +1559,26 @@ function drawChart(principal, interest, lang, animate = true) {
     const iAngle = iFrac * 2 * Math.PI;
     const start = -Math.PI / 2;
 
-    const pPathFinal = _describeDonutSegment(100, 100, 56, 88, start, start + pAngle);
-    const iPathFinal = iFrac > 0 ? _describeDonutSegment(100, 100, 56, 88, start + pAngle, start + 2 * Math.PI) : '';
+    const gapW = (iFrac > 0.005 && pFrac > 0.005) ? 4.5 : 0; // Uniform 4.5px parallel cut gap
+    const startP = start;
+    const endP = start + pAngle;
+    const startI = start + pAngle;
+    const endI = start + 2 * Math.PI;
+
+    const pPathFinal = _describeDonutSegment(100, 100, 56, 88, startP, endP, gapW);
+    const iPathFinal = iFrac > 0 ? _describeDonutSegment(100, 100, 56, 88, startI, endI, gapW) : '';
+
+    // Static hit target geometry: envelopes resting and translated radial zones (54 to 93)
+    const pPathHit = _describeDonutSegment(100, 100, 54, 93, startP, endP, Math.max(2.5, gapW - 1));
+    const iPathHit = iFrac > 0 ? _describeDonutSegment(100, 100, 54, 93, startI, endI, Math.max(2.5, gapW - 1)) : '';
+
+    const midP = (startP + endP) / 2;
+    const midI = (startI + endI) / 2;
+    const explodeDist = 5.0;
+    const dxP = (explodeDist * Math.cos(midP)).toFixed(2);
+    const dyP = (explodeDist * Math.sin(midP)).toFixed(2);
+    const dxI = (explodeDist * Math.cos(midI)).toFixed(2);
+    const dyI = (explodeDist * Math.sin(midI)).toFixed(2);
 
     const initialPD = animate ? '' : pPathFinal;
     const initialID = animate ? '' : iPathFinal;
@@ -1545,14 +1591,23 @@ function drawChart(principal, interest, lang, animate = true) {
             <!-- Donut Visual -->
             <div class="donut-visual">
                 <svg viewBox="0 0 200 200" class="w-full h-full overflow-visible" role="img" aria-label="${pLabel}: ${pPct}, ${iLabel}: ${iPct}">
-                    <!-- Background Guide Track -->
-                    <circle cx="100" cy="100" r="72" stroke="currentColor" stroke-width="32" fill="none" class="text-gray-100 dark:text-gray-800/80" />
-                    <g>
-                        <path id="${uid}_p" d="${initialPD}" fill="#3b82f6" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
+                    <!-- Visual Slices (glides on hover, pointer-events-none so physical motion never interrupts hit-testing) -->
+                    <g id="${uid}_visual_group">
+                        <path id="${uid}_p" d="${initialPD}" fill="#3b82f6" class="donut-slice donut-slice-p pointer-events-none">
                             <title>${pLabel}: ${pPct} (${pAmt})</title>
                         </path>
                         ${iFrac > 0 ? `
-                        <path id="${uid}_i" d="${initialID}" fill="#ef4444" stroke="${borderColor}" stroke-width="2.5" class="donut-slice cursor-pointer">
+                        <path id="${uid}_i" d="${initialID}" fill="#ef4444" class="donut-slice donut-slice-i pointer-events-none">
+                            <title>${iLabel}: ${iPct} (${iAmt})</title>
+                        </path>` : ''}
+                    </g>
+                    <!-- Static Hit Targets (never translates, captures mouseenter/mouseleave stably without edge jitter) -->
+                    <g id="${uid}_hit_group">
+                        <path id="${uid}_hit_p" d="${pPathHit}" fill="transparent" class="donut-hit-area cursor-pointer" style="pointer-events: fill;">
+                            <title>${pLabel}: ${pPct} (${pAmt})</title>
+                        </path>
+                        ${iFrac > 0 ? `
+                        <path id="${uid}_hit_i" d="${iPathHit}" fill="transparent" class="donut-hit-area cursor-pointer" style="pointer-events: fill;">
                             <title>${iLabel}: ${iPct} (${iAmt})</title>
                         </path>` : ''}
                     </g>
@@ -1641,14 +1696,14 @@ function drawChart(principal, interest, lang, animate = true) {
             // Ease-out cubic: 1 - (1 - t)^3
             const progress = 1 - Math.pow(1 - rawProgress, 3);
 
-            const currPAngle = pAngle * progress;
-            const currIAngle = iAngle * progress;
+            const currEndP = startP + (endP - startP) * progress;
+            const currEndI = startI + (endI - startI) * progress;
 
             if (sp) {
-                sp.setAttribute('d', _describeDonutSegment(100, 100, 56, 88, start, start + currPAngle));
+                sp.setAttribute('d', _describeDonutSegment(100, 100, 56, 88, startP, currEndP, gapW));
             }
             if (si && iFrac > 0) {
-                si.setAttribute('d', _describeDonutSegment(100, 100, 56, 88, start + currPAngle, start + currPAngle + currIAngle));
+                si.setAttribute('d', _describeDonutSegment(100, 100, 56, 88, startI, currEndI, gapW));
             }
             if (cv) {
                 cv.textContent = (progress * pFrac * 100).toFixed(1) + '%';
@@ -1699,32 +1754,72 @@ function drawChart(principal, interest, lang, animate = true) {
 
     // Interactive Two-Way Hover Wiring
     function setHover(target) {
-        if (target === 'p') {
-            if (sp) sp.style.transform = 'scale(1.05)';
-            if (si) si.style.opacity = '0.4';
+        const isDark = document.documentElement.classList.contains('dark');
+        const elevationShadow = isDark ? 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))' : 'drop-shadow(0 3px 6px rgba(0,0,0,0.12))';
+
+        if (target === 'p' && sp) {
+            sp.classList.add('hovered');
+            sp.classList.remove('dimmed');
+            sp.style.transform = `translate(${dxP}px, ${dyP}px)`;
+            sp.style.filter = elevationShadow;
+            sp.style.opacity = '1';
+            if (si) {
+                si.classList.add('dimmed');
+                si.classList.remove('hovered');
+                si.style.transform = 'translate(0, 0)';
+                si.style.filter = 'none';
+                si.style.opacity = '0.35';
+            }
             if (cl) cl.textContent = pLabel;
             if (cv) cv.textContent = pPct;
-        } else if (target === 'i') {
-            if (si) si.style.transform = 'scale(1.05)';
-            if (sp) sp.style.opacity = '0.4';
+            lp?.classList.add('bg-blue-50', 'dark:bg-blue-900/20');
+            li?.classList.remove('bg-red-50', 'dark:bg-red-900/20');
+        } else if (target === 'i' && si) {
+            si.classList.add('hovered');
+            si.classList.remove('dimmed');
+            si.style.transform = `translate(${dxI}px, ${dyI}px)`;
+            si.style.filter = elevationShadow;
+            si.style.opacity = '1';
+            if (sp) {
+                sp.classList.add('dimmed');
+                sp.classList.remove('hovered');
+                sp.style.transform = 'translate(0, 0)';
+                sp.style.filter = 'none';
+                sp.style.opacity = '0.35';
+            }
             if (cl) cl.textContent = iLabel;
             if (cv) cv.textContent = iPct;
+            li?.classList.add('bg-red-50', 'dark:bg-red-900/20');
+            lp?.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
         }
     }
 
     function clearHover() {
         if (sp) {
-            sp.style.transform = 'scale(1)';
+            sp.classList.remove('hovered', 'dimmed');
+            sp.style.transform = '';
+            sp.style.filter = '';
             sp.style.opacity = '1';
         }
         if (si) {
-            si.style.transform = 'scale(1)';
+            si.classList.remove('hovered', 'dimmed');
+            si.style.transform = '';
+            si.style.filter = '';
             si.style.opacity = '1';
         }
         if (cl) cl.textContent = pLabel;
         if (cv) cv.textContent = pPct;
+        lp?.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+        li?.classList.remove('bg-red-50', 'dark:bg-red-900/20');
     }
 
+    const hitP = document.getElementById(`${uid}_hit_p`);
+    const hitI = document.getElementById(`${uid}_hit_i`);
+
+    if (hitP) {
+        hitP.onmouseenter = () => setHover('p');
+        hitP.onmouseleave = clearHover;
+    }
     if (sp) {
         sp.onmouseenter = () => setHover('p');
         sp.onmouseleave = clearHover;
@@ -1734,12 +1829,26 @@ function drawChart(principal, interest, lang, animate = true) {
         lp.onmouseleave = clearHover;
     }
 
-    if (si && li) {
+    if (hitI) {
+        hitI.onmouseenter = () => setHover('i');
+        hitI.onmouseleave = clearHover;
+    }
+    if (si) {
         si.onmouseenter = () => setHover('i');
         si.onmouseleave = clearHover;
+    }
+    if (li) {
         li.onmouseenter = () => setHover('i');
         li.onmouseleave = clearHover;
     }
+
+    // Safety fallbacks: guarantee hover state never sticks when cursor exits chart area
+    const chartWrapper = container.querySelector('.donut-chart-container');
+    if (chartWrapper) {
+        chartWrapper.addEventListener('mouseleave', clearHover);
+        chartWrapper.addEventListener('pointerleave', clearHover);
+    }
+    container.addEventListener('mouseleave', clearHover);
 
     chartInst = {
         destroy() {

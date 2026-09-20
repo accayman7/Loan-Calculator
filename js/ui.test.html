@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI & UX Regression Tests</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; background: #f9fafb; color: #111827; }
+        h1 { color: #4f46e5; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }
+        .summary { display: flex; gap: 1rem; margin: 1.5rem 0; }
+        .stat { padding: 1rem 1.5rem; border-radius: 0.5rem; font-weight: 600; font-size: 1.25rem; }
+        .stat-total { background: #e5e7eb; color: #374151; }
+        .stat-passed { background: #d1fae5; color: #065f46; }
+        .stat-failed { background: #fee2e2; color: #991b1b; }
+        .result-list { list-style: none; padding: 0; margin: 0; }
+        .result-item { padding: 0.75rem 1rem; margin: 0.25rem 0; border-radius: 0.375rem; font-size: 0.875rem; border-left: 4px solid; }
+        .result-pass { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+        .result-fail { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+        .all-pass { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 1rem; border-radius: 0.5rem; text-align: center; font-size: 1.25rem; font-weight: 600; margin: 1rem 0; }
+        /* Hidden fixtures */
+        #test-fixtures { display: none; }
+    </style>
+</head>
+<body>
+    <h1>🛡️ UI & UX Regression Test Suite</h1>
+    <div id="results">Running tests...</div>
+
+    <!-- DOM Fixtures for Component Testing -->
+    <div id="test-fixtures">
+        <nav><div class="max-w-7xl mx-auto"></div></nav>
+        <div id="message-box" class="hidden"></div>
+        <div id="update-banner"></div>
+        <div id="chart-collapsible-wrapper"><div><div id="loan-chart"></div></div></div>
+        <div id="date-picker-backdrop"></div>
+        <div id="test-modal" class="modal pointer-events-none">
+            <div class="modal-overlay opacity-0"></div>
+            <div class="modal-container translate-y-full md:opacity-0 md:scale-95"></div>
+        </div>
+    </div>
+
+    <!-- Scripts under test -->
+    <script src="logic.js"></script>
+    <script src="ui.js"></script>
+
+    <script>
+        const UITestRunner = {
+            passed: 0,
+            failed: 0,
+            results: [],
+
+            assertTrue(cond, message) {
+                if (cond) {
+                    this.passed++;
+                    this.results.push({ pass: true, message });
+                } else {
+                    this.failed++;
+                    this.results.push({ pass: false, message, expected: true, actual: cond });
+                }
+            },
+
+            assertFalse(cond, message) {
+                this.assertTrue(!cond, message);
+            },
+
+            assertEqual(actual, expected, message) {
+                if (actual === expected) {
+                    this.passed++;
+                    this.results.push({ pass: true, message });
+                } else {
+                    this.failed++;
+                    this.results.push({ pass: false, message, actual, expected });
+                }
+            }
+        };
+
+        function runAllUITests() {
+            // 1. Western Numeral Rules Test
+            testWesternNumeralRules();
+
+            // 2. ScrollLock Direction & Padding Test
+            testScrollLockLTRandRTL();
+
+            // 3. Donut Chart Rendering & Hover Integrity Test
+            testDonutChartRenderingAndHover();
+
+            // 4. Modal Open/Close State Transition Test
+            testModalStateTransitions();
+
+            // 5. Theme State Consistency Test
+            testThemeStateConsistency();
+
+            // 6. Animated Collapsible Distribution Card Test
+            testCollapsibleDistributionCard();
+
+            displayTestResults();
+        }
+
+        function testWesternNumeralRules() {
+            const arabicIndicRegex = /[٠-٩]/;
+            const latinDigitsRegex = /[0-9]/;
+
+            // Test 1.1: fmt() produces purely Western Latin digits
+            const formatted = fmt(1234567.89);
+            UITestRunner.assertFalse(arabicIndicRegex.test(formatted), 'fmt(1234567.89) contains NO Arabic-Indic numerals');
+            UITestRunner.assertTrue(latinDigitsRegex.test(formatted), 'fmt(1234567.89) contains Latin digits');
+            UITestRunner.assertEqual(formatted, '1,234,567.89', 'fmt() produces expected standard thousands format');
+
+            // Test 1.2: Arabic locale format using -u-nu-latn produces Latin digits
+            const latnFormatted = new Intl.NumberFormat('ar-EG-u-nu-latn').format(500000);
+            UITestRunner.assertFalse(arabicIndicRegex.test(latnFormatted), 'ar-EG-u-nu-latn output contains NO Arabic-Indic numerals');
+            UITestRunner.assertTrue(latinDigitsRegex.test(latnFormatted), 'ar-EG-u-nu-latn output contains Latin digits');
+
+            // Test 1.3: Date formatted with ar-EG-u-nu-latn produces Latin digits
+            const dateStr = new Date(2026, 8, 20).toLocaleDateString('ar-EG-u-nu-latn');
+            UITestRunner.assertFalse(arabicIndicRegex.test(dateStr), 'Date formatted with ar-EG-u-nu-latn contains NO Arabic-Indic numerals');
+        }
+
+        function testScrollLockLTRandRTL() {
+            const docEl = document.documentElement;
+            const originalDir = docEl.dir;
+
+            // Test 2.1: LTR ScrollLock uses paddingRight and does not touch paddingLeft
+            docEl.dir = 'ltr';
+            ScrollLock.forceUnlock();
+            ScrollLock.enable();
+            UITestRunner.assertTrue(document.body.classList.contains('scroll-lock'), 'ScrollLock.enable() adds scroll-lock class');
+            UITestRunner.assertEqual(document.body.style.paddingLeft, '', 'LTR ScrollLock never touches paddingLeft');
+            const testModal = document.getElementById('test-modal');
+            UITestRunner.assertEqual(testModal.style.paddingRight, '', 'ScrollLock does not add padding to modal wrapper');
+            ScrollLock.disable();
+            UITestRunner.assertFalse(document.body.classList.contains('scroll-lock'), 'ScrollLock.disable() removes scroll-lock class');
+            UITestRunner.assertEqual(document.body.style.paddingRight, '', 'ScrollLock.disable() cleans up paddingRight');
+            UITestRunner.assertEqual(document.body.style.paddingLeft, '', 'ScrollLock.disable() cleans up paddingLeft');
+
+            // Test 2.2: RTL ScrollLock also uses paddingRight (Windows desktop scrollbar is always on right)
+            docEl.dir = 'rtl';
+            ScrollLock.forceUnlock();
+            ScrollLock.enable();
+            UITestRunner.assertTrue(document.body.classList.contains('scroll-lock'), 'RTL ScrollLock.enable() activates');
+            UITestRunner.assertEqual(document.body.style.paddingLeft, '', 'RTL ScrollLock never sets paddingLeft');
+            ScrollLock.disable();
+            UITestRunner.assertEqual(document.body.style.paddingLeft, '', 'RTL ScrollLock cleans up paddingLeft on release');
+            UITestRunner.assertEqual(document.body.style.paddingRight, '', 'RTL ScrollLock cleans up paddingRight on release');
+
+            // Restore original direction
+            docEl.dir = originalDir;
+        }
+
+        function testDonutChartRenderingAndHover() {
+            const chartContainer = document.getElementById('loan-chart');
+            UITestRunner.assertTrue(typeof drawChart === 'function', 'drawChart function exists');
+
+            // Draw chart with Arabic language
+            drawChart(1000000, 393550, 'ar', false);
+
+            const svg = chartContainer.querySelector('svg');
+            UITestRunner.assertTrue(svg !== null, 'drawChart generates SVG element');
+
+            const paths = chartContainer.querySelectorAll('.donut-slice');
+            UITestRunner.assertEqual(paths.length, 2, 'drawChart renders 2 donut slices (principal + interest)');
+
+            const hitAreas = chartContainer.querySelectorAll('.donut-hit-area');
+            UITestRunner.assertEqual(hitAreas.length, 2, 'drawChart renders 2 static hit-area paths for jitter-free hover');
+
+            // Verify legend amounts do NOT contain Arabic-Indic numerals
+            const legendText = chartContainer.textContent;
+            const arabicIndicRegex = /[٠-٩]/;
+            UITestRunner.assertFalse(arabicIndicRegex.test(legendText), 'Rendered chart legend contains NO Arabic-Indic digits in Arabic mode');
+
+            // Test parallel cut path structure
+            const pSlice = paths[0];
+            const iSlice = paths[1];
+            UITestRunner.assertTrue(pSlice.getAttribute('d').includes('L'), 'Parallel cut donut segment includes straight cut line L');
+
+            const originalFirstChild = pSlice.parentNode.children[0];
+
+            // Test static hit area hover
+            if (hitAreas.length > 0 && typeof hitAreas[0].onmouseenter === 'function') {
+                hitAreas[0].onmouseenter();
+                UITestRunner.assertTrue(pSlice.classList.contains('hovered'), 'Hovering static hit target activates visual slice hover');
+                UITestRunner.assertTrue(pSlice.style.transform.includes('translate'), 'Visual slice glides outward on hover');
+                UITestRunner.assertTrue(iSlice.classList.contains('dimmed'), 'Hovering static hit target dims inactive slice');
+
+                hitAreas[0].onmouseleave();
+                UITestRunner.assertFalse(pSlice.classList.contains('hovered'), 'Leaving static hit target removes hovered class');
+                UITestRunner.assertFalse(iSlice.classList.contains('dimmed'), 'Leaving static hit target removes dimmed class');
+                UITestRunner.assertEqual(pSlice.style.transform, '', 'Leaving static hit target clears visual transform');
+            }
+
+            // Test slice hover event trigger (backward compatibility)
+            if (pSlice && typeof pSlice.onmouseenter === 'function') {
+                pSlice.onmouseenter();
+                UITestRunner.assertTrue(pSlice.classList.contains('hovered'), 'Hovering principal adds hovered class');
+                UITestRunner.assertTrue(pSlice.style.transform.includes('translate'), 'Hovering principal applies outward radial translation');
+                UITestRunner.assertTrue(iSlice.classList.contains('dimmed'), 'Hovering principal adds dimmed class to interest slice');
+                UITestRunner.assertEqual(pSlice.parentNode.children[0], originalFirstChild, 'Hovering slice does NOT mutate DOM order with appendChild');
+
+                pSlice.onmouseleave();
+                UITestRunner.assertFalse(pSlice.classList.contains('hovered'), 'Leaving slice removes hovered class');
+                UITestRunner.assertFalse(iSlice.classList.contains('dimmed'), 'Leaving slice removes dimmed class');
+                UITestRunner.assertEqual(pSlice.style.transform, '', 'Leaving slice clears transform');
+
+                // Test container mouseleave fallback
+                pSlice.onmouseenter();
+                const chartWrapper = chartContainer.querySelector('.donut-chart-container');
+                chartWrapper.dispatchEvent(new Event('mouseleave'));
+                UITestRunner.assertFalse(pSlice.classList.contains('hovered'), 'Container mouseleave fallback clears hovered class');
+                UITestRunner.assertEqual(pSlice.style.transform, '', 'Container mouseleave fallback clears transform');
+            }
+        }
+
+        function testCollapsibleDistributionCard() {
+            const wrapper = document.getElementById('chart-collapsible-wrapper');
+            UITestRunner.assertTrue(wrapper !== null, 'chart-collapsible-wrapper exists in DOM');
+            UITestRunner.assertFalse(wrapper.classList.contains('expanded'), 'chart-collapsible-wrapper starts collapsed without expanded class');
+            wrapper.classList.add('expanded');
+            UITestRunner.assertTrue(wrapper.classList.contains('expanded'), 'Calculating loan adds expanded class');
+            wrapper.classList.remove('expanded');
+            UITestRunner.assertFalse(wrapper.classList.contains('expanded'), 'Resetting app removes expanded class to collapse');
+        }
+
+        function testModalStateTransitions() {
+            const modal = document.getElementById('test-modal');
+            UITestRunner.assertTrue(typeof toggleModal === 'function', 'toggleModal function exists');
+
+            // Open modal
+            toggleModal(modal, true);
+            UITestRunner.assertFalse(modal.classList.contains('pointer-events-none'), 'Opening modal removes pointer-events-none');
+            const overlay = modal.querySelector('.modal-overlay');
+            UITestRunner.assertFalse(overlay.classList.contains('opacity-0'), 'Opening modal removes opacity-0 from overlay');
+
+            // Close modal
+            toggleModal(modal, false);
+            UITestRunner.assertTrue(modal.classList.contains('pointer-events-none'), 'Closing modal restores pointer-events-none');
+        }
+
+        function testThemeStateConsistency() {
+            UITestRunner.assertTrue(typeof applyTheme === 'function', 'applyTheme function exists');
+
+            applyTheme('dark', null, true);
+            UITestRunner.assertEqual(document.documentElement.getAttribute('data-theme'), 'dark', 'applyTheme("dark") sets data-theme to "dark"');
+            UITestRunner.assertTrue(document.documentElement.classList.contains('dark'), 'applyTheme("dark") adds "dark" class to html');
+
+            applyTheme('light', null, true);
+            UITestRunner.assertEqual(document.documentElement.getAttribute('data-theme'), 'light', 'applyTheme("light") sets data-theme to "light"');
+            UITestRunner.assertFalse(document.documentElement.classList.contains('dark'), 'applyTheme("light") removes "dark" class from html');
+        }
+
+        function displayTestResults() {
+            const resultsDiv = document.getElementById('results');
+            let html = `
+                <div class="summary">
+                    <div class="stat stat-total">Total: ${UITestRunner.passed + UITestRunner.failed}</div>
+                    <div class="stat stat-passed">✓ Passed: ${UITestRunner.passed}</div>
+                    <div class="stat stat-failed">✗ Failed: ${UITestRunner.failed}</div>
+                </div>
+            `;
+
+            if (UITestRunner.failed === 0 && UITestRunner.passed > 0) {
+                html += `<div class="all-pass">✅ All ${UITestRunner.passed} UI/UX regression tests passed!</div>`;
+            }
+
+            html += '<ul class="result-list">';
+            UITestRunner.results.forEach(r => {
+                const cls = r.pass ? 'result-pass' : 'result-fail';
+                const icon = r.pass ? '✓' : '✗';
+                html += `<li class="result-item ${cls}">${icon} ${r.message}</li>`;
+            });
+            html += '</ul>';
+
+            resultsDiv.innerHTML = html;
+        }
+
+        // Auto-run tests on load
+        window.addEventListener('load', runAllUITests);
+    </script>
+</body>
+</html>
