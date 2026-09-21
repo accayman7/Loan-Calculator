@@ -343,17 +343,17 @@
                     </button>
                     `}
                 </div>
-                <div class="col-span-4">
+                <div class="col-span-4 min-w-0">
                     <div class="input-group py-1 px-1">
                         <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-nominal" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
                     </div>
                 </div>
-                <div class="col-span-4">
+                <div class="col-span-4 min-w-0">
                     <div class="input-group py-1 px-1">
                         <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-redemption-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-redemption" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
                     </div>
                 </div>
-                <div class="col-span-2">
+                <div class="col-span-2 min-w-0">
                     <div class="input-group py-1 px-1">
                         <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-rate" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
                     </div>
@@ -625,7 +625,11 @@
             return;
         }
 
-        const netDiff = totalMonthlyCdReturn - monthlyInstallment;
+        let netDiff = totalMonthlyCdReturn - monthlyInstallment;
+        // Eliminate floating-point micro-precision artifacts (e.g. -0.0000000000001)
+        if (Math.abs(netDiff) < 0.005) {
+            netDiff = 0;
+        }
         const isSurplus = netDiff >= 0;
 
         const cdReturnEl = document.getElementById('cashflow-cd-return');
@@ -641,20 +645,20 @@
             netDiffEl.textContent = (isSurplus ? '+' : '') + displayFmt(netDiff);
             netDiffEl.className = isSurplus
                 ? 'font-black text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm select-text'
-                : 'font-black text-rose-700 dark:text-rose-400 text-xs sm:text-sm select-text';
+                : 'font-black text-red-600 dark:text-red-400 text-xs sm:text-sm select-text';
         }
 
         if (diffBoxEl) {
             diffBoxEl.className = isSurplus
                 ? 'bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]'
-                : 'bg-rose-50/80 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]';
+                : 'cashflow-diff-deficit border p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]';
         }
 
         if (badgeEl) {
             badgeEl.textContent = isSurplus ? t(AppState.lang, 'cashflowSurplusBadge') : t(AppState.lang, 'cashflowDeficitBadge');
             badgeEl.className = isSurplus
                 ? 'text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
-                : 'text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300';
+                : 'cashflow-badge-deficit text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap';
         }
 
         if (explainEl) {
@@ -679,7 +683,8 @@
 
     /**
      * Calculates the loan amount P (integer) at which CDs' periodic interest
-     * exactly covers the loan installment — i.e. the net cashflow is zero.
+     * exactly covers the loan installment — i.e. the net cashflow is zero or minimal surplus.
+     * Guaranteed to never produce a negative cashflow (e.g. -0.01).
      * Returns 0 if data is insufficient or calculation is infeasible.
      */
     function calculateSelfCoveringLoanAmount() {
@@ -706,7 +711,25 @@
             ? (mTarget * periodVal)
             : (mTarget * (Math.pow(1 + i, periodVal) - 1) / (i * Math.pow(1 + i, periodVal)));
 
-        return (!isFinite(pExact) || pExact <= 0) ? 0 : Math.round(pExact);
+        if (!isFinite(pExact) || pExact <= 0) return 0;
+
+        let pInt = Math.floor(pExact);
+
+        // Helper to compute rounded installment for candidate P
+        const getM = (pCandidate) => {
+            const rawM = (i === 0)
+                ? (pCandidate / periodVal)
+                : (pCandidate * i * Math.pow(1 + i, periodVal) / (Math.pow(1 + i, periodVal) - 1));
+            return typeof round2 === 'function' ? round2(rawM) : Math.round(rawM * 100) / 100;
+        };
+
+        // Guarantee that the resulting installment does not exceed mTarget
+        // so that net cashflow (totalMonthlyCdReturn - installment) is always >= 0 (never -0.01)
+        while (pInt > 0 && ((getM(pInt) / freqVal) - totalMonthlyCdReturn > 0.0049)) {
+            pInt--;
+        }
+
+        return pInt > 0 ? pInt : 0;
     }
 
     /**
@@ -1750,11 +1773,6 @@
             const schedCont = document.getElementById('schedule-container');
             if (schedCont.classList.contains('hidden')) {
                 if (typeof showScheduleUI === 'function') showScheduleUI(AppState.schedule, AppState.lang, true, isAdv);
-                // Update button to "Hide Schedule" state
-                const label = schedBtn.querySelector('[data-lang-key]');
-                if (label) label.textContent = t(AppState.lang, 'scheduleButtonHide');
-                schedBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700', 'text-white');
-                schedBtn.classList.add('bg-cyan-100', 'dark:bg-cyan-900/30', 'text-cyan-700', 'dark:text-cyan-300', 'border', 'border-cyan-300', 'dark:border-cyan-700', 'hover:bg-cyan-200', 'dark:hover:bg-cyan-900/50');
             } else {
                 if (typeof closeScheduleUI === 'function') closeScheduleUI();
             }
@@ -2357,7 +2375,12 @@
         }
         if (typeof closeScheduleUI === 'function') closeScheduleUI();
 
-        document.getElementById('schedule-button').disabled = true;
+        const schedBtn = document.getElementById('schedule-button');
+        if (schedBtn) {
+            schedBtn.classList.remove('schedule-btn-active');
+            schedBtn.classList.add('schedule-btn-inactive');
+            schedBtn.disabled = true;
+        }
         document.getElementById('save-button').disabled = true;
         document.getElementById('export-pdf-button').disabled = true;
         document.getElementById('export-xlsx-button').disabled = true;

@@ -733,6 +733,7 @@ const ScrollLock = (() => {
 
     function release() {
         lockCount = 0;
+        document.documentElement.classList.remove('scroll-lock');
         document.body.classList.remove('scroll-lock');
         ['paddingRight', 'paddingLeft'].forEach(prop => {
             document.body.style[prop] = '';
@@ -753,8 +754,10 @@ const ScrollLock = (() => {
 
         const docEl = document.documentElement;
         // In desktop browsers (Windows/Linux/macOS), vertical scrollbar is on the right edge
-        // regardless of page direction (LTR or RTL). Padding must always compensate on the right.
-        const scrollbarWidth = Math.max(0, window.innerWidth - docEl.clientWidth);
+        // regardless of page direction (LTR or RTL). On touch/mobile devices, overlay scrollbars
+        // are used and applying padding causes horizontal layout shift/scroll.
+        const isTouchOrMobile = window.innerWidth < 768 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+        const scrollbarWidth = isTouchOrMobile ? 0 : Math.max(0, window.innerWidth - docEl.clientWidth);
 
         if (scrollbarWidth > 0) {
             const pad = `${scrollbarWidth}px`;
@@ -768,6 +771,7 @@ const ScrollLock = (() => {
                 messageBox.style.paddingRight = pad;
             }
         }
+        docEl.classList.add('scroll-lock');
         document.body.classList.add('scroll-lock');
     }
 
@@ -2267,22 +2271,41 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
 
     if (autoOpen) {
         schedCont.classList.remove('hidden');
-        // Prepare for animation
+        // Initial state before animation
         schedCont.style.maxHeight = '0px';
-        schedCont.style.marginTop = '0px';
-        schedCont.style.borderWidth = '0px';
+        schedCont.style.opacity = '0';
+        schedCont.style.transform = 'translateY(-8px)';
+        schedCont.style.transition = 'max-height 0.35s ease-out, opacity 0.3s ease-out, transform 0.3s ease-out';
         void schedCont.offsetHeight; // Force reflow
 
-        // Animate to exact content height and restore margins/borders
-        schedCont.style.maxHeight = schedCont.scrollHeight + 'px';
-        schedCont.style.marginTop = '';
-        schedCont.style.borderWidth = '';
-        schedCont.classList.remove('opacity-0');
-        schedCont.classList.add('opacity-100');
+        // Animate to full content height
+        requestAnimationFrame(() => {
+            const targetHeight = Math.max(schedCont.scrollHeight, 350);
+            schedCont.style.maxHeight = (targetHeight + 80) + 'px';
+            schedCont.style.opacity = '1';
+            schedCont.style.transform = 'translateY(0)';
+            schedCont.classList.remove('opacity-0');
+            schedCont.classList.add('opacity-100');
+        });
         
         setTimeout(() => {
             schedCont.style.maxHeight = 'none'; // Allow dynamic resizing
-        }, 300);
+            schedCont.style.transition = ''; // Clean up inline transition
+        }, 420);
+
+        // Auto-scroll smoothly to schedule table
+        setTimeout(() => {
+            schedCont.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 120);
+
+        // Update button to "Hide Schedule" state using dedicated high-contrast classes
+        const schedBtn = document.getElementById('schedule-button');
+        if (schedBtn) {
+            const label = schedBtn.querySelector('[data-lang-key]');
+            if (label) label.textContent = t(language, 'scheduleButtonHide');
+            schedBtn.classList.remove('schedule-btn-inactive', 'bg-cyan-600', 'hover:bg-cyan-700', 'text-white');
+            schedBtn.classList.add('schedule-btn-active');
+        }
 
         // Register with BackHandler for Android back button support
         if (typeof BackHandler !== 'undefined') {
@@ -2295,28 +2318,44 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
 
 function closeScheduleUI() {
     const schedCont = document.getElementById('schedule-container');
-    if (!schedCont) return;
+    if (!schedCont || schedCont.classList.contains('hidden')) return;
 
     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
         document.activeElement.blur();
     }
 
-    // Animate smoothly to 0
+    // Set starting height for smooth collapse
     schedCont.style.maxHeight = schedCont.scrollHeight + 'px';
+    schedCont.style.opacity = '1';
+    schedCont.style.transform = 'translateY(0)';
+    schedCont.style.transition = 'max-height 0.3s ease-out, opacity 0.25s ease-out, transform 0.25s ease-out';
     void schedCont.offsetHeight; // Force reflow
 
-    schedCont.style.maxHeight = '0px';
-    schedCont.style.marginTop = '0px';
-    schedCont.style.borderWidth = '0px';
-    schedCont.classList.remove('opacity-100');
-    schedCont.classList.add('opacity-0');
-    
-    setTimeout(() => { 
+    // Clean up after animation completes
+    const onEnd = () => {
+        schedCont.removeEventListener('transitionend', onEnd);
         schedCont.classList.add('hidden');
-        schedCont.style.maxHeight = ''; // Clean up inline styles
-        schedCont.style.marginTop = '';
-        schedCont.style.borderWidth = '';
-    }, 300);
+        schedCont.style.maxHeight = '';
+        schedCont.style.opacity = '';
+        schedCont.style.transform = '';
+        schedCont.style.transition = '';
+    };
+    schedCont.addEventListener('transitionend', onEnd, { once: true });
+
+    // Fallback timeout in case transitionend doesn't fire
+    setTimeout(() => {
+        if (!schedCont.classList.contains('hidden')) {
+            onEnd();
+        }
+    }, 400);
+
+    requestAnimationFrame(() => {
+        schedCont.style.maxHeight = '0px';
+        schedCont.style.opacity = '0';
+        schedCont.style.transform = 'translateY(-8px)';
+        schedCont.classList.remove('opacity-100');
+        schedCont.classList.add('opacity-0');
+    });
 
     // Reset schedule button to "Show Schedule" state
     const schedBtn = document.getElementById('schedule-button');
@@ -2324,8 +2363,8 @@ function closeScheduleUI() {
         const lang = document.documentElement.lang || 'en';
         const label = schedBtn.querySelector('[data-lang-key]');
         if (label) label.textContent = t(lang, 'scheduleButton');
-        schedBtn.classList.remove('bg-cyan-100', 'dark:bg-cyan-900/30', 'text-cyan-700', 'dark:text-cyan-300', 'border', 'border-cyan-300', 'dark:border-cyan-700', 'hover:bg-cyan-200', 'dark:hover:bg-cyan-900/50');
-        schedBtn.classList.add('bg-cyan-600', 'hover:bg-cyan-700', 'text-white');
+        schedBtn.classList.remove('schedule-btn-active', 'bg-cyan-100', 'dark:bg-cyan-900/30', 'text-cyan-700', 'dark:text-cyan-300', 'border', 'border-cyan-300', 'dark:border-cyan-700', 'hover:bg-cyan-200', 'dark:hover:bg-cyan-900/50');
+        schedBtn.classList.add('schedule-btn-inactive');
     }
 
     // Unregister from BackHandler
