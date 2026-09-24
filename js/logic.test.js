@@ -205,6 +205,96 @@ function testQuarterEndInRange() {
     TestRunner.assertFalse(quarterEndInRange(new Date(2026, 2, 31), new Date(2026, 2, 31)), 'Mar 31 to Mar 31 exclusive start returns false');
 }
 
+function testCalculatePeriodStampDutyInt() {
+    console.log('Testing calculatePeriodStampDutyInt()...');
+
+    // 1. stampRate <= 0
+    let resZeroRate = calculatePeriodStampDutyInt({
+        currentDate: new Date(2026, 3, 5),
+        prevDate: new Date(2026, 2, 5),
+        openingBalInt: 10000000,
+        stampRate: 0,
+        quarterHighestPrincipalInt: {},
+        processedQuarters: new Set()
+    });
+    TestRunner.assertEqual(resZeroRate.stampChargeInt, 0, 'Zero stamp rate returns 0 charge');
+    TestRunner.assertFalse(resZeroRate.hasStamp, 'Zero stamp rate hasStamp is false');
+
+    // 2. Track highest principal in current quarter
+    let highestMap = {};
+    calculatePeriodStampDutyInt({
+        currentDate: new Date(2026, 0, 15), // Q1
+        prevDate: new Date(2026, 0, 1),
+        openingBalInt: 5000000,
+        stampRate: 0.2,
+        quarterHighestPrincipalInt: highestMap,
+        processedQuarters: new Set()
+    });
+    TestRunner.assertEqual(highestMap['2026-Q1'], 5000000, 'Sets highest principal for 2026-Q1');
+
+    calculatePeriodStampDutyInt({
+        currentDate: new Date(2026, 1, 15), // Q1
+        prevDate: new Date(2026, 0, 15),
+        openingBalInt: 4000000, // lower balance
+        stampRate: 0.2,
+        quarterHighestPrincipalInt: highestMap,
+        processedQuarters: new Set()
+    });
+    TestRunner.assertEqual(highestMap['2026-Q1'], 5000000, 'Retains higher principal when lower balance is passed');
+
+    calculatePeriodStampDutyInt({
+        currentDate: new Date(2026, 2, 15), // Q1
+        prevDate: new Date(2026, 1, 15),
+        openingBalInt: 6000000, // higher balance
+        stampRate: 0.2,
+        quarterHighestPrincipalInt: highestMap,
+        processedQuarters: new Set()
+    });
+    TestRunner.assertEqual(highestMap['2026-Q1'], 6000000, 'Updates highest principal when higher balance is passed');
+
+    // 3. Quarter end crossed: prevDate in Q1 (March 15), currentDate in Q2 (April 15).
+    // Quarter end for prevDate (March 31) <= April 15.
+    let processed = new Set();
+    let qMap = { '2026-Q1': 10000000 }; // 100,000.00 currency = 10,000,000 piastres
+    let resCrossed = calculatePeriodStampDutyInt({
+        currentDate: new Date(2026, 3, 15), // Apr 15, 2026
+        prevDate: new Date(2026, 2, 15),    // Mar 15, 2026
+        openingBalInt: 9000000,
+        stampRate: 0.2, // 0.2% per year / 4 = 0.05% per quarter -> 10,000,000 * 0.002 / 4 = 5,000 piastres
+        quarterHighestPrincipalInt: qMap,
+        processedQuarters: processed
+    });
+    TestRunner.assertTrue(resCrossed.hasStamp, 'hasStamp is true when quarter-end crossed');
+    TestRunner.assertEqual(resCrossed.stampChargeInt, 5000, 'Calculates correct stamp charge in piastres');
+    TestRunner.assertTrue(processed.has('2026-Q1'), 'Adds prevQuarter to processedQuarters');
+
+    // 4. Quarter already processed
+    let resAlreadyProcessed = calculatePeriodStampDutyInt({
+        currentDate: new Date(2026, 4, 15), // May 15, 2026
+        prevDate: new Date(2026, 2, 20),    // Mar 20, 2026
+        openingBalInt: 8000000,
+        stampRate: 0.2,
+        quarterHighestPrincipalInt: qMap,
+        processedQuarters: processed // already has '2026-Q1'
+    });
+    TestRunner.assertFalse(resAlreadyProcessed.hasStamp, 'hasStamp is false when quarter already processed');
+    TestRunner.assertEqual(resAlreadyProcessed.stampChargeInt, 0, 'Charge is 0 when quarter already processed');
+
+    // 5. Fallback to openingBalInt when quarterHighestPrincipalInt[prevQuarter] is undefined
+    let emptyQMap = {};
+    let emptyProcessed = new Set();
+    let resFallback = calculatePeriodStampDutyInt({
+        currentDate: new Date(2026, 3, 15),
+        prevDate: new Date(2026, 2, 15),
+        openingBalInt: 8000000, // 80,000 currency -> 8,000,000 * 0.002 / 4 = 4,000
+        stampRate: 0.2,
+        quarterHighestPrincipalInt: emptyQMap,
+        processedQuarters: emptyProcessed
+    });
+    TestRunner.assertTrue(resFallback.hasStamp, 'hasStamp is true for fallback');
+    TestRunner.assertEqual(resFallback.stampChargeInt, 4000, 'Falls back to openingBalInt when highest principal map is empty');
+}
+
 function testDays360() {
     console.log('Testing days360()...');
 
@@ -732,6 +822,7 @@ function runAllTests() {
     testGetQuarterEndDate();
     testCountCdPaymentsBeforeM1();
     testQuarterEndInRange();
+    testCalculatePeriodStampDutyInt();
 
     // Date tests
     testDays360();
