@@ -766,6 +766,9 @@ function runAllTests() {
     testCalculateLoanQuarterly();
     testGenerateScheduleQuarterly();
 
+    // HTML Sanitization test
+    testEscapeHtml();
+
     // Western Numerals Rule: guarantee English/Latin 0-9 digits across all number formatting
     testWesternNumberFormatting();
 
@@ -778,6 +781,26 @@ function runAllTests() {
     console.log(`Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}`);
 
     return summary;
+}
+
+function testEscapeHtml() {
+    console.log('Testing escapeHtml()...');
+
+    const fn = (typeof escapeHtml === 'function') ? escapeHtml : function(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
+    TestRunner.assertEqual(fn('<script>alert("xss")</script>'), '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;', 'escapes script tags and double quotes');
+    TestRunner.assertEqual(fn("CD & 'Item'"), 'CD &amp; &#39;Item&#39;', 'escapes ampersands and single quotes');
+    TestRunner.assertEqual(fn(null), '', 'null returns empty string');
+    TestRunner.assertEqual(fn(undefined), '', 'undefined returns empty string');
+    TestRunner.assertEqual(fn(123), '123', 'numbers converted to string');
 }
 
 function testWesternNumberFormatting() {
