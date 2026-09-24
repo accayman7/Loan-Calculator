@@ -942,10 +942,10 @@ function showUpdateBanner() {
             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
-            <span class="text-sm font-medium">${message}</span>
+            <span class="text-sm font-medium">${escapeHtml(message)}</span>
         </div>
         <button id="update-refresh-btn" class="px-3 py-1 bg-white text-indigo-600 text-sm font-bold rounded hover:bg-indigo-50 transition-colors flex-shrink-0">
-            ${btnText}
+            ${escapeHtml(btnText)}
         </button>
     `;
     document.body.appendChild(banner);
