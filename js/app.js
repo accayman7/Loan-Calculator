@@ -102,6 +102,18 @@
     const announceCollateralStatus = (msg) => announceLiveStatus('collateral-live-region', msg);
     const announceExportStatus = (msg) => announceLiveStatus('export-live-region', msg);
 
+    // Safe HTML escape helper
+    const safeEscapeHtml = (str) => {
+        if (typeof escapeHtml === 'function') return escapeHtml(str);
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
     // Use global fmt from logic.js if available, else fallback
     const displayFmt = (n) => (typeof fmt === 'function') ? fmt(n) : n.toFixed(2);
 
@@ -327,8 +339,8 @@
             
             const colIndex = index + 1;
             const badgePrefix = t(AppState.lang, 'collateralBadge') || 'CD';
-            const colLabel = `${badgePrefix} ${colIndex}`;
-            const colItemName = `${t(AppState.lang, 'collateralItemLabel')} ${colIndex}`;
+            const colLabel = safeEscapeHtml(`${badgePrefix} ${colIndex}`);
+            const colItemName = safeEscapeHtml(`${t(AppState.lang, 'collateralItemLabel')} ${colIndex}`);
             
             row.innerHTML = `
                 <div class="col-span-2 flex items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] font-bold text-gray-600 dark:text-gray-300">
