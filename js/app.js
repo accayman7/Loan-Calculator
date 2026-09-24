@@ -1993,11 +1993,20 @@
         return isValid;
     }
 
+    let themeOptionsCache = null;
+    function getThemeOptionsCache() {
+        if (!themeOptionsCache) {
+            themeOptionsCache = Array.from(document.querySelectorAll('.theme-option')).map(btn => ({
+                btn,
+                val: btn.dataset.themeValue,
+                check: btn.querySelector('.check-icon')
+            }));
+        }
+        return themeOptionsCache;
+    }
+
     function updateThemeMenuState(activeTheme) {
-        const themeOptions = document.querySelectorAll('.theme-option');
-        themeOptions.forEach(btn => {
-            const val = btn.dataset.themeValue;
-            const check = btn.querySelector('.check-icon');
+        getThemeOptionsCache().forEach(({ btn, val, check }) => {
             const isSelected = val === activeTheme;
             btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
             btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
@@ -2011,11 +2020,20 @@
         });
     }
 
+    let langOptionsCache = null;
+    function getLangOptionsCache() {
+        if (!langOptionsCache) {
+            langOptionsCache = Array.from(document.querySelectorAll('.lang-option')).map(btn => ({
+                btn,
+                val: btn.dataset.langValue,
+                check: btn.querySelector('.check-icon')
+            }));
+        }
+        return langOptionsCache;
+    }
+
     function updateLangMenuState(activeLang) {
-        const langOptions = document.querySelectorAll('.lang-option');
-        langOptions.forEach(btn => {
-            const val = btn.dataset.langValue;
-            const check = btn.querySelector('.check-icon');
+        getLangOptionsCache().forEach(({ btn, val, check }) => {
             const isSelected = val === activeLang;
             btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
             btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
