@@ -55,22 +55,25 @@ function dateIsWithinRange(iso) {
 }
 
 /**
- * Get segment info by cursor position
- * Segments: DD(0-2), /(2), MM(3-5), /(5), YYYY(6-10)
+ * Helper to parse slash positions from date string
  */
+function dateFindSlashes(value) {
+    if (!value) return null;
+    const slash1 = value.indexOf('/');
+    if (slash1 === -1) return null;
+    const slash2 = value.lastIndexOf('/');
+    return { slash1, slash2 };
+}
+
 /**
  * Get segment info by cursor position
  * Dynamically calculates ranges based on slash positions to handle variable length (Arabic vs Digits)
  */
 function dateGetSegmentByCursor(pos, value) {
-    if (!value) return { start: 0, end: 0, type: 'day', maxLen: 2 };
+    const slashes = dateFindSlashes(value);
+    if (!slashes) return { start: !value ? 0 : 1, end: !value ? 0 : 3, type: 'day', maxLen: 2 };
 
-    // Find slash positions
-    const slash1 = value.indexOf('/');
-    const slash2 = value.lastIndexOf('/');
-
-    // Default to strict index if slashes missing (fallback)
-    if (slash1 === -1) return { start: 1, end: 3, type: 'day', maxLen: 2 };
+    const { slash1, slash2 } = slashes;
 
     // Determine segment based on position relative to slashes
     // Day: [LRM...DAY...LRM] /
@@ -89,12 +92,10 @@ function dateGetSegmentByCursor(pos, value) {
  * Get segment by position index (0=day, 1=month, 2=year)
  */
 function dateGetSegmentByIndex(index, value) {
-    if (!value) return { start: 0, end: 0, type: 'day', maxLen: 2 };
+    const slashes = dateFindSlashes(value);
+    if (!slashes) return { start: !value ? 0 : 1, end: !value ? 0 : 3, type: 'day', maxLen: 2 };
 
-    const slash1 = value.indexOf('/');
-    const slash2 = value.lastIndexOf('/');
-
-    if (slash1 === -1) return { start: 1, end: 3, type: 'day', maxLen: 2 }; // Fallback
+    const { slash1, slash2 } = slashes;
 
     if (index === 0) return { start: 1, end: slash1 - 1, type: 'day', maxLen: 2 };
     if (index === 1) return { start: slash1 + 2, end: slash2 - 1, type: 'month', maxLen: 2 };
