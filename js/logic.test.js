@@ -336,6 +336,33 @@ function testCalculateLoanRate() {
     TestRunner.assertApproxEqual(result.R, 10, 0.1, 'Rate ≈ 10%');
 }
 
+function testSolveRateBisection() {
+    console.log('Testing solveRateBisection()...');
+
+    // 1. Standard loan scenario: 100,000 principal, 12 months, 8,791.59 monthly payment (~10% annual rate)
+    const annualRateStandard = solveRateBisection(100000, 12, 8791.59);
+    TestRunner.assertApproxEqual(annualRateStandard, 10, 0.1, 'solveRateBisection standard rate ≈ 10%');
+
+    // Verify mathematical present value formula with solved rate: P ≈ (M / i) * (1 - (1 + i)^-N)
+    const monthlyRateStd = (annualRateStandard / 100) / 12;
+    const calcPStd = (8791.59 / monthlyRateStd) * (1 - Math.pow(1 + monthlyRateStd, -12));
+    TestRunner.assertApproxEqual(calcPStd, 100000, 1.0, 'solveRateBisection standard rate yields matching principal');
+
+    // 2. High interest rate scenario: 10,000 principal, 12 months, 2,000 monthly payment (Triggers high-bound expansion loop where high > 1.0)
+    const annualRateHigh = solveRateBisection(10000, 12, 2000);
+    TestRunner.assertTrue(annualRateHigh > 100, 'solveRateBisection high rate scenario calculates rate > 100%');
+    const monthlyRateHigh = (annualRateHigh / 100) / 12;
+    const calcPHigh = (2000 / monthlyRateHigh) * (1 - Math.pow(1 + monthlyRateHigh, -12));
+    TestRunner.assertApproxEqual(calcPHigh, 10000, 1.0, 'solveRateBisection high rate yields matching principal');
+
+    // 3. Low interest rate / long duration scenario: 100,000 principal, 60 months, 1,800 monthly payment
+    const annualRateLow = solveRateBisection(100000, 60, 1800);
+    TestRunner.assertTrue(annualRateLow > 0 && annualRateLow < 5, 'solveRateBisection low rate scenario calculates low positive rate');
+    const monthlyRateLow = (annualRateLow / 100) / 12;
+    const calcPLow = (1800 / monthlyRateLow) * (1 - Math.pow(1 + monthlyRateLow, -60));
+    TestRunner.assertApproxEqual(calcPLow, 100000, 1.0, 'solveRateBisection low rate yields matching principal');
+}
+
 function testCalculateLoanInvalid() {
     console.log('Testing calculateLoan() - invalid inputs...');
 
@@ -911,6 +938,7 @@ function runAllTests() {
     testCalculateLoanAmount();
     testCalculateLoanPeriod();
     testCalculateLoanRate();
+    testSolveRateBisection();
     testCalculateLoanInvalid();
 
     // Schedule tests
