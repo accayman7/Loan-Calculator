@@ -2434,7 +2434,7 @@
                         // Immediately delete from storage using unique ID (or fallback to index)
                         let history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
                         if (targetId) {
-                            history = history.filter(it => (it.id || `legacy_${history.indexOf(it)}`) !== targetId);
+                            history = history.filter((it, idx) => (it.id || `legacy_${idx}`) !== targetId);
                         } else if (!isNaN(targetIndex)) {
                             history.splice(targetIndex, 1);
                         }
