@@ -2129,7 +2129,7 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
         existingStampHeader.textContent = t(language, 'colStamp');
     }
 
-    let htmlContent = "";
+    const rows = [];
     const len = scheduleData.length;
 
     for (let i = 0; i < len; i++) {
@@ -2163,7 +2163,7 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
             }
         }
 
-        htmlContent += `
+        rows.push(`
         <tr class="${rowClass}" ${dataAttr}>
             <td class="px-0.5 sm:px-1 py-2 text-center text-gray-500 dark:text-gray-400 whitespace-nowrap">${r.m}</td>
             <td class="px-0.5 sm:px-1 py-2 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap" dir="ltr">${dateStr}</td>
@@ -2172,10 +2172,10 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
             <td class="px-0.5 sm:px-1 py-2 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap">${fmt(r.int)}</td>
             <td class="px-0.5 sm:px-1 py-2 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap">${fmt(r.prin)}</td>
             <td class="px-0.5 sm:px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">${fmt(r.rem)}</td>
-        </tr>`;
+        </tr>`);
     }
 
-    schedBody.innerHTML = htmlContent;
+    schedBody.innerHTML = rows.join('');
 
     // Add click handler for stamp rows (mobile tooltip - only when stamp column is hidden)
     schedBody.querySelectorAll('tr[data-stamp]').forEach(row => {
