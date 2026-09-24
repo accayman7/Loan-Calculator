@@ -1,7 +1,7 @@
 /**
  * logic.test.js - Unit Tests for logic.js
  * Zero-dependency test runner for financial calculations
- * 
+ *
  * Run: Open logic.test.html in a browser
  */
 
@@ -662,10 +662,6 @@ function testGetNextQuarterlyDate() {
     TestRunner.assertEqual(d6.getFullYear(), 2027, 'Dec booking → year 2027');
 }
 
-// ========================================
-// RUN ALL TESTS
-// ========================================
-
 function testSolveTdLoanMultiCollateral() {
     console.log('Testing solveTdLoan() with Multi-Collateral arrays...');
 
@@ -716,6 +712,35 @@ function testSolveTdLoanMultiCollateral() {
     TestRunner.assertEqual(resMixed.maxAllowedLoan, 1250000, 'Combined max loan is 800k + 450k = 1,250,000');
 }
 
+function testDatePadSegment() {
+    console.log('Testing datePadSegment()...');
+
+    // 1. Single digit to maxLen 2 (standard day/month padding)
+    TestRunner.assertEqual(datePadSegment('5', 2), '05', 'datePadSegment("5", 2) pads single digit to "05"');
+    TestRunner.assertEqual(datePadSegment('1', 2), '01', 'datePadSegment("1", 2) pads single digit to "01"');
+    TestRunner.assertEqual(datePadSegment('9', 2), '09', 'datePadSegment("9", 2) pads single digit to "09"');
+
+    // 2. Single digit to maxLen 4 (standard year padding)
+    TestRunner.assertEqual(datePadSegment('5', 4), '0005', 'datePadSegment("5", 4) pads single digit to "0005"');
+    TestRunner.assertEqual(datePadSegment('26', 4), '0026', 'datePadSegment("26", 4) pads double digits to "0026"');
+
+    // 3. Inputs already meeting or exceeding maxLen
+    TestRunner.assertEqual(datePadSegment('05', 2), '05', 'datePadSegment("05", 2) leaves already padded string unchanged');
+    TestRunner.assertEqual(datePadSegment('12', 2), '12', 'datePadSegment("12", 2) leaves 2-digit string unchanged');
+    TestRunner.assertEqual(datePadSegment('2026', 4), '2026', 'datePadSegment("2026", 4) leaves 4-digit string unchanged');
+    TestRunner.assertEqual(datePadSegment('123', 2), '123', 'datePadSegment("123", 2) returns value intact if longer than maxLen');
+
+    // 4. Falsy / empty / edge cases
+    TestRunner.assertEqual(datePadSegment('', 2), '', 'datePadSegment("", 2) returns empty string');
+    TestRunner.assertEqual(datePadSegment(null, 2), '', 'datePadSegment(null, 2) returns empty string');
+    TestRunner.assertEqual(datePadSegment(undefined, 2), '', 'datePadSegment(undefined, 2) returns empty string');
+    TestRunner.assertEqual(datePadSegment(0, 2), '', 'datePadSegment(0, 2) returns empty string');
+}
+
+// ========================================
+// RUN ALL TESTS
+// ========================================
+
 function runAllTests() {
     TestRunner.reset();
 
@@ -765,6 +790,9 @@ function runAllTests() {
     testGetNextQuarterlyDate();
     testCalculateLoanQuarterly();
     testGenerateScheduleQuarterly();
+
+    // DatePadSegment unit tests
+    testDatePadSegment();
 
     // Western Numerals Rule: guarantee English/Latin 0-9 digits across all number formatting
     testWesternNumberFormatting();
