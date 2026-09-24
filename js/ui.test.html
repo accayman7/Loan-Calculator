@@ -93,6 +93,9 @@
             // 6. Animated Collapsible Distribution Card Test
             testCollapsibleDistributionCard();
 
+            // 7. Update Banner XSS Protection Test
+            testUpdateBannerXSSProtection();
+
             displayTestResults();
         }
 
@@ -245,6 +248,32 @@
             applyTheme('light', null, true);
             UITestRunner.assertEqual(document.documentElement.getAttribute('data-theme'), 'light', 'applyTheme("light") sets data-theme to "light"');
             UITestRunner.assertFalse(document.documentElement.classList.contains('dark'), 'applyTheme("light") removes "dark" class from html');
+        }
+
+        function testUpdateBannerXSSProtection() {
+            UITestRunner.assertTrue(typeof showUpdateBanner === 'function', 'showUpdateBanner function exists');
+            UITestRunner.assertTrue(typeof escapeHtml === 'function', 'escapeHtml function exists');
+
+            // Test escapeHtml directly
+            const maliciousPayload = '<img src=x onerror=alert(1)> & "hello"';
+            const escaped = escapeHtml(maliciousPayload);
+            UITestRunner.assertEqual(escaped, '&lt;img src=x onerror=alert(1)&gt; &amp; &quot;hello&quot;', 'escapeHtml sanitizes HTML tags and entities');
+
+            // Clean up any existing update banner element first
+            const existing = document.getElementById('update-banner');
+            if (existing) existing.remove();
+
+            // Set document lang to test showUpdateBanner
+            showUpdateBanner();
+
+            const banner = document.getElementById('update-banner');
+            UITestRunner.assertTrue(banner !== null, 'showUpdateBanner creates update banner element');
+            if (banner) {
+                const span = banner.querySelector('span');
+                UITestRunner.assertTrue(span !== null, 'Update banner contains text span');
+                // Clean up element after test
+                banner.remove();
+            }
         }
 
         function displayTestResults() {
