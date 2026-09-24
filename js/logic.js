@@ -358,6 +358,49 @@ function calculatePeriodStampDutyInt({ currentDate, prevDate, openingBalInt, sta
 }
 
 /**
+ * Calculates details (interest in piastres, principal in piastres, and installment date)
+ * for a single installment period in the amortization schedule.
+ * @param {Object} params
+ * @param {number} params.m - Installment index (1 to N)
+ * @param {number} params.N - Total number of installments
+ * @param {number} params.openingBalInt - Opening balance for this installment (in piastres)
+ * @param {number} params.MInt - Target periodic installment (in piastres)
+ * @param {number} params.iRate - Periodic interest rate
+ * @param {number} params.m1_InterestInt - Interest for first installment (in piastres)
+ * @param {number} params.standardPrincipalInt - Standard principal for first installment (in piastres)
+ * @param {Date} params.m1_Date - First installment date
+ * @param {number} params.freq - Installment frequency in months
+ * @returns {{inteInt: number, prinInt: number, currentDate: Date}}
+ */
+function calculateInstallmentDetails({ m, N, openingBalInt, MInt, iRate, m1_InterestInt, standardPrincipalInt, m1_Date, freq }) {
+    let inteInt, prinInt, currentDate;
+
+    if (m === 1) {
+        inteInt = m1_InterestInt;
+        prinInt = standardPrincipalInt;
+        if (openingBalInt < prinInt) prinInt = openingBalInt;
+        currentDate = m1_Date;
+    } else {
+        // Periodic interest in piastres
+        inteInt = roundInt(openingBalInt * iRate);
+
+        // Periodic principal in piastres
+        prinInt = MInt - inteInt;
+
+        if (openingBalInt < prinInt || m === N) {
+            prinInt = openingBalInt;
+        }
+
+        let d = new Date(m1_Date);
+        d.setMonth(m1_Date.getMonth() + (m - 1) * freq);
+        if (d.getDate() !== m1_Date.getDate()) { d.setDate(0); }
+        currentDate = d;
+    }
+
+    return { inteInt, prinInt, currentDate };
+}
+
+/**
  * Generates amortization schedule with optional stamp duty calculation
  * Uses INTEGER MATH internally (piastres) for precision
  * @param {Object} loanData - Loan parameters {P, R, N, M}
@@ -405,30 +448,19 @@ function generateSchedule(loanData, dates, stampRate = 0, freq = 1) {
     let processedQuarters = new Set();
 
     for (let m = 1; m <= N; m++) {
-        let inteInt, prinInt, currentDate;
         let openingBalInt = balInt;
 
-        if (m === 1) {
-            inteInt = m1_InterestInt;
-            prinInt = standardPrincipalInt;
-            if (openingBalInt < prinInt) prinInt = openingBalInt;
-            currentDate = m1_Date;
-        } else {
-            // Monthly interest in piastres
-            inteInt = roundInt(openingBalInt * iRate);
-
-            // Monthly principal in piastres
-            prinInt = MInt - inteInt;
-
-            if (openingBalInt < prinInt || m === N) {
-                prinInt = openingBalInt;
-            }
-
-            let d = new Date(m1_Date);
-            d.setMonth(m1_Date.getMonth() + (m - 1) * freq);
-            if (d.getDate() !== m1_Date.getDate()) { d.setDate(0); }
-            currentDate = d;
-        }
+        const { inteInt, prinInt, currentDate } = calculateInstallmentDetails({
+            m,
+            N,
+            openingBalInt,
+            MInt,
+            iRate,
+            m1_InterestInt,
+            standardPrincipalInt,
+            m1_Date,
+            freq
+        });
 
         // Update balance (integer subtraction - no float errors!)
         balInt = balInt - prinInt;

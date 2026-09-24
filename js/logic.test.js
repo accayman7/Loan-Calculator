@@ -305,6 +305,70 @@ function testCalculateLoanInvalid() {
     TestRunner.assertFalse(result3.valid, 'Period > MAX_MONTHS is invalid');
 }
 
+function testCalculateInstallmentDetails() {
+    console.log('Testing calculateInstallmentDetails()...');
+
+    // m = 1 (First installment)
+    const m1Res = calculateInstallmentDetails({
+        m: 1,
+        N: 12,
+        openingBalInt: 10000000,
+        MInt: 888488,
+        iRate: 0.01,
+        m1_InterestInt: 100000,
+        standardPrincipalInt: 788488,
+        m1_Date: new Date(2024, 2, 5),
+        freq: 1
+    });
+    TestRunner.assertEqual(m1Res.inteInt, 100000, 'm=1 uses m1_InterestInt');
+    TestRunner.assertEqual(m1Res.prinInt, 788488, 'm=1 uses standardPrincipalInt');
+    TestRunner.assertEqual(m1Res.currentDate.getTime(), new Date(2024, 2, 5).getTime(), 'm=1 uses m1_Date');
+
+    // Intermediate installment (m = 2)
+    const m2Res = calculateInstallmentDetails({
+        m: 2,
+        N: 12,
+        openingBalInt: 9211512,
+        MInt: 888488,
+        iRate: 0.01,
+        m1_InterestInt: 100000,
+        standardPrincipalInt: 788488,
+        m1_Date: new Date(2024, 2, 5),
+        freq: 1
+    });
+    TestRunner.assertEqual(m2Res.inteInt, 92115, 'm=2 periodic interest = roundInt(9211512 * 0.01) = 92115');
+    TestRunner.assertEqual(m2Res.prinInt, 796373, 'm=2 periodic principal = MInt - inteInt = 888488 - 92115 = 796373');
+    TestRunner.assertEqual(m2Res.currentDate.getMonth(), 3, 'm=2 month index is 3 (April)');
+
+    // Final installment (m = N) caps principal to opening balance
+    const mFinalRes = calculateInstallmentDetails({
+        m: 12,
+        N: 12,
+        openingBalInt: 500000,
+        MInt: 888488,
+        iRate: 0.01,
+        m1_InterestInt: 100000,
+        standardPrincipalInt: 788488,
+        m1_Date: new Date(2024, 2, 5),
+        freq: 1
+    });
+    TestRunner.assertEqual(mFinalRes.prinInt, 500000, 'm=N caps principal to openingBalInt when balance < calculated principal');
+
+    // Quarterly frequency (freq = 3) date calculation
+    const mQuarterlyRes = calculateInstallmentDetails({
+        m: 2,
+        N: 4,
+        openingBalInt: 30000000,
+        MInt: 8000000,
+        iRate: 0.03,
+        m1_InterestInt: 900000,
+        standardPrincipalInt: 7100000,
+        m1_Date: new Date(2026, 5, 5), // June 5
+        freq: 3
+    });
+    TestRunner.assertEqual(mQuarterlyRes.currentDate.getMonth(), 8, 'Quarterly m=2 moves 3 months forward to September (index 8)');
+}
+
 function testGenerateSchedule() {
     console.log('Testing generateSchedule()...');
 
@@ -745,6 +809,7 @@ function runAllTests() {
     testCalculateLoanInvalid();
 
     // Schedule tests
+    testCalculateInstallmentDetails();
     testGenerateSchedule();
     testGenerateScheduleAdvanced();
     testGenerateScheduleWithStamp();
