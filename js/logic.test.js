@@ -1,7 +1,7 @@
 /**
  * logic.test.js - Unit Tests for logic.js
  * Zero-dependency test runner for financial calculations
- * 
+ *
  * Run: Open logic.test.html in a browser
  */
 
@@ -769,6 +769,9 @@ function runAllTests() {
     // Western Numerals Rule: guarantee English/Latin 0-9 digits across all number formatting
     testWesternNumberFormatting();
 
+    // Fingerprint calculation test
+    testGenerateFingerprint();
+
     console.log('\n=== Test Results ===');
 
     const summary = TestRunner.getSummary();
@@ -795,6 +798,56 @@ function testWesternNumberFormatting() {
     const pAmt = new Intl.NumberFormat('ar-EG-u-nu-latn').format(1000000);
     TestRunner.assertFalse(arabicIndicRegex.test(pAmt), `ar-EG-u-nu-latn output "${pAmt}" must not contain Arabic-Indic numerals`);
     TestRunner.assertTrue(/[0-9]/.test(pAmt), `ar-EG-u-nu-latn output "${pAmt}" contains Latin digits`);
+}
+
+function testGenerateFingerprint() {
+    console.log('Testing generateFingerprint()...');
+
+    const sampleInputs = {
+        amount: 100000,
+        rate: 10,
+        period: 12,
+        freq: 1,
+        startDate: '2026-01-15',
+        adminFees: 1,
+        stampRate: 0.2,
+        firstInstDate: '2026-02-15'
+    };
+    const appVersion = '1.12.0';
+
+    // Determinism
+    const fp1 = generateFingerprint(sampleInputs, appVersion);
+    const fp2 = generateFingerprint(sampleInputs, appVersion);
+    TestRunner.assertEqual(fp1, fp2, 'generateFingerprint is deterministic');
+
+    // Format prefix and length
+    TestRunner.assertTrue(/^v1\.12-[A-Z0-9]{6}$/.test(fp1), 'Fingerprint matches expected format v1.12-XXXXXX: ' + fp1);
+
+    // Sensitivity to input changes
+    const variations = [
+        { name: 'amount', diff: { ...sampleInputs, amount: 200000 } },
+        { name: 'rate', diff: { ...sampleInputs, rate: 12 } },
+        { name: 'period', diff: { ...sampleInputs, period: 24 } },
+        { name: 'freq', diff: { ...sampleInputs, freq: 3 } },
+        { name: 'startDate', diff: { ...sampleInputs, startDate: '2026-01-16' } },
+        { name: 'adminFees', diff: { ...sampleInputs, adminFees: 2 } },
+        { name: 'stampRate', diff: { ...sampleInputs, stampRate: 0.4 } },
+        { name: 'firstInstDate', diff: { ...sampleInputs, firstInstDate: '2026-02-16' } }
+    ];
+
+    variations.forEach(v => {
+        const fpDiff = generateFingerprint(v.diff, appVersion);
+        TestRunner.assertTrue(fpDiff !== fp1, `Changing ${v.name} produces a different fingerprint (${fpDiff} !== ${fp1})`);
+    });
+
+    // Version sensitivity and prefix
+    const fpDiffVersion = generateFingerprint(sampleInputs, '2.5.1');
+    TestRunner.assertTrue(fpDiffVersion !== fp1, 'Changing appVersion produces a different fingerprint');
+    TestRunner.assertTrue(fpDiffVersion.startsWith('v2.5-'), 'Prefix reflects major.minor of new appVersion');
+
+    // Default / edge case input handling
+    const fpEmpty = generateFingerprint({}, '1.0.0');
+    TestRunner.assertTrue(/^v1\.0-[A-Z0-9]{6}$/.test(fpEmpty), 'Empty inputs object produces valid fingerprint v1.0-XXXXXX: ' + fpEmpty);
 }
 
 // Export for browser use
