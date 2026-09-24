@@ -780,10 +780,27 @@
         if (coreInputsFilled()) appCalculate();
     }
 
+    function getNextEditableCoreInput(currentEl) {
+        let foundCurrent = false;
+        for (let i = 0; i < CORE_KEYS.length; i++) {
+            const k = CORE_KEYS[i];
+            if (k === AppState.activeKey) continue;
+            const input = formInputs[k];
+            if (!input || input.hasAttribute('readonly')) continue;
+            if (foundCurrent) return input;
+            if (input === currentEl) foundCurrent = true;
+        }
+        return null;
+    }
+
     function coreInputsFilled() {
-        return CORE_KEYS
-            .filter(k => k !== AppState.activeKey)
-            .every(k => formInputs[k] && formInputs[k].value.trim() !== '');
+        for (let i = 0; i < CORE_KEYS.length; i++) {
+            const k = CORE_KEYS[i];
+            if (k === AppState.activeKey) continue;
+            const input = formInputs[k];
+            if (!input || input.value.trim() === '') return false;
+        }
+        return true;
     }
 
     function updateSummaryView(isAdvanced) {
@@ -3319,15 +3336,13 @@
                 e.preventDefault();
                 if (coreInputsFilled()) { el.blur(); appCalculate(); }
                 else {
-                    const editableCore = CORE_KEYS.filter(k => k !== AppState.activeKey && !formInputs[k].hasAttribute('readonly')).map(k => formInputs[k]);
-                    const idx = editableCore.indexOf(el);
-                    if (idx !== -1 && idx < editableCore.length - 1) editableCore[idx + 1].focus();
+                    const nextInput = getNextEditableCoreInput(el);
+                    if (nextInput) nextInput.focus();
                 }
                 return;
             }
-            const editableCore = CORE_KEYS.filter(k => k !== AppState.activeKey && !formInputs[k].hasAttribute('readonly')).map(k => formInputs[k]);
-            const idx = editableCore.indexOf(el);
-            if (idx !== -1 && idx < editableCore.length - 1) { e.preventDefault(); editableCore[idx + 1].focus(); return; }
+            const nextInput = getNextEditableCoreInput(el);
+            if (nextInput) { e.preventDefault(); nextInput.focus(); return; }
             if (coreInputsFilled()) { e.preventDefault(); el.blur(); appCalculate(); }
         }
     }
