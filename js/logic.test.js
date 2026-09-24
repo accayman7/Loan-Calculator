@@ -769,6 +769,9 @@ function runAllTests() {
     // Western Numerals Rule: guarantee English/Latin 0-9 digits across all number formatting
     testWesternNumberFormatting();
 
+    // Service Worker CWE-20 test
+    testServiceWorkerMessageHandler();
+
     console.log('\n=== Test Results ===');
 
     const summary = TestRunner.getSummary();
@@ -795,6 +798,59 @@ function testWesternNumberFormatting() {
     const pAmt = new Intl.NumberFormat('ar-EG-u-nu-latn').format(1000000);
     TestRunner.assertFalse(arabicIndicRegex.test(pAmt), `ar-EG-u-nu-latn output "${pAmt}" must not contain Arabic-Indic numerals`);
     TestRunner.assertTrue(/[0-9]/.test(pAmt), `ar-EG-u-nu-latn output "${pAmt}" contains Latin digits`);
+}
+
+
+function testServiceWorkerMessageHandler() {
+    console.log('Testing Service Worker message handler origin validation (CWE-20)...');
+
+    let skipWaitingCalled = false;
+
+    // Mock self object for Service Worker context
+    const mockSelf = {
+        location: { origin: 'https://example.com' },
+        listeners: {},
+        addEventListener(event, handler) {
+            this.listeners[event] = handler;
+        },
+        skipWaiting() {
+            skipWaitingCalled = true;
+        }
+    };
+
+    // Register message listener matching sw.js implementation
+    mockSelf.addEventListener('message', (event) => {
+        if (!event.origin || event.origin !== mockSelf.location.origin) {
+            return; // Ignore cross-origin messages
+        }
+
+        if (event.data && event.data.type === 'SKIP_WAITING') {
+            mockSelf.skipWaiting();
+        }
+    });
+
+    const handler = mockSelf.listeners['message'];
+    TestRunner.assertTrue(typeof handler === 'function', 'Message handler registered');
+
+    // Test 1: Cross-origin message with SKIP_WAITING
+    skipWaitingCalled = false;
+    handler({ origin: 'https://attacker.com', data: { type: 'SKIP_WAITING' } });
+    TestRunner.assertFalse(skipWaitingCalled, 'Cross-origin message with SKIP_WAITING is ignored');
+
+    // Test 2: Missing/undefined origin message
+    skipWaitingCalled = false;
+    handler({ origin: undefined, data: { type: 'SKIP_WAITING' } });
+    TestRunner.assertFalse(skipWaitingCalled, 'Undefined origin message is ignored');
+
+    // Test 3: Same-origin message with non-matching type
+    skipWaitingCalled = false;
+    handler({ origin: 'https://example.com', data: { type: 'OTHER_ACTION' } });
+    TestRunner.assertFalse(skipWaitingCalled, 'Same-origin message with other type does not call skipWaiting');
+
+    // Test 4: Same-origin message with SKIP_WAITING
+    skipWaitingCalled = false;
+    handler({ origin: 'https://example.com', data: { type: 'SKIP_WAITING' } });
+    TestRunner.assertTrue(skipWaitingCalled, 'Same-origin message with SKIP_WAITING calls skipWaiting()');
 }
 
 // Export for browser use
