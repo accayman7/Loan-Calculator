@@ -135,6 +135,8 @@
     let inputGroups = {};
     let errorLabels = {};
     let dateInputs = {};
+    let themeOptionsCache = null;
+    let langOptionsCache = null;
 
     // --- Initialization ---
     window.addEventListener('load', () => {
@@ -2006,10 +2008,14 @@
     }
 
     function updateThemeMenuState(activeTheme) {
-        const themeOptions = document.querySelectorAll('.theme-option');
-        themeOptions.forEach(btn => {
-            const val = btn.dataset.themeValue;
-            const check = btn.querySelector('.check-icon');
+        if (!themeOptionsCache) {
+            themeOptionsCache = Array.from(document.querySelectorAll('.theme-option')).map(btn => ({
+                btn,
+                val: btn.dataset.themeValue,
+                check: btn.querySelector('.check-icon')
+            }));
+        }
+        themeOptionsCache.forEach(({ btn, val, check }) => {
             const isSelected = val === activeTheme;
             btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
             btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
@@ -2024,10 +2030,14 @@
     }
 
     function updateLangMenuState(activeLang) {
-        const langOptions = document.querySelectorAll('.lang-option');
-        langOptions.forEach(btn => {
-            const val = btn.dataset.langValue;
-            const check = btn.querySelector('.check-icon');
+        if (!langOptionsCache) {
+            langOptionsCache = Array.from(document.querySelectorAll('.lang-option')).map(btn => ({
+                btn,
+                val: btn.dataset.langValue,
+                check: btn.querySelector('.check-icon')
+            }));
+        }
+        langOptionsCache.forEach(({ btn, val, check }) => {
             const isSelected = val === activeLang;
             btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
             btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
