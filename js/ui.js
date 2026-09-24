@@ -1259,12 +1259,7 @@ function showToast(message, type = 'normal') {
     msgBox.classList.add('opacity-100', 'translate-y-0');
 
     toastTimer = setTimeout(() => {
-        msgBox.classList.remove('opacity-100', 'translate-y-0');
-        msgBox.classList.add('opacity-0', '-translate-y-3');
-
-        setTimeout(() => {
-            msgBox.classList.add('hidden');
-        }, 300);
+        hideToast();
     }, 4000);
 }
 
