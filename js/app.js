@@ -1650,17 +1650,21 @@
             const freqOptions = freqDropdown.querySelectorAll('.freq-option');
             const primaryColor = 'var(--primary-color, #6366f1)';
 
+            const freqOptionNodes = Array.from(freqOptions).map(opt => ({
+                opt,
+                val: opt.dataset.value,
+                check: opt.querySelector('.freq-check'),
+                dot: opt.querySelector('.freq-check span')
+            }));
+
             const updateFreqRadios = (selectedVal) => {
-                freqOptions.forEach(opt => {
-                    const val = opt.dataset.value;
-                    const check = opt.querySelector('.freq-check');
-                    const dot = check?.querySelector('span');
+                freqOptionNodes.forEach(({ opt, val, check, dot }) => {
                     if (val === selectedVal) {
-                        check.style.borderColor = primaryColor;
+                        if (check) check.style.borderColor = primaryColor;
                         if (dot) dot.style.background = primaryColor;
                         opt.setAttribute('aria-selected', 'true');
                     } else {
-                        check.style.borderColor = '#d1d5db';
+                        if (check) check.style.borderColor = '#d1d5db';
                         if (dot) dot.style.background = 'transparent';
                         opt.setAttribute('aria-selected', 'false');
                     }
