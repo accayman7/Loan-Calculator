@@ -2434,7 +2434,7 @@
                         // Immediately delete from storage using unique ID (or fallback to index)
                         let history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
                         if (targetId) {
-                            history = history.filter(it => (it.id || `legacy_${history.indexOf(it)}`) !== targetId);
+                            history = history.filter((it, idx) => (it.id || `legacy_${idx}`) !== targetId);
                         } else if (!isNaN(targetIndex)) {
                             history.splice(targetIndex, 1);
                         }
@@ -2473,7 +2473,7 @@
                         const targetIndex = parseInt(card.dataset.index, 10);
                         if (typeof haptic !== 'undefined') haptic('medium');
                         const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
-                        const item = targetId ? history.find(it => (it.id || `legacy_${history.indexOf(it)}`) === targetId) : history[targetIndex];
+                        const item = targetId ? history.find((it, idx) => (it.id || `legacy_${idx}`) === targetId) : history[targetIndex];
                         if (item) {
                             AppState.activeKey = item.activeKey || 'installment';
                             const radio = document.querySelector(`input[name="calc-target"][value="${AppState.activeKey}"]`);
