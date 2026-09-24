@@ -740,7 +740,7 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
             const y = defaultDate.getFullYear();
             const m = String(defaultDate.getMonth() + 1).padStart(2, '0');
             const d = String(defaultDate.getDate()).padStart(2, '0');
-            
+
             const defaultMat = bkDate ? ssDefaultCdMaturityDate(bkDate, defaultDate) : new Date();
             const my = defaultMat.getFullYear();
             const mm = String(defaultMat.getMonth() + 1).padStart(2, '0');
@@ -1454,6 +1454,123 @@ function fallbackCopyText(text, successCb, failCb) {
 }
 
 /**
+ * Generate A4 HTML document body string for Self-Sufficient client offer sheet
+ *
+ * @param {Object} params
+ * @returns {string} HTML string
+ */
+function generateSelfSufficientHtml(params) {
+    const {
+        isAr, dateStr, cd1Total, cd1Rate, td2, td2Rate, totalTds,
+        months, years, monthlyReturn, installment, surplus,
+        simpleAlt, netBenefit, effectiveRate, curr
+    } = params;
+
+    const planTitle = isAr ? '1️⃣ الخطة الاستثمارية' : '1️⃣ THE INVESTMENT PLAN';
+    const existingCdLabel = isAr ? 'شهادتك الحالية (CD₁):' : 'Your Existing Certificate (CD₁):';
+    const newCdLabel = isAr ? 'الشهادة الجديدة المضافة (CD₂):' : 'New Certificate Added (CD₂):';
+    const totalCdsLabel = isAr ? 'إجمالي شهاداتك الجديدة:' : 'Total Certificates Owned:';
+    const durationLabel = isAr ? 'مدة الاستثمار:' : 'Duration:';
+    const durationVal = isAr ? `${months} شهر (${years} سنوات)` : `${months} Months (${years} Years)`;
+
+    const cashflowTitle = isAr ? '2️⃣ الموقف الشهري (بدون دفع أي مبالغ)' : '2️⃣ MONTHLY CASHFLOW (0 OUT-OF-POCKET)';
+    const monthlyReturnsLabel = isAr ? 'عائد الشهادات شهرياً:' : 'Monthly Returns from Certificates:';
+    const loanInstallmentLabel = isAr ? 'قسط القرض الشهري:' : 'Monthly Loan Installment:';
+    const cashSurplusLabel = isAr ? 'الفائض الشهري في حسابك:' : 'Net Monthly Cash Surplus:';
+    const surplusVal = `+${fmt(surplus)} ${curr} ${isAr ? '/ شهرياً' : '/ Month'}`;
+    const zeroCostNote = isAr
+        ? '✔ لا تدفع أي مليم من جيبك (القسط الشهري مغطى بالكامل من عوائد الشهادات تلقائياً)'
+        : '✔ You pay 0.00 EGP out-of-pocket (Installment is 100% covered by CD returns automatically)';
+
+    const benefitTitle = isAr ? '3️⃣ أرباحك في نهاية المدة' : '3️⃣ NET BENEFIT AT MATURITY';
+    const valWithProgramLabel = isAr ? 'إجمالي أموالك بالبرنامج:' : 'Total Assets with this Program:';
+    const valWithoutProgramLabel = isAr ? 'في حال عدم الاشتراك (الشهادة فقط):' : 'Total Assets without Program:';
+    const netProfitLabel = isAr ? 'صافي الربح الإضافي لك:' : 'Net Extra Profit:';
+    const effectiveReturnLabel = isAr ? 'العائد الفعلي المحقق:' : 'Effective Return Rate:';
+    const effectiveVal = `${effectiveRate.toFixed(2)}% (${isAr ? 'مقابل' : 'vs'} ${cd1Rate.toFixed(2)}%)`;
+
+    const disclaimerText = isAr
+        ? '* هذا العرض استرشادي وخاضع لأسعار العوائد والتعريفة المصرفية السارية وقت التنفيذ.'
+        : '* Indicative proposal based on prevailing bank interest rates and tariffs at the time of execution.';
+
+    return `
+        <div class="offer-container">
+            <div class="header">
+                <div class="header-title">
+                    <h1>${isAr ? 'عرض تمويل استثماري (برنامج التضاعف الذاتي)' : 'Investment Loan Proposal (Self-Sufficient Program)'}</h1>
+                    <p>${isAr ? 'تضاعف الأوعية الادخارية بدون أعباء سداد شهرية' : 'Certificate of Deposit Doubling with Zero Monthly Burden'}</p>
+                </div>
+                <div class="header-date">
+                    <div><strong>${isAr ? 'التاريخ:' : 'Date:'}</strong> ${dateStr}</div>
+                </div>
+            </div>
+
+            <!-- Section 1 -->
+            <div class="section-card">
+                <div class="section-title">${planTitle}</div>
+                <div class="item-row">
+                    <span class="item-label">${existingCdLabel}</span>
+                    <span class="item-value">${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${newCdLabel}</span>
+                    <span class="item-value">${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${durationLabel}</span>
+                    <span class="item-value">${durationVal}</span>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">⭐ ${totalCdsLabel}</span>
+                    <span class="highlight-value">${fmt(totalTds)} ${curr}</span>
+                </div>
+            </div>
+
+            <!-- Section 2 -->
+            <div class="section-card">
+                <div class="section-title">${cashflowTitle}</div>
+                <div class="item-row">
+                    <span class="item-label">${monthlyReturnsLabel}</span>
+                    <span class="item-value">${fmt(monthlyReturn)} ${curr}</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${loanInstallmentLabel}</span>
+                    <span class="item-value">-${fmt(installment)} ${curr}</span>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">💰 ${cashSurplusLabel}</span>
+                    <span class="highlight-value" style="color:#059669;">${surplusVal}</span>
+                </div>
+                <div class="note-badge">${zeroCostNote}</div>
+            </div>
+
+            <!-- Section 3 -->
+            <div class="section-card" style="margin-bottom: 6px;">
+                <div class="section-title">${benefitTitle}</div>
+                <div class="item-row">
+                    <span class="item-label">${valWithProgramLabel}</span>
+                    <span class="item-value">${fmt(totalTds)} ${curr}</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${valWithoutProgramLabel}</span>
+                    <span class="item-value">${fmt(simpleAlt)} ${curr}</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">${effectiveReturnLabel}</span>
+                    <span class="item-value" style="color:#047857;">${effectiveVal}</span>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">🎯 ${netProfitLabel}</span>
+                    <span class="highlight-value" style="color:#047857;">+${fmt(netBenefit)} ${curr}</span>
+                </div>
+            </div>
+
+            <div class="disclaimer">${disclaimerText}</div>
+        </div>
+    `;
+}
+
+/**
  * Print simplified 1-page A4 client offer sheet
  */
 function printSelfSufficientOffer() {
@@ -1672,108 +1789,11 @@ function printSelfSufficientOffer() {
 
     const body = doc.body;
 
-    const planTitle = isAr ? '1️⃣ الخطة الاستثمارية' : '1️⃣ THE INVESTMENT PLAN';
-    const existingCdLabel = isAr ? 'شهادتك الحالية (CD₁):' : 'Your Existing Certificate (CD₁):';
-    const newCdLabel = isAr ? 'الشهادة الجديدة المضافة (CD₂):' : 'New Certificate Added (CD₂):';
-    const totalCdsLabel = isAr ? 'إجمالي شهاداتك الجديدة:' : 'Total Certificates Owned:';
-    const durationLabel = isAr ? 'مدة الاستثمار:' : 'Duration:';
-    const durationVal = isAr ? `${months} شهر (${years} سنوات)` : `${months} Months (${years} Years)`;
-
-    const cashflowTitle = isAr ? '2️⃣ الموقف الشهري (بدون دفع أي مبالغ)' : '2️⃣ MONTHLY CASHFLOW (0 OUT-OF-POCKET)';
-    const monthlyReturnsLabel = isAr ? 'عائد الشهادات شهرياً:' : 'Monthly Returns from Certificates:';
-    const loanInstallmentLabel = isAr ? 'قسط القرض الشهري:' : 'Monthly Loan Installment:';
-    const cashSurplusLabel = isAr ? 'الفائض الشهري في حسابك:' : 'Net Monthly Cash Surplus:';
-    const surplusVal = `+${fmt(surplus)} ${curr} ${isAr ? '/ شهرياً' : '/ Month'}`;
-    const zeroCostNote = isAr
-        ? '✔ لا تدفع أي مليم من جيبك (القسط الشهري مغطى بالكامل من عوائد الشهادات تلقائياً)'
-        : '✔ You pay 0.00 EGP out-of-pocket (Installment is 100% covered by CD returns automatically)';
-
-    const benefitTitle = isAr ? '3️⃣ أرباحك في نهاية المدة' : '3️⃣ NET BENEFIT AT MATURITY';
-    const valWithProgramLabel = isAr ? 'إجمالي أموالك بالبرنامج:' : 'Total Assets with this Program:';
-    const valWithoutProgramLabel = isAr ? 'في حال عدم الاشتراك (الشهادة فقط):' : 'Total Assets without Program:';
-    const netProfitLabel = isAr ? 'صافي الربح الإضافي لك:' : 'Net Extra Profit:';
-    const effectiveReturnLabel = isAr ? 'العائد الفعلي المحقق:' : 'Effective Return Rate:';
-    const effectiveVal = `${effectiveRate.toFixed(2)}% (${isAr ? 'مقابل' : 'vs'} ${cd1Rate.toFixed(2)}%)`;
-
-    const disclaimerText = isAr
-        ? '* هذا العرض استرشادي وخاضع لأسعار العوائد والتعريفة المصرفية السارية وقت التنفيذ.'
-        : '* Indicative proposal based on prevailing bank interest rates and tariffs at the time of execution.';
-
-    body.innerHTML = `
-        <div class="offer-container">
-            <div class="header">
-                <div class="header-title">
-                    <h1>${isAr ? 'عرض تمويل استثماري (برنامج التضاعف الذاتي)' : 'Investment Loan Proposal (Self-Sufficient Program)'}</h1>
-                    <p>${isAr ? 'تضاعف الأوعية الادخارية بدون أعباء سداد شهرية' : 'Certificate of Deposit Doubling with Zero Monthly Burden'}</p>
-                </div>
-                <div class="header-date">
-                    <div><strong>${isAr ? 'التاريخ:' : 'Date:'}</strong> ${dateStr}</div>
-                </div>
-            </div>
-
-            <!-- Section 1 -->
-            <div class="section-card">
-                <div class="section-title">${planTitle}</div>
-                <div class="item-row">
-                    <span class="item-label">${existingCdLabel}</span>
-                    <span class="item-value">${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)</span>
-                </div>
-                <div class="item-row">
-                    <span class="item-label">${newCdLabel}</span>
-                    <span class="item-value">${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)</span>
-                </div>
-                <div class="item-row">
-                    <span class="item-label">${durationLabel}</span>
-                    <span class="item-value">${durationVal}</span>
-                </div>
-                <div class="highlight-box">
-                    <span class="highlight-label">⭐ ${totalCdsLabel}</span>
-                    <span class="highlight-value">${fmt(totalTds)} ${curr}</span>
-                </div>
-            </div>
-
-            <!-- Section 2 -->
-            <div class="section-card">
-                <div class="section-title">${cashflowTitle}</div>
-                <div class="item-row">
-                    <span class="item-label">${monthlyReturnsLabel}</span>
-                    <span class="item-value">${fmt(monthlyReturn)} ${curr}</span>
-                </div>
-                <div class="item-row">
-                    <span class="item-label">${loanInstallmentLabel}</span>
-                    <span class="item-value">-${fmt(installment)} ${curr}</span>
-                </div>
-                <div class="highlight-box">
-                    <span class="highlight-label">💰 ${cashSurplusLabel}</span>
-                    <span class="highlight-value" style="color:#059669;">${surplusVal}</span>
-                </div>
-                <div class="note-badge">${zeroCostNote}</div>
-            </div>
-
-            <!-- Section 3 -->
-            <div class="section-card" style="margin-bottom: 6px;">
-                <div class="section-title">${benefitTitle}</div>
-                <div class="item-row">
-                    <span class="item-label">${valWithProgramLabel}</span>
-                    <span class="item-value">${fmt(totalTds)} ${curr}</span>
-                </div>
-                <div class="item-row">
-                    <span class="item-label">${valWithoutProgramLabel}</span>
-                    <span class="item-value">${fmt(simpleAlt)} ${curr}</span>
-                </div>
-                <div class="item-row">
-                    <span class="item-label">${effectiveReturnLabel}</span>
-                    <span class="item-value" style="color:#047857;">${effectiveVal}</span>
-                </div>
-                <div class="highlight-box">
-                    <span class="highlight-label">🎯 ${netProfitLabel}</span>
-                    <span class="highlight-value" style="color:#047857;">+${fmt(netBenefit)} ${curr}</span>
-                </div>
-            </div>
-
-            <div class="disclaimer">${disclaimerText}</div>
-        </div>
-    `;
+    body.innerHTML = generateSelfSufficientHtml({
+        isAr, dateStr, cd1Total, cd1Rate, td2, td2Rate, totalTds,
+        months, years, monthlyReturn, installment, surplus,
+        simpleAlt, netBenefit, effectiveRate, curr
+    });
 
         // Trigger print from inside iframe context to prevent freezing parent window JS event loop
         const printScript = doc.createElement('script');
@@ -1807,13 +1827,5 @@ window.ssUpdateFirstInstDateDisplay = ssUpdateFirstInstDateDisplay;
 window.ssCalculateLoanEndDate = ssCalculateLoanEndDate;
 window.ssUpdateLoanEndDateDisplay = ssUpdateLoanEndDateDisplay;
 window.copySelfSufficientOffer = copySelfSufficientOffer;
+window.generateSelfSufficientHtml = generateSelfSufficientHtml;
 window.printSelfSufficientOffer = printSelfSufficientOffer;
-
-
-
-
-
-
-
-
-
