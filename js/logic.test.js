@@ -666,6 +666,63 @@ function testGetNextQuarterlyDate() {
 // RUN ALL TESTS
 // ========================================
 
+function testEvaluateTdLoanCandidate() {
+    console.log('Testing evaluateTdLoanCandidate()...');
+
+    const defaultParams = {
+        td1: 1000000,
+        monthlyTd1Rate: 20 / 1200,
+        monthlyTd2Rate: 20 / 1200,
+        loanRate: 22,
+        N: 36,
+        dates: {
+            bookingDate: new Date(2026, 0, 15),
+            m1_Date: new Date(2026, 1, 15),
+            isAdvanced: true
+        },
+        stampRate: 0.2,
+        adminFees: 1,
+        feeFactor: 0.99,
+        freq: 1
+    };
+
+    // Test 1: Standard valid candidate
+    const resValid = evaluateTdLoanCandidate(500000, defaultParams);
+    TestRunner.assertTrue(resValid !== null && resValid.valid, 'Valid candidate returns non-null result object with valid: true');
+    TestRunner.assertEqual(resValid.td2, 480000, 'TD2 equals effective TD2 after buffer deduction');
+    TestRunner.assertTrue(resValid.grossLoan > resValid.td2, 'Gross loan > TD2');
+    TestRunner.assertTrue(resValid.monthlyTdInterest >= resValid.installment, 'Monthly interest covers installment');
+    TestRunner.assertTrue(resValid.monthlySurplus >= 0, 'Monthly surplus >= 0');
+    TestRunner.assertEqual(resValid.maxAllowedLoan, 900000, 'Default maxAllowedLoan is 90% of TD1');
+    TestRunner.assertFalse(resValid.exceedsCollateralLimit, 'Gross loan ~505k does not exceed 900k collateral limit');
+
+    // Test 2: Invalid candidate due to insufficient TD interest (e.g., candidate td2 too low to cover installment)
+    const resLowTd2 = evaluateTdLoanCandidate(1000, defaultParams);
+    TestRunner.assertTrue(resLowTd2 === null, 'Candidate with insufficient TD interest returns null');
+
+    // Test 3: Invalid candidate due to invalid loan params (e.g. N = 0)
+    const invalidLoanParams = { ...defaultParams, N: 0 };
+    const resInvalidLoan = evaluateTdLoanCandidate(500000, invalidLoanParams);
+    TestRunner.assertTrue(resInvalidLoan === null, 'Invalid loan calculation returns null');
+
+    // Test 4: Buffer & CD accrual dates calculation
+    const cdParams = {
+        ...defaultParams,
+        cd1AccrualDate: new Date(2026, 0, 15),
+        cd2AccrualDate: new Date(2026, 0, 15)
+    };
+    const resCd = evaluateTdLoanCandidate(500000, cdParams);
+    TestRunner.assertTrue(resCd !== null && resCd.valid, 'Candidate with CD accruals evaluates successfully');
+    TestRunner.assertTrue(resCd.availableCdInterest > 0, 'availableCdInterest > 0 when CD accrual dates fall before M1');
+
+    // Test 5: Custom maxAllowedLoan and collateral limit check
+    const collateralParams = { ...defaultParams, maxAllowedLoan: 400000 };
+    const resExceed = evaluateTdLoanCandidate(500000, collateralParams);
+    TestRunner.assertTrue(resExceed !== null && resExceed.valid, 'Candidate evaluates with custom maxAllowedLoan');
+    TestRunner.assertEqual(resExceed.maxAllowedLoan, 400000, 'Custom maxAllowedLoan is respected');
+    TestRunner.assertTrue(resExceed.exceedsCollateralLimit, 'exceedsCollateralLimit is true when grossLoan > maxAllowedLoan');
+}
+
 function testSolveTdLoanMultiCollateral() {
     console.log('Testing solveTdLoan() with Multi-Collateral arrays...');
 
@@ -757,6 +814,7 @@ function runAllTests() {
     testSolveTdLoan();
     testSolveTdLoanEdgeCases();
     testSolveTdLoanMultiCollateral();
+    testEvaluateTdLoanCandidate();
 
     // Regression tests (monthly backward-compat)
     testMonthlyRegression();
