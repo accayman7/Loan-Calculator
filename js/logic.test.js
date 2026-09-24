@@ -241,6 +241,53 @@ function testGetQuarterKey() {
     TestRunner.assertEqual(getQuarterKey(new Date(2024, 11, 31)), '2024-Q4', 'Dec = Q4');
 }
 
+function testDateIsValid() {
+    console.log('Testing dateIsValid() and dateIsValidZeroBased()...');
+
+    if (typeof dateIsValid !== 'function') {
+        console.warn('dateIsValid function not found, skipping tests');
+        return;
+    }
+
+    // Standard valid dates (1-based month)
+    TestRunner.assertTrue(dateIsValid(15, 1, 2026), 'Jan 15, 2026 is valid');
+    TestRunner.assertTrue(dateIsValid(31, 12, 2025), 'Dec 31, 2025 is valid');
+    TestRunner.assertTrue(dateIsValid(1, 1, 2000), 'Jan 1, 2000 is valid');
+    TestRunner.assertTrue(dateIsValid(30, 4, 2026), 'Apr 30, 2026 is valid');
+
+    // Month-end edge cases (31st on 30-day months)
+    TestRunner.assertTrue(dateIsValid(31, 1, 2026), 'Jan 31 is valid');
+    TestRunner.assertFalse(dateIsValid(31, 4, 2026), 'Apr 31 is invalid');
+    TestRunner.assertFalse(dateIsValid(31, 6, 2026), 'Jun 31 is invalid');
+    TestRunner.assertFalse(dateIsValid(31, 9, 2026), 'Sep 31 is invalid');
+    TestRunner.assertFalse(dateIsValid(31, 11, 2026), 'Nov 31 is invalid');
+
+    // February and Leap Year edge cases
+    TestRunner.assertTrue(dateIsValid(28, 2, 2026), 'Feb 28, 2026 is valid');
+    TestRunner.assertFalse(dateIsValid(29, 2, 2026), 'Feb 29, 2026 (non-leap year) is invalid');
+    TestRunner.assertTrue(dateIsValid(29, 2, 2024), 'Feb 29, 2024 (leap year) is valid');
+    TestRunner.assertFalse(dateIsValid(29, 2, 1900), 'Feb 29, 1900 (non-leap century) is invalid');
+    TestRunner.assertTrue(dateIsValid(29, 2, 2000), 'Feb 29, 2000 (leap century) is valid');
+    TestRunner.assertFalse(dateIsValid(30, 2, 2024), 'Feb 30 is always invalid');
+
+    // Out of bounds day/month values
+    TestRunner.assertFalse(dateIsValid(0, 1, 2026), 'Day 0 is invalid');
+    TestRunner.assertFalse(dateIsValid(-1, 1, 2026), 'Negative day is invalid');
+    TestRunner.assertFalse(dateIsValid(32, 1, 2026), 'Day 32 is invalid');
+    TestRunner.assertFalse(dateIsValid(15, 0, 2026), 'Month 0 is invalid');
+    TestRunner.assertFalse(dateIsValid(15, 13, 2026), 'Month 13 is invalid');
+    TestRunner.assertFalse(dateIsValid(15, -1, 2026), 'Negative month is invalid');
+
+    // 0-based month helper (dateIsValidZeroBased)
+    if (typeof dateIsValidZeroBased === 'function') {
+        TestRunner.assertTrue(dateIsValidZeroBased(2026, 0, 15), 'dateIsValidZeroBased: Jan 15, 2026 is valid (month index 0)');
+        TestRunner.assertFalse(dateIsValidZeroBased(2026, 1, 29), 'dateIsValidZeroBased: Feb 29, 2026 is invalid (month index 1)');
+        TestRunner.assertTrue(dateIsValidZeroBased(2024, 1, 29), 'dateIsValidZeroBased: Feb 29, 2024 is valid (month index 1)');
+        TestRunner.assertTrue(dateIsValidZeroBased(2026, 11, 31), 'dateIsValidZeroBased: Dec 31, 2026 is valid (month index 11)');
+        TestRunner.assertFalse(dateIsValidZeroBased(2026, 12, 1), 'dateIsValidZeroBased: Month index 12 is invalid');
+    }
+}
+
 function testCalculateLoanInstallment() {
     console.log('Testing calculateLoan() - solve for installment...');
 
@@ -736,6 +783,7 @@ function runAllTests() {
     // Date tests
     testDays360();
     testGetQuarterKey();
+    testDateIsValid();
 
     // Core calculation tests
     testCalculateLoanInstallment();

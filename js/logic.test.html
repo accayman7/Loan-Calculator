@@ -131,8 +131,9 @@
 
     <div id="results"></div>
 
-    <!-- Load the logic module first -->
+    <!-- Load the logic and dateinput modules first -->
     <script src="logic.js"></script>
+    <script src="dateinput.js"></script>
 
     <!-- Load the test suite -->
     <script src="logic.test.js"></script>
@@ -154,19 +155,19 @@
                     // Safe DOM construction to prevent XSS
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'result-fail result-item';
-                    
+
                     const strongEl = document.createElement('strong');
                     strongEl.textContent = 'Error running tests: ';
                     errorDiv.appendChild(strongEl);
-                    
+
                     const msgText = document.createTextNode(error.message || 'Unknown error');
                     errorDiv.appendChild(msgText);
-                    
+
                     const detailsDiv = document.createElement('div');
                     detailsDiv.className = 'result-details';
                     detailsDiv.textContent = error.stack || '';
                     errorDiv.appendChild(detailsDiv);
-                    
+
                     resultsDiv.innerHTML = '';
                     resultsDiv.appendChild(errorDiv);
                 }
