@@ -1,7 +1,7 @@
 /**
  * logic.test.js - Unit Tests for logic.js
  * Zero-dependency test runner for financial calculations
- * 
+ *
  * Run: Open logic.test.html in a browser
  */
 
@@ -716,6 +716,34 @@ function testSolveTdLoanMultiCollateral() {
     TestRunner.assertEqual(resMixed.maxAllowedLoan, 1250000, 'Combined max loan is 800k + 450k = 1,250,000');
 }
 
+function testSsParseNativeDate() {
+    console.log('Testing _ssParseNativeDate()...');
+
+    if (typeof _ssParseNativeDate !== 'function') {
+        console.warn('_ssParseNativeDate is not available');
+        return;
+    }
+
+    // Happy path: valid ISO string
+    const validDate = _ssParseNativeDate('2026-01-15');
+    TestRunner.assertTrue(validDate instanceof Date, '_ssParseNativeDate("2026-01-15") returns Date object');
+    TestRunner.assertEqual(validDate.getFullYear(), 2026, '_ssParseNativeDate("2026-01-15") year = 2026');
+    TestRunner.assertEqual(validDate.getMonth(), 0, '_ssParseNativeDate("2026-01-15") month = 0 (Jan)');
+    TestRunner.assertEqual(validDate.getDate(), 15, '_ssParseNativeDate("2026-01-15") day = 15');
+
+    // Error paths: falsy inputs
+    TestRunner.assertEqual(_ssParseNativeDate(null), null, '_ssParseNativeDate(null) = null');
+    TestRunner.assertEqual(_ssParseNativeDate(undefined), null, '_ssParseNativeDate(undefined) = null');
+    TestRunner.assertEqual(_ssParseNativeDate(''), null, '_ssParseNativeDate("") = null');
+
+    // Error paths: invalid string format (parts.length !== 3)
+    TestRunner.assertEqual(_ssParseNativeDate('2026/01/15'), null, '_ssParseNativeDate("2026/01/15") = null');
+    TestRunner.assertEqual(_ssParseNativeDate('2026-01'), null, '_ssParseNativeDate("2026-01") = null');
+    TestRunner.assertEqual(_ssParseNativeDate('2026'), null, '_ssParseNativeDate("2026") = null');
+    TestRunner.assertEqual(_ssParseNativeDate('2026-01-15-01'), null, '_ssParseNativeDate("2026-01-15-01") = null');
+    TestRunner.assertEqual(_ssParseNativeDate('invalid'), null, '_ssParseNativeDate("invalid") = null');
+}
+
 function runAllTests() {
     TestRunner.reset();
 
@@ -757,6 +785,7 @@ function runAllTests() {
     testSolveTdLoan();
     testSolveTdLoanEdgeCases();
     testSolveTdLoanMultiCollateral();
+    testSsParseNativeDate();
 
     // Regression tests (monthly backward-compat)
     testMonthlyRegression();
