@@ -134,8 +134,8 @@ self.addEventListener('fetch', (event) => {
 // Message handler: allow page to trigger immediate activation
 self.addEventListener('message', (event) => {
   // Security: Check origin matches this service worker's origin (Snyk CWE-20 fix)
-  if (event.origin !== self.location.origin) {
-    return; // Ignore cross-origin messages
+  if (!event.origin || event.origin !== self.location.origin) {
+    return; // Ignore cross-origin or invalid-origin messages
   }
 
   if (event.data && event.data.type === 'SKIP_WAITING') {
