@@ -435,6 +435,81 @@ function testEarlySettlementEdgeCases() {
     TestRunner.assertTrue(resValid.valid, 'Settlement within loan period is valid');
 }
 
+function testCalculateSettlementStampInt() {
+    console.log('Testing calculateSettlementStampInt()...');
+
+    const settlementDateQ1 = new Date(2024, 1, 15); // Feb 15, 2024 (2024-Q1)
+
+    // 1. Zero or negative stamp rate -> 0
+    TestRunner.assertEqual(
+        calculateSettlementStampInt([], settlementDateQ1, 100000, 0),
+        0,
+        'Returns 0 when stampRate is 0'
+    );
+    TestRunner.assertEqual(
+        calculateSettlementStampInt([], settlementDateQ1, 100000, -0.2),
+        0,
+        'Returns 0 when stampRate is negative'
+    );
+
+    // 2. Zero or negative principal balance -> 0
+    TestRunner.assertEqual(
+        calculateSettlementStampInt([], settlementDateQ1, 0, 0.2),
+        0,
+        'Returns 0 when principalBalanceInt is 0'
+    );
+    TestRunner.assertEqual(
+        calculateSettlementStampInt([], settlementDateQ1, -50000, 0.2),
+        0,
+        'Returns 0 when principalBalanceInt is negative'
+    );
+
+    // 3. Empty schedule with positive balance and stamp rate
+    // roundInt(100000 * (0.2/100) / 4) = roundInt(50) = 50
+    TestRunner.assertEqual(
+        calculateSettlementStampInt([], settlementDateQ1, 100000, 0.2),
+        50,
+        'Calculates stamp correctly with empty schedule'
+    );
+
+    // 4. Schedule with entries in matching and non-matching quarters
+    const schedule = [
+        { rawDate: new Date(2024, 0, 15), bal: 1000 }, // Jan 15 (2024-Q1) -> 100,000 piastres
+        { rawDate: new Date(2024, 1, 15), bal: 900 },  // Feb 15 (2024-Q1) -> 90,000 piastres
+        { rawDate: new Date(2024, 3, 15), bal: 1500 }  // Apr 15 (2024-Q2) -> 150,000 piastres (ignored)
+    ];
+
+    // Principal balance at settlement is 80,000 piastres (800 currency)
+    // Highest in Q1 is 100,000 piastres (from schedule[0])
+    // roundInt(100000 * 0.002 / 4) = 50
+    TestRunner.assertEqual(
+        calculateSettlementStampInt(schedule, settlementDateQ1, 80000, 0.2),
+        50,
+        'Selects highest principal in quarter from schedule entries'
+    );
+
+    // 5. When principalBalanceInt is higher than any entry in matching quarter
+    // Principal balance = 120,000 piastres, highest in schedule for Q1 = 100,000 piastres
+    // roundInt(120000 * 0.002 / 4) = 60
+    TestRunner.assertEqual(
+        calculateSettlementStampInt(schedule, settlementDateQ1, 120000, 0.2),
+        60,
+        'Uses principalBalanceInt when higher than any schedule entry in quarter'
+    );
+
+    // 6. Settlement in Q2, where schedule[0] is in Q1 and schedule[2] is in Q2
+    const settlementDateQ2 = new Date(2024, 4, 15); // May 15, 2024 (2024-Q2)
+    // Schedule entries in Q2: schedule[2] with bal=1500 (150,000 piastres)
+    // principalBalanceInt = 140,000 piastres
+    // Highest in Q2 = 150,000 piastres
+    // roundInt(150000 * 0.002 / 4) = 75
+    TestRunner.assertEqual(
+        calculateSettlementStampInt(schedule, settlementDateQ2, 140000, 0.2),
+        75,
+        'Correctly filters entries by quarter for Q2 settlement'
+    );
+}
+
 function testSolveTdLoan() {
     console.log('Testing solveTdLoan()...');
 
@@ -752,6 +827,7 @@ function runAllTests() {
     // Early settlement tests
     testEarlySettlement();
     testEarlySettlementEdgeCases();
+    testCalculateSettlementStampInt();
 
     // Self-sufficient TD solver tests
     testSolveTdLoan();
