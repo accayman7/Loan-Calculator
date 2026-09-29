@@ -186,9 +186,11 @@ function quarterEndInRange(startDate, endDate) {
  * @param {number} P - Loan principal
  * @param {number} N - Number of periods
  * @param {number} M - Periodic installment
+ * @param {number} [freq=1] - Installment frequency in months (1=monthly, 3=quarterly)
  * @returns {number|null} Annualized rate percentage, or null if failed to converge
  */
-function solveRateNewton(P, N, M) {
+function solveRateNewton(P, N, M, freq = 1) {
+    const annualMultiplier = (12 / (freq || 1)) * 100;
     let i = 0.01;
     for (let j = 0; j < 20; j++) {
         if (i <= 0.0000001) i = 0.0000001;
@@ -197,19 +199,25 @@ function solveRateNewton(P, N, M) {
         if (!isFinite(f) || !isFinite(df) || df === 0) break;
         let newI = i - f / df;
         if (Math.abs(newI - i) < 0.0000001) {
-            let res = newI * 1200;
+            let res = newI * annualMultiplier;
             return (isFinite(res) && res > 0) ? res : null;
         }
         i = newI;
     }
-    let res = i * 1200;
+    let res = i * annualMultiplier;
     return (isFinite(res) && res > 0) ? res : null;
 }
 
 /**
  * Fallback solver using Bisection Method
+ * @param {number} P - Loan principal
+ * @param {number} N - Number of periods
+ * @param {number} M - Periodic installment
+ * @param {number} [freq=1] - Installment frequency in months (1=monthly, 3=quarterly)
+ * @returns {number} Annualized rate percentage
  */
-function solveRateBisection(P, N, M) {
+function solveRateBisection(P, N, M, freq = 1) {
+    const annualMultiplier = (12 / (freq || 1)) * 100;
     let low = 0.00001;
     let high = 1.0;
     let epsilon = 0.0000001;
@@ -228,7 +236,7 @@ function solveRateBisection(P, N, M) {
         let calcP = (M / i) * (1 - Math.pow(1 + i, -N));
 
         if (Math.abs(calcP - P) < epsilon) {
-            return i * 1200;
+            return i * annualMultiplier;
         }
 
         if (calcP > P) {
@@ -237,7 +245,7 @@ function solveRateBisection(P, N, M) {
             high = i;
         }
     }
-    return i * 1200;
+    return i * annualMultiplier;
 }
 
 /**
@@ -301,9 +309,9 @@ function calculateLoan(inputs, activeKey, freq) {
                     valid = true;
                 } else {
                     // M * N > P: use Newton-Raphson solver with Bisection fallback
-                    resR = solveRateNewton(P, N, M);
+                    resR = solveRateNewton(P, N, M, freq);
                     if (resR === null || !isFinite(resR) || resR <= 0) {
-                        resR = solveRateBisection(P, N, M);
+                        resR = solveRateBisection(P, N, M, freq);
                     }
 
                     // Re-derive installment from the calculated rate for schedule consistency
@@ -566,6 +574,12 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
         return { valid: false, error: 'out_of_period' };
     }
 
+    // Bank Regulations: Early settlement before the first installment maturity (Pre-M1) is prohibited
+    const firstInstallmentNum = toDateNum(schedule[0].rawDate);
+    if (settlementNum < firstInstallmentNum) {
+        return { valid: false, error: 'pre_m1_prohibited', message: 'Early settlement before the first installment maturity is prohibited by bank regulations.' };
+    }
+
     // Early settlement must occur before final installment maturity
     const finalInstallmentNum = toDateNum(schedule[schedule.length - 1].rawDate);
     if (settlementNum >= finalInstallmentNum) {
@@ -613,7 +627,8 @@ function calculateEarlySettlement(schedule, settlementDate, feePercentage, annua
         }
     } else {
         const dailyRate = annualRate / 100 / 360;
-        daysElapsed = Math.max(0, days360(new Date(settlementDate.getFullYear(), settlementDate.getMonth(), 1), settlementDate));
+        const startDateForAccrual = start || (schedule[0]?.rawDate ? addMonthsClamped(schedule[0].rawDate, -(schedule.freq || 1)) : new Date(settlementDate.getFullYear(), settlementDate.getMonth(), 1));
+        daysElapsed = Math.max(0, days360(startDateForAccrual, settlementDate));
         accruedInterestInt = roundInt(principalBalanceInt * dailyRate * daysElapsed);
     }
 
@@ -822,14 +837,17 @@ function solveTdLoan(td1, tdRate, loanRate, N, dates, stampRate, adminFees, td2R
     const annuityFactor = i * Math.pow(1 + i, N) / (Math.pow(1 + i, N) - 1);
 
     // --- Step 1: Analytic estimate (ignoring stamp) ---
-    // Constraint: td1×r1/1200 + grossLoan×feeFactor×r2/1200 = grossLoan × annuityFactor
-    // Rearranging: grossLoan = (td1 × r1/1200) / (annuityFactor - feeFactor × r2/1200)
-    const denominator = annuityFactor - feeFactor * monthlyTd2Rate;
+    // Constraint: periodic TD income = periodic loan installment
+    // (td1 × monthlyTd1Rate + grossLoan × feeFactor × monthlyTd2Rate) × freq = grossLoan × annuityFactor
+    // Rearranging: grossLoan = (td1 × monthlyTd1Rate × freq) / (annuityFactor - feeFactor × monthlyTd2Rate × freq)
+    const periodicTd2Rate = monthlyTd2Rate * freq;
+    const periodicTd1Rate = monthlyTd1Rate * freq;
+    const denominator = annuityFactor - feeFactor * periodicTd2Rate;
     if (denominator <= 0) {
         return { valid: false };
     }
 
-    const grossLoanEst = (td1 * monthlyTd1Rate) / denominator;
+    const grossLoanEst = (td1 * periodicTd1Rate) / denominator;
     if (!isFinite(grossLoanEst) || grossLoanEst <= 0) {
         return { valid: false };
     }

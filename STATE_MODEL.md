@@ -2,8 +2,8 @@
 
 This document describes the application state flow and data architecture for the Loan Calculator PWA.
 
-**Version:** 2.0.1  
-**Last Updated:** 2026-08-29
+**Version:** 2.5.6  
+**Last Updated:** 2026-09-24
 
 ---
 
@@ -191,9 +191,10 @@ stateDiagram-v2
     [*] --> Inactive: Default
     Inactive --> Active: Toggle ON
     Active --> AwaitingDate: User selects settlement date
-    AwaitingDate --> ValidatingDate: Check date between Start Date and End Date
-    ValidatingDate --> SettlementCalculated: Date valid
-    ValidatingDate --> DateError: Date out of loan term
+    AwaitingDate --> ValidatingDate: Check date between M1 and End Date
+    ValidatingDate --> SettlementCalculated: Date >= M1 and < Maturity
+    ValidatingDate --> PreM1Error: Date < M1 (Pre-M1 Prohibited by regulations)
+    ValidatingDate --> DateOutOfRangeError: Date >= Maturity
     SettlementCalculated --> SummaryRendered: Show principal, accrued interest, fees, stamp
 ```
 
@@ -237,5 +238,5 @@ The calculation engine is verified by a 100% offline unit test suite in `js/logi
 | **Early Settlement** | 18 | Settlement balances, penalty fees, accrued interest, date period validation |
 | **Self-Sufficient TD Solver** | 20 | Single & Multi-CD₁ solving, limits, reinvestment |
 | **Monthly Backward-Compat** | 12 | Regression verification for existing standard loans |
-| **Quarterly Schedules** | 16 | Quarterly steps, broken quarters, 30/360 amortization |
-| **Total Automated Assertions** | **143** | **100% Passing (0 Failures)** |
+| **Quarterly Schedules & Solving** | 23 | Quarterly steps, broken quarters, 30/360 amortization, quarterly rate solving |
+| **Total Automated Assertions** | **303** (logic) + **55** (UI) | **100% Passing (0 Failures)** |

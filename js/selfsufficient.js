@@ -352,19 +352,19 @@ function renderSsCd1List(newIdToAnimate = null) {
                 <div class="col-span-4">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralNominalLabel">${t(lang, 'collateralNominalLabel')}</label>
                     <div class="input-group py-1 px-1.5">
-                        <input type="text" inputmode="decimal" class="text-input select-text ss-cd-amount p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="100,000" aria-label="${t(lang, 'collateralNominalLabel')}" title="${t(lang, 'collateralNominalLabel')}">
+                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-amount p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="100,000" aria-label="${t(lang, 'collateralNominalLabel')}" title="${t(lang, 'collateralNominalLabel')}">
                     </div>
                 </div>
                 <div class="col-span-5">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralRedemptionLabel">${t(lang, 'collateralRedemptionLabel')}</label>
                     <div class="input-group py-1 px-1.5">
-                        <input type="text" inputmode="decimal" class="text-input select-text ss-cd-redemption p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="90,000" aria-label="${t(lang, 'collateralRedemptionLabel')}" title="${t(lang, 'collateralRedemptionLabel')}">
+                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-redemption p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="90,000" aria-label="${t(lang, 'collateralRedemptionLabel')}" title="${t(lang, 'collateralRedemptionLabel')}">
                     </div>
                 </div>
                 <div class="col-span-3">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderRate">${t(lang, 'colHeaderRate')}</label>
                     <div class="input-group py-1 px-1.5">
-                        <input type="text" inputmode="decimal" class="text-input select-text ss-cd-rate p-0 text-center" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="19.0" aria-label="${t(lang, 'colHeaderRate')}" title="${t(lang, 'colHeaderRate')}">
+                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-rate p-0 text-center" data-id="${cd.id}" placeholder="19.0" aria-label="${t(lang, 'colHeaderRate')}" title="${t(lang, 'colHeaderRate')}">
                     </div>
                 </div>
             </div>
@@ -373,9 +373,9 @@ function renderSsCd1List(newIdToAnimate = null) {
             <div class="pt-2 border-t border-green-100/80 dark:border-green-900/40 grid grid-cols-12 gap-2 items-end">
                 <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="maturityDateLabel">${t(lang, 'maturityDateLabel')}</label>
-                    <div class="input-group relative py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'maturityDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
-                        <button type="button" class="ss-cd-maturity-picker-btn flex-shrink-0 w-4.5 h-4.5 p-0.5 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open maturity date picker">
+                    <div class="input-group relative py-1 px-1.5 flex items-center gap-0.5" title="${t(lang, 'maturityDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input text-xs sm:text-sm font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
+                        <button type="button" class="ss-cd-maturity-picker-btn flex-shrink-0 w-4 h-4 p-0 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open maturity date picker">
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
@@ -385,9 +385,9 @@ function renderSsCd1List(newIdToAnimate = null) {
                 </div>
                 <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="nextCouponDateLabel">${t(lang, 'nextCouponDateLabel')}</label>
-                    <div class="input-group relative py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'nextCouponDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 text-center tracking-tight" style="font-size: 11px !important;" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
-                        <button type="button" class="ss-cd-picker-btn flex-shrink-0 w-4.5 h-4.5 p-0.5 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open date picker">
+                    <div class="input-group relative py-1 px-1.5 flex items-center gap-0.5" title="${t(lang, 'nextCouponDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input text-xs sm:text-sm font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
+                        <button type="button" class="ss-cd-picker-btn flex-shrink-0 w-4 h-4 p-0 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open date picker">
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
@@ -417,8 +417,9 @@ function renderSsCd1List(newIdToAnimate = null) {
         const adjustAmountFontSize = (input) => {
             if (!input) return;
             const len = input.value.length;
-            if (len >= 12) input.style.fontSize = '10px';
-            else input.style.fontSize = '11px';
+            if (len >= 13) input.style.fontSize = '11px';
+            else if (len >= 11) input.style.fontSize = '12px';
+            else input.style.fontSize = '';
         };
 
         // Seed Next Coupon date if available
@@ -650,8 +651,7 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
             animateToggleBounce(e.target);
 
             if (e.target.checked) {
-                // 1. Expand collateralSection immediately without 300ms transition lag
-                // so it doesn't cause a delayed layout push while the user is viewing SS mode
+                // 1. Ensure loan type is secured (as SS mode requires secured collateral)
                 if (typeof window.setLoanType === 'function') {
                     window.setLoanType('secured', { immediate: true });
                 } else {
@@ -659,20 +659,22 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
                     if (securedBtn) securedBtn.click();
                 }
 
-                // 2. Expand Self-Sufficient section immediately without transition lag
-                // so dimensions and element positions are 100% computed with zero lag
-                ssSection.style.transition = 'none';
+                // 2. Expand immediately with 300ms animation (identical to early-settlement & advanced-section)
                 ssSection.classList.remove('max-h-0', 'opacity-0');
-                ssSection.style.maxHeight = '2400px';
+                const targetHeight = Math.max(ssSection.scrollHeight, 900);
+                ssSection.style.maxHeight = (targetHeight + 200) + 'px';
                 ssSection.classList.add('opacity-100');
-                void ssSection.offsetHeight; // Force layout reflow
+
+                // Allow dynamic growth after transition completes without setting 'none' (which breaks close transitions)
                 setTimeout(() => {
-                    ssSection.style.transition = '';
-                }, 500);
+                    if (ssToggle.checked) {
+                        ssSection.style.maxHeight = '4000px';
+                    }
+                }, 350);
 
                 // 3. Smoothly scroll directly to the Self-Sufficient mode card & input fields
                 const targetCard = ssSection.closest('.rounded-xl') || ssSection;
-                requestAnimationFrame(() => {
+                const doScroll = () => {
                     const navEl = document.querySelector('nav');
                     const navH = navEl ? navEl.offsetHeight : 64;
                     const toastEl = document.getElementById('message-box');
@@ -685,19 +687,19 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
 
                     targetCard.style.scrollMarginTop = clearance + 'px';
                     window.scrollTo({ top: scrollDest, behavior: 'smooth' });
+                };
 
-                    // Fail-safe check in case browser aborts smooth scroll animation
-                    setTimeout(() => {
-                        const currentTop = targetCard.getBoundingClientRect().top;
-                        if (Math.abs(currentTop - clearance) > 40) {
-                            window.scrollTo({ top: scrollDest, behavior: 'smooth' });
-                        }
-                    }, 350);
-                });
+                // Trigger scroll immediately and re-anchor as layout finishes rendering
+                requestAnimationFrame(doScroll);
+                setTimeout(doScroll, 100);
+                setTimeout(doScroll, 320);
             } else {
-                ssSection.style.transition = '';
+                // Smooth Close Animation:
+                // Lock exact scrollHeight in pixels so CSS can interpolate down to 0
+                ssSection.style.maxHeight = ssSection.scrollHeight + 'px';
+                void ssSection.offsetHeight; // Force reflow
                 ssSection.classList.add('max-h-0', 'opacity-0');
-                ssSection.style.maxHeight = '0';
+                ssSection.style.maxHeight = '0px';
                 ssSection.classList.remove('opacity-100');
             }
         });

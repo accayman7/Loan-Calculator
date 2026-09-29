@@ -39,9 +39,10 @@ function getLoanPeriod() {
         startDate.setMonth(startDate.getMonth() - freq);
     }
 
+    const firstInstallmentDate = schedule[0]?.rawDate || null;
     const endDate = schedule[schedule.length - 1].rawDate;
 
-    return { startDate, endDate };
+    return { startDate, firstInstallmentDate, endDate };
 }
 
 function dateToISOString(d) {
@@ -54,6 +55,7 @@ function dateToISOString(d) {
 
 /**
  * Configure settlement date input min/max constraints and default values based on loan period.
+ * Under banking regulations, early settlement is prohibited before the first installment maturity (M1).
  */
 function syncEarlySettlementConstraints() {
     const settlementDateNative = document.getElementById('settlement-date-native');
@@ -61,26 +63,27 @@ function syncEarlySettlementConstraints() {
     if (!settlementDateNative) return;
 
     const period = getLoanPeriod();
-    if (!period) return;
+    if (!period || !period.firstInstallmentDate) return;
 
-    const startISO = dateToISOString(period.startDate);
+    // Banking regulation constraint: Earliest permitted settlement date is first installment maturity
+    const minISO = dateToISOString(period.firstInstallmentDate);
     // Early settlement must occur before final installment maturity
     const maxSettlementDate = new Date(period.endDate.getFullYear(), period.endDate.getMonth(), period.endDate.getDate() - 1);
-    const validMax = maxSettlementDate >= period.startDate ? maxSettlementDate : period.endDate;
+    const validMax = maxSettlementDate >= period.firstInstallmentDate ? maxSettlementDate : period.firstInstallmentDate;
     const endISO = dateToISOString(validMax);
 
-    settlementDateNative.min = startISO;
+    settlementDateNative.min = minISO;
     settlementDateNative.max = endISO;
-    settlementDateNative.dataset.minErrorKey = 'errorSettlementDateOutOfRange';
+    settlementDateNative.dataset.minErrorKey = 'errorSettlementPreM1Prohibited';
     settlementDateNative.dataset.maxErrorKey = 'errorSettlementDateOutOfRange';
 
     const curVal = settlementDateNative.value;
-    if (!curVal || curVal < startISO || curVal > endISO) {
+    if (!curVal || curVal < minISO || curVal > endISO) {
         const today = new Date();
         const todayISO = dateToISOString(today);
         let defaultDate = today;
-        if (todayISO < startISO || todayISO > endISO) {
-            defaultDate = period.startDate;
+        if (todayISO < minISO || todayISO > endISO) {
+            defaultDate = period.firstInstallmentDate;
         }
 
         settlementDateNative.value = dateToISOString(defaultDate);
@@ -247,15 +250,25 @@ function updateEarlySettlement(showError = false) {
     const [y, m, d] = settlementDateNative.value.split('-').map(Number);
     const settlementDate = new Date(y, m - 1, d);
 
-    // 3. Validate settlement date is strictly within the loan period
+    // 3. Validate settlement date: strictly on or after first installment (M1) and before maturity
     const period = getLoanPeriod();
     if (period) {
         const toDateNum = (dt) => dt.getFullYear() * 10000 + (dt.getMonth() + 1) * 100 + dt.getDate();
         const sNum = toDateNum(settlementDate);
-        const startNum = toDateNum(period.startDate);
+        const m1Num = period.firstInstallmentDate ? toDateNum(period.firstInstallmentDate) : toDateNum(period.startDate);
         const endNum = toDateNum(period.endDate);
 
-        if (sNum < startNum || sNum >= endNum) {
+        if (sNum < m1Num) {
+            resultsPanel.classList.add('opacity-0', 'max-h-0');
+            resultsPanel.classList.remove('opacity-100', 'max-h-96');
+            if (errorEl && showError) {
+                errorEl.textContent = t(_esAppState.lang, 'errorSettlementPreM1Prohibited');
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (sNum >= endNum) {
             resultsPanel.classList.add('opacity-0', 'max-h-0');
             resultsPanel.classList.remove('opacity-100', 'max-h-96');
             if (errorEl && showError) {
@@ -288,7 +301,8 @@ function updateEarlySettlement(showError = false) {
         resultsPanel.classList.add('opacity-0', 'max-h-0');
         resultsPanel.classList.remove('opacity-100', 'max-h-96');
         if (errorEl && showError) {
-            errorEl.textContent = t(_esAppState.lang, 'errorSettlementDateOutOfRange');
+            const errKey = result.error === 'pre_m1_prohibited' ? 'errorSettlementPreM1Prohibited' : 'errorSettlementDateOutOfRange';
+            errorEl.textContent = t(_esAppState.lang, errKey);
             errorEl.classList.remove('hidden');
         }
         return;

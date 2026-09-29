@@ -38,6 +38,28 @@ body {
     overscroll-behavior: none;
     background-color: #f9fafb;
     color: #111827;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* Allow text selection only where explicitly needed (inputs and result numbers) */
+input,
+textarea,
+[contenteditable="true"],
+.select-text,
+.select-all {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+}
+
+.select-all {
+    -webkit-user-select: all !important;
+    user-select: all !important;
 }
 
 button,
@@ -247,9 +269,38 @@ nav>div {
     transform: translateX(0);
 }
 
+/* Left-aligned tooltips - anchor from left edge (expands inward/right in LTR) */
+.info-icon.tooltip-start::after {
+    left: 0;
+    right: auto;
+    max-width: min(220px, calc(100vw - 32px));
+    transform: translateX(0);
+}
+
+.info-icon.tooltip-start::before {
+    left: 8px;
+    right: auto;
+    transform: translateX(0);
+}
+
+/* Tooltips in Summary Card right column (Flat Rate icon is before the text) */
+.summary-grid .text-end .info-icon::after {
+    left: auto;
+    right: -4.5rem;
+    max-width: min(210px, 65vw);
+    transform: translateX(0);
+}
+
+.summary-grid .text-end .info-icon::before {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+}
+
 /* Left-aligned tooltips - shift right */
 .summary-grid>div:first-child .info-icon::after {
     left: 0;
+    max-width: min(210px, 65vw);
     transform: translateX(0);
 }
 
@@ -277,9 +328,38 @@ nav>div {
     transform: translateX(0);
 }
 
+/* RTL Left-aligned tooltips - anchor from right edge in RTL */
+[dir="rtl"] .info-icon.tooltip-start::after {
+    left: auto;
+    right: 0;
+    max-width: min(220px, calc(100vw - 32px));
+    transform: translateX(0);
+}
+
+[dir="rtl"] .info-icon.tooltip-start::before {
+    left: auto;
+    right: 8px;
+    transform: translateX(0);
+}
+
+/* RTL summary card right column tooltip */
+[dir="rtl"] .summary-grid .text-end .info-icon::after {
+    left: -4.5rem;
+    right: auto;
+    max-width: min(210px, 65vw);
+    transform: translateX(0);
+}
+
+[dir="rtl"] .summary-grid .text-end .info-icon::before {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+}
+
 [dir="rtl"] .summary-grid>div:first-child .info-icon::after {
     left: auto;
     right: 0;
+    max-width: min(210px, 65vw);
     transform: translateX(0);
 }
 
@@ -317,12 +397,19 @@ nav>div {
 .table-container {
     max-height: 500px;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border: 1px solid #e2e8f0;
 }
 
 .dark .table-container {
     border-color: #1f2937;
+}
+
+/* Amortization schedule Remaining column buffer padding (LTR right / RTL left) */
+#schedule-container table th:last-child,
+#schedule-container table td:last-child {
+    padding-inline-end: 1.5rem !important;
 }
 
 /* Schedule Button States */

@@ -1648,6 +1648,10 @@
                         ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
                         : t(AppState.lang, 'regularInstLabel');
                 }
+
+                if (coreInputsFilled()) {
+                    appCalculate();
+                }
             });
 
             // When booking date changes while quarterly, update the quarterly date
@@ -2343,6 +2347,9 @@
             if (typeof syncEarlySettlementConstraints === 'function') {
                 syncEarlySettlementConstraints();
             }
+            if (document.getElementById('early-settlement-toggle')?.checked && typeof updateEarlySettlement === 'function') {
+                updateEarlySettlement(false);
+            }
         } else {
             showToast(t(AppState.lang, 'errorCalculationFailed'), 'error');
             updateSubsidiaryErrors();
@@ -2355,7 +2362,11 @@
     function resetApp() {
         Object.values(formInputs).forEach(i => i.value = '');
 
-        dateInputs.startNative.valueAsDate = new Date();
+        const today = new Date();
+        const ty = today.getFullYear();
+        const tm = String(today.getMonth() + 1).padStart(2, '0');
+        const td = String(today.getDate()).padStart(2, '0');
+        dateInputs.startNative.value = `${ty}-${tm}-${td}`;
         dateInputs.startNative.dispatchEvent(new Event('change'));
 
         document.getElementById('advanced-toggle').checked = false;
@@ -2593,7 +2604,7 @@
                 const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
                 const isAdvanced = document.getElementById('advanced-toggle').checked;
                 const entry = {
-                    id: 'calc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    id: 'calc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
                     date: new Date().toISOString(),
                     activeKey: AppState.activeKey,
                     values: {
@@ -2813,10 +2824,6 @@
         // Clone styles
         document.querySelectorAll('link[rel="stylesheet"]').forEach(link => head.appendChild(link.cloneNode(true)));
         document.querySelectorAll('style').forEach(style => head.appendChild(style.cloneNode(true)));
-
-        const twScript = doc.createElement('script');
-        twScript.src = './tailwind.js';
-        head.appendChild(twScript);
 
         const printStyles = doc.createElement('style');
         printStyles.textContent = `
@@ -3079,7 +3086,7 @@
                     const d = r.rawDate.getDate().toString().padStart(2, '0');
                     const m = (r.rawDate.getMonth() + 1).toString().padStart(2, '0');
                     const y = r.rawDate.getFullYear();
-                    dateStr = `${d} /${m}/${y} `;
+                    dateStr = `${d}/${m}/${y}`;
                 } else {
                     dateStr = r.rawDate.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
                 }

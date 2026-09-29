@@ -1,7 +1,7 @@
 # Loan Calculator — Compliance Statement
 
-**Version:** 2.0.1  
-**Document Date:** 2026-08-29  
+**Version:** 2.5.6  
+**Document Date:** 2026-09-24  
 **Application Type:** Progressive Web Application (PWA)
 
 ---
@@ -120,6 +120,12 @@ This provides:
 - **Auditability**: Same inputs always produce the same fingerprint
 - **Verifiability**: Users/auditors can confirm calculation consistency
 - **Traceability**: Fingerprint changes if any input or calculation logic changes
+
+### 5.6 Early Settlement Regulatory Compliance & Pre-M1 Safeguard
+In strict adherence to retail banking credit regulations and central banking standards:
+- **Pre-M1 Prohibition**: Early settlement cannot be executed prior to the maturity and payment of the first installment ($M_1$). The application strictly enforces $M_1$ as the minimum permitted settlement date constraint.
+- **Regulatory Rejection & Warning**: If an early settlement calculation is attempted before $M_1$, the engine rejects the calculation with a dedicated regulatory warning (`errorSettlementPreM1Prohibited`).
+- **Quarterly Highest Principal Stamp**: Early settlement assessments compute proportional stamp duty using the highest principal balance observed in the calendar quarter.
 
 ---
 

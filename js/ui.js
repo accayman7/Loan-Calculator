@@ -22,7 +22,7 @@ const txt = {
         calcPlaceholder: "Result",
         totalSumLabel: "Total Payment",
         totalInterestLabel: "Total Interest",
-        flatRateLabel: "Effective Flat Rate",
+        flatRateLabel: "Flat Rate",
         firstInstLabel: "First Installment Date",
         firstInstAmountLabel: "First Installment",
         regularInstLabel: "Regular Installment",
@@ -182,6 +182,7 @@ const txt = {
         errorFirstInstBeforeBooking: "First installment date cannot be before the booking date",
         errorLoanNotCalculated: "Please calculate loan details first.",
         errorSettlementDateOutOfRange: "Settlement date must be within the loan period.",
+        errorSettlementPreM1Prohibited: "Early settlement is prohibited before the first installment maturity per bank regulations.",
 
         // Offline & Compliance
         offlineMode: "Offline",
@@ -269,7 +270,7 @@ const txt = {
         totalCollateralLabel: "Total Collateral:",
         maxLoanAllowedLabel: "Max Loan:",
         maxLoanAllowedTooltip: "Maximum Loan Limit: By banking regulations, maximum loan amount is 90% of certificate nominal value or its redemption value, whichever is lower.",
-        minLoanRateLabel: "Min Rate (+2%):",
+        minLoanRateLabel: "Min Rate:",
         minLoanRateTooltip: "Minimum Loan Rate: By banking regulations, loan interest must be at least 2% higher than your highest collateral CD rate.",
         cdMonthlyReturnLabel: "Monthly CD Returns",
         loanInstallmentMonthlyLabel: "Monthly Installment",
@@ -528,6 +529,7 @@ const txt = {
         errorFirstInstBeforeBooking: "تاريخ أول قسط لا يمكن أن يسبق تاريخ المنح",
         errorLoanNotCalculated: "يرجى حساب تفاصيل القرض أولاً.",
         errorSettlementDateOutOfRange: "يجب أن يكون تاريخ السداد المبكر خلال فترة القرض.",
+        errorSettlementPreM1Prohibited: "السداد المعجل قبل استحقاق القسط الأول محظور بموجب اللوائح المصرفية.",
 
         // Offline & Compliance
         offlineMode: "غير متصل",
@@ -611,7 +613,7 @@ const txt = {
         totalCollateralLabel: "إجمالي الضمانات:",
         maxLoanAllowedLabel: "أقصى قرض:",
         maxLoanAllowedTooltip: "الحد الأقصى للقرض: وفقاً للتعليمات المصرفية، الحد الأقصى لمبلغ القرض هو 90% من القيمة الاسمية للشهادة أو قيمتها الاستردادية أيهما أقل.",
-        minLoanRateLabel: "أدنى فائدة (+2%):",
+        minLoanRateLabel: "أدنى فائدة:",
         minLoanRateTooltip: "الحد الأدنى لسعر فائدة القرض: وفقاً للتعليمات المصرفية، يجب أن تكون فائدة القرض أعلى بنسبة 2% على الأقل من أعلى فائدة للشهادات الضامنة.",
         cdMonthlyReturnLabel: "عوائد الشهادات شهرياً",
         loanInstallmentMonthlyLabel: "قسط القرض الشهري",
@@ -2171,7 +2173,7 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
             <td class="hidden sm:table-cell px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${fmt(r.bal)}</td>
             <td class="px-0.5 sm:px-1 py-2 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap">${fmt(r.int)}</td>
             <td class="px-0.5 sm:px-1 py-2 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap">${fmt(r.prin)}</td>
-            <td class="px-0.5 sm:px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">${fmt(r.rem)}</td>
+            <td class="px-0.5 sm:px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap ltr:pr-4 rtl:pl-4">${fmt(r.rem)}</td>
         </tr>`);
     }
 

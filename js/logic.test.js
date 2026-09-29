@@ -1141,6 +1141,9 @@ function runAllTests() {
     // Service Worker CWE-20 test
     testServiceWorkerMessageHandler();
 
+    // Quarterly Rate Solving & Pre-M1 Settlement test
+    testQuarterlyRateSolvingAndEarlySettlementPreM1();
+
     console.log('\n=== Test Results ===');
 
     const summary = TestRunner.getSummary();
@@ -1240,6 +1243,35 @@ function testServiceWorkerMessageHandler() {
     skipWaitingCalled = false;
     handler({ origin: 'https://example.com', data: { type: 'SKIP_WAITING' } });
     TestRunner.assertTrue(skipWaitingCalled, 'Same-origin message with SKIP_WAITING calls skipWaiting()');
+}
+
+function testQuarterlyRateSolvingAndEarlySettlementPreM1() {
+    console.log('--- Quarterly Rate Solving & Pre-M1 Settlement Tests ---');
+
+    // 1. Quarterly rate solving
+    const mRes = calculateLoan({ amount: '500000', rate: '22', period: '2' }, 'installment', 3);
+    TestRunner.assertTrue(mRes.valid, 'Quarterly loan calculation for test setup is valid');
+
+    const rRes = calculateLoan({ amount: '500000', installment: String(mRes.M), period: '2' }, 'rate', 3);
+    TestRunner.assertTrue(rRes.valid, 'Quarterly solve-for-rate is valid');
+    TestRunner.assertApproxEqual(rRes.R, 22.0, 0.05, 'Quarterly derived rate matches input rate (not 3x inflated)');
+    TestRunner.assertApproxEqual(rRes.M, mRes.M, 0.05, 'Quarterly derived installment matches original installment');
+
+    // 2. Pre-M1 Early Settlement Regulatory Rejection
+    const bookingDate = new Date(2026, 0, 15);
+    const m1Date = new Date(2026, 4, 5);
+    const sched = generateSchedule({ P: 100000, R: 12, N: 12, M: 8884.88 }, { bookingDate, m1_Date: m1Date, isAdvanced: true });
+
+    // Attempt settlement on 2026-02-10 (before M1 on May 5, 2026) -> MUST BE REJECTED
+    const preM1Date = new Date(2026, 1, 10);
+    const preM1Res = calculateEarlySettlement(sched.schedule, preM1Date, 0, 12, 0, bookingDate);
+    TestRunner.assertFalse(preM1Res.valid, 'Pre-M1 early settlement is rejected per bank regulations');
+    TestRunner.assertEqual(preM1Res.error, 'pre_m1_prohibited', 'Error code is pre_m1_prohibited');
+
+    // Attempt settlement ON M1 date (May 5, 2026) -> VALID
+    const onM1Res = calculateEarlySettlement(sched.schedule, m1Date, 0, 12, 0, bookingDate);
+    TestRunner.assertTrue(onM1Res.valid, 'Settlement on M1 installment date is valid');
+    TestRunner.assertEqual(onM1Res.lastPaidInstallment, 1, 'Settlement on M1 has lastPaidInstallment = 1');
 }
 
 // Export for browser use
