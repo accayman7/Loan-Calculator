@@ -322,7 +322,7 @@
         collaterals.forEach((col, index) => {
             const row = document.createElement('div');
             row.id = `col-row-${col.id}`;
-            row.className = `grid grid-cols-12 gap-1 sm:gap-1.5 items-center p-1.5 sm:p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 transition-all ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
+            row.className = `collateral-grid gap-1 sm:gap-1.5 items-center p-1.5 sm:p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 transition-all ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
             
             const colIndex = index + 1;
             const badgePrefix = t(AppState.lang, 'collateralBadge') || 'CD';
@@ -330,7 +330,7 @@
             const colItemName = safeEscapeHtml(`${t(AppState.lang, 'collateralItemLabel')} ${colIndex}`);
             
             row.innerHTML = `
-                <div class="col-span-2 flex items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] font-bold text-gray-600 dark:text-gray-300">
+                <div class="flex items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] font-bold text-gray-600 dark:text-gray-300">
                     <span id="col-label-${col.id}" class="whitespace-nowrap" dir="auto">${colLabel}</span>
                     ${collaterals.length > 1 ? `
                     <button type="button" class="col-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="removeCollateralBtn" data-lang-aria-label="removeCollateralBtn" title="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})">
@@ -342,19 +342,19 @@
                     </button>
                     `}
                 </div>
-                <div class="col-span-4 min-w-0">
+                <div class="min-w-0">
                     <div class="input-group py-1 px-1">
-                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-amount-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-nominal" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
+                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-amount-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-nominal" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
                     </div>
                 </div>
-                <div class="col-span-4 min-w-0">
+                <div class="min-w-0">
                     <div class="input-group py-1 px-1">
-                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-redemption-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-redemption" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
+                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-redemption-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-redemption" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
                     </div>
                 </div>
-                <div class="col-span-2 min-w-0">
+                <div class="min-w-0">
                     <div class="input-group py-1 px-1">
-                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-rate-input p-0 text-center" data-id="${col.id}" data-col-index="${colIndex}" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-rate" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
+                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-rate-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-rate" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
                     </div>
                 </div>
                 <span id="col-amount-error-${col.id}" class="sr-only" role="alert"></span>
@@ -368,9 +368,18 @@
             const removeBtn = row.querySelector('.col-remove-btn');
             const clearBtn = row.querySelector('.col-clear-btn');
 
-            if (amountInput) amountInput.value = col.amount || '';
-            if (redemptionInput) redemptionInput.value = col.redemption || '';
-            if (rateInput) rateInput.value = col.rate || '';
+            if (amountInput) {
+                amountInput.value = col.amount || '';
+                if (typeof autoFitInputText === 'function') autoFitInputText(amountInput, 12, 9.5);
+            }
+            if (redemptionInput) {
+                redemptionInput.value = col.redemption || '';
+                if (typeof autoFitInputText === 'function') autoFitInputText(redemptionInput, 12, 9.5);
+            }
+            if (rateInput) {
+                rateInput.value = col.rate || '';
+                if (typeof autoFitInputText === 'function') autoFitInputText(rateInput, 12, 9.5);
+            }
 
             const validateColRedemption = () => {
                 const a = safeParseFloat(amountInput?.value);
@@ -425,6 +434,7 @@
                     col.amount = e.target.value;
                     validateColRedemption();
                     recalcCollateralMetrics();
+                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 12, 9.5);
                 });
             }
 
@@ -434,6 +444,7 @@
                     col.redemption = e.target.value;
                     validateColRedemption();
                     recalcCollateralMetrics();
+                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 12, 9.5);
                 });
             }
 
@@ -443,12 +454,14 @@
                     col.rate = e.target.value;
                     validateColRate();
                     recalcCollateralMetrics(true);
+                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 12, 9.5);
                 });
                 rateInput.addEventListener('blur', (e) => {
                     if (typeof formatRateInputBlur === 'function') formatRateInputBlur(e.target);
                     col.rate = e.target.value;
                     validateColRate();
                     recalcCollateralMetrics();
+                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 12, 9.5);
                 });
             }
 
@@ -472,9 +485,18 @@
                     col.amount = '';
                     col.redemption = '';
                     col.rate = '';
-                    if (amountInput) amountInput.value = '';
-                    if (redemptionInput) redemptionInput.value = '';
-                    if (rateInput) rateInput.value = '';
+                    if (amountInput) {
+                        amountInput.value = '';
+                        if (typeof autoFitInputText === 'function') autoFitInputText(amountInput, 12, 9.5);
+                    }
+                    if (redemptionInput) {
+                        redemptionInput.value = '';
+                        if (typeof autoFitInputText === 'function') autoFitInputText(redemptionInput, 12, 9.5);
+                    }
+                    if (rateInput) {
+                        rateInput.value = '';
+                        if (typeof autoFitInputText === 'function') autoFitInputText(rateInput, 12, 9.5);
+                    }
                     validateColRedemption();
                     validateColRate();
                     recalcCollateralMetrics();
@@ -526,7 +548,8 @@
             });
         }
 
-        const maxLoan = totalMaxLoan;
+        const MAX_SECURED_LOAN = 100000000;
+        const maxLoan = Math.min(totalMaxLoan, MAX_SECURED_LOAN);
         const minRate = maxRate > 0 ? maxRate + 2 : 0;
 
         return {
@@ -548,9 +571,24 @@
         const maxLoanEl = document.getElementById('summary-max-loan');
         const minRateEl = document.getElementById('summary-min-rate');
 
-        if (totalColEl) totalColEl.textContent = totalCollateral > 0 ? displayFmt(totalCollateral) : '-';
-        if (maxLoanEl) maxLoanEl.textContent = maxLoan > 0 ? displayFmt(maxLoan) : '-';
-        if (minRateEl) minRateEl.textContent = minRate > 0 ? minRate.toFixed(2) + '%' : '-';
+        const fitSummarySpan = (el, text) => {
+            if (!el) return;
+            el.textContent = text;
+            if (text.length >= 14) {
+                el.style.fontSize = '9px';
+                el.style.letterSpacing = '-0.04em';
+            } else if (text.length >= 11) {
+                el.style.fontSize = '10.5px';
+                el.style.letterSpacing = '-0.02em';
+            } else {
+                el.style.fontSize = '';
+                el.style.letterSpacing = '';
+            }
+        };
+
+        fitSummarySpan(totalColEl, totalCollateral > 0 ? displayFmt(totalCollateral) : '-');
+        fitSummarySpan(maxLoanEl, maxLoan > 0 ? displayFmt(maxLoan) : '-');
+        fitSummarySpan(minRateEl, minRate > 0 ? minRate.toFixed(2) + '%' : '-');
 
         // Auto-set loan rate if requested or if rate is empty
         if (autoFillRate && minRate > 0 && formInputs.rate) {

@@ -317,11 +317,11 @@
 
                                 <!-- Column Headers & List Wrapper -->
                                 <div>
-                                    <div class="grid grid-cols-12 gap-1 sm:gap-1.5 px-1 sm:px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                                        <div id="col-header-num" class="col-span-2 text-center" data-lang-key="colHeaderNum">#</div>
-                                        <div id="col-header-nominal" class="col-span-4 text-center" data-lang-key="colHeaderNominal">Nominal</div>
-                                        <div id="col-header-redemption" class="col-span-4 text-center" data-lang-key="colHeaderRedemption">Redemption</div>
-                                        <div id="col-header-rate" class="col-span-2 text-center" data-lang-key="colHeaderRate">Rate %</div>
+                                    <div class="collateral-grid gap-1 sm:gap-1.5 px-1 sm:px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                        <div id="col-header-num" class="text-center" data-lang-key="colHeaderNum">#</div>
+                                        <div id="col-header-nominal" class="text-center" data-lang-key="colHeaderNominal">Nominal</div>
+                                        <div id="col-header-redemption" class="text-center" data-lang-key="colHeaderRedemption">Redemption</div>
+                                        <div id="col-header-rate" class="text-center" data-lang-key="colHeaderRate">Rate %</div>
                                     </div>
 
                                     <div id="collaterals-list" class="space-y-1.5 sm:space-y-2 mt-1">
@@ -333,23 +333,23 @@
                                 </div>
 
                                 <div class="pt-2 border-t border-indigo-200/60 dark:border-indigo-800/60 grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-xs">
-                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px]">
+                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px] min-w-0 overflow-hidden">
                                         <span class="block text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="totalCollateralLabel">Total Collateral</span>
-                                        <span id="summary-total-collateral" class="font-bold text-gray-800 dark:text-gray-200 select-text">-</span>
+                                        <span id="summary-total-collateral" class="font-bold text-gray-800 dark:text-gray-200 select-text truncate tracking-tight text-[11px] sm:text-xs">-</span>
                                     </div>
-                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px]">
+                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px] min-w-0">
                                         <div class="flex items-center justify-center gap-1">
                                             <span class="block text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="maxLoanAllowedLabel">Max Loan</span>
-                                            <span class="info-icon tooltip-end text-[9px]" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="maxLoanAllowedTooltip" data-tooltip="Maximum Loan Limit: By banking regulations, maximum loan amount is 90% of certificate nominal value or its redemption value, whichever is lower.">ℹ</span>
+                                            <span class="info-icon text-[9px]" tabindex="0" role="button" aria-label="Max loan info" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="maxLoanAllowedTooltip" data-tooltip="Maximum Loan Limit: By banking regulations, maximum loan amount is 90% of certificate nominal value or its redemption value, whichever is lower, up to a maximum of 100,000,000.">ℹ</span>
                                         </div>
-                                        <span id="summary-max-loan" class="font-bold text-indigo-600 dark:text-indigo-400 select-text">-</span>
+                                        <span id="summary-max-loan" class="font-bold text-indigo-600 dark:text-indigo-400 select-text truncate tracking-tight text-[11px] sm:text-xs">-</span>
                                     </div>
-                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px]">
+                                    <div class="bg-white/70 dark:bg-gray-900/50 p-1.5 rounded-lg flex flex-col justify-between min-h-[48px] min-w-0">
                                         <div class="flex items-center justify-center gap-1">
                                             <span class="block text-[10px] leading-tight text-gray-500 dark:text-gray-400 break-words" data-lang-key="minLoanRateLabel">Min Rate</span>
-                                            <span class="info-icon tooltip-end text-[9px]" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="minLoanRateTooltip" data-tooltip="Minimum Loan Rate: By banking regulations, loan interest must be at least 2% higher than your highest collateral CD rate.">ℹ</span>
+                                            <span class="info-icon tooltip-end text-[9px]" tabindex="0" role="button" aria-label="Min rate info" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="minLoanRateTooltip" data-tooltip="Minimum Loan Rate: By banking regulations, loan interest must be at least 2% higher than your highest collateral CD rate.">ℹ</span>
                                         </div>
-                                        <span id="summary-min-rate" class="font-bold text-indigo-600 dark:text-indigo-400 select-text">-</span>
+                                        <span id="summary-min-rate" class="font-bold text-indigo-600 dark:text-indigo-400 select-text truncate tracking-tight text-[11px] sm:text-xs">-</span>
                                     </div>
                                 </div>
 
@@ -917,14 +917,14 @@
                                 <div class="grid grid-cols-2 gap-2 sm:gap-3">
                                     <div>
                                         <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="td2RateLabel" for="td2-rate">CD₂ Rate (%):</label>
-                                        <div class="input-group" id="group-td2-rate">
-                                            <input type="text" inputmode="decimal" id="td2-rate" placeholder="19.0" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        <div class="input-group h-10 px-2 flex items-center" id="group-td2-rate">
+                                            <input type="text" inputmode="decimal" id="td2-rate" placeholder="19.0" class="text-input text-xs sm:text-sm select-text p-0 w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
                                     <div>
                                         <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssCd2InterestDateLabel" for="ss-cd2-interest-date-display">CD₂ First Interest Date:</label>
-                                        <div class="input-group relative">
-                                            <input type="text" inputmode="numeric" id="ss-cd2-interest-date-display" class="text-input text-xs sm:text-sm tracking-tight select-text z-10 pe-7 autofit-input" data-autofit="true" data-autofit-max="13" data-autofit-min="10.5" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                                        <div class="input-group relative h-10 px-2 flex items-center">
+                                            <input type="text" inputmode="numeric" id="ss-cd2-interest-date-display" class="text-input text-xs sm:text-sm tracking-tight select-text z-10 pe-7 autofit-input p-0 w-full" data-autofit="true" data-autofit-max="13" data-autofit-min="10.5" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
                                             <button type="button" id="ss-cd2-interest-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-7 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -947,10 +947,10 @@
                                 <div class="grid grid-cols-2 gap-2 sm:gap-3">
                                     <div class="col-span-2 space-y-1">
                                         <label class="block text-xs font-medium text-gray-500 dark:text-gray-400" data-lang-key="ssBookingDateLabel" for="ss-booking-date-display">Booking Date:</label>
-                                        <div class="input-group relative">
-                                            <input type="text" inputmode="numeric" id="ss-booking-date-display" class="text-input select-text z-10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
-                                            <button type="button" id="ss-booking-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
+                                        <div class="input-group relative h-10 px-2 flex items-center">
+                                            <input type="text" inputmode="numeric" id="ss-booking-date-display" class="text-input text-xs sm:text-sm select-text z-10 pe-7 p-0 w-full" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
+                                            <button type="button" id="ss-booking-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-7 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                 </svg>
                                                 <input type="date" id="ss-booking-date-native" class="absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" aria-hidden="true">
@@ -970,7 +970,7 @@
                                         <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-indigo-100/70 dark:border-indigo-900/50">
                                             <span class="flex items-center gap-1 text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
                                                 <span data-lang-key="loanEndDateLabel">Loan End Date:</span>
-                                                <span class="info-icon tooltip-start text-[9px]" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="loanEndDateTooltip" data-tooltip="Loan End Date: The maturity date of the loan when the final installment is paid (calculated based on loan duration and installment schedule).">ℹ</span>
+                                                <span class="info-icon tooltip-start text-[9px]" tabindex="0" role="button" aria-label="Loan end date info" style="width: 0.85rem; height: 0.85rem; min-width: 0.85rem; min-height: 0.85rem; line-height: 0.85rem; cursor: help; background: rgba(99, 102, 241, 0.2); color: #6366f1;" data-lang-tooltip="loanEndDateTooltip" data-tooltip="Loan End Date: The maturity date of the loan when the final installment is paid (calculated based on loan duration and installment schedule).">ℹ</span>
                                             </span>
                                             <span id="ss-loan-end-date-display" class="font-bold text-indigo-600 dark:text-indigo-400 select-text text-end whitespace-nowrap">-</span>
                                         </div>
@@ -978,14 +978,14 @@
 
                                     <div>
                                         <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssLoanRateLabel" for="ss-loan-rate">Loan Rate (%):</label>
-                                        <div class="input-group" id="group-ss-loan-rate">
-                                            <input type="text" inputmode="decimal" id="ss-loan-rate" placeholder="21.0" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        <div class="input-group h-10 px-2 flex items-center" id="group-ss-loan-rate">
+                                            <input type="text" inputmode="decimal" id="ss-loan-rate" placeholder="21.0" class="text-input text-xs sm:text-sm select-text p-0 w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
                                     <div>
                                         <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssPeriodLabel" for="ss-loan-period">Period (months):</label>
-                                        <div class="input-group" id="group-ss-period">
-                                            <input type="text" inputmode="numeric" pattern="[0-9]*" id="ss-loan-period" value="36" placeholder="36" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        <div class="input-group h-10 px-2 flex items-center" id="group-ss-period">
+                                            <input type="text" inputmode="numeric" pattern="[0-9]*" id="ss-loan-period" value="36" placeholder="36" class="text-input text-xs sm:text-sm select-text p-0 w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                         <div class="mt-1 flex justify-end">
                                             <button type="button" id="ss-match-cd1-btn" class="hidden text-[9.5px] sm:text-[10px] font-bold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 px-1.5 py-0.5 rounded transition-colors whitespace-nowrap cursor-pointer truncate max-w-full" title="Match CD₁ maturity">
@@ -995,14 +995,14 @@
                                     </div>
                                     <div>
                                         <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssAdminFeesInputLabel" for="ss-admin-fees">Admin Fees (%):</label>
-                                        <div class="input-group" id="group-ss-admin-fees">
-                                            <input type="text" inputmode="decimal" id="ss-admin-fees" value="1" placeholder="1" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        <div class="input-group h-10 px-2 flex items-center" id="group-ss-admin-fees">
+                                            <input type="text" inputmode="decimal" id="ss-admin-fees" value="1" placeholder="1" class="text-input text-xs sm:text-sm select-text p-0 w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
                                     <div>
                                         <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssStampRateInputLabel" for="ss-stamp-rate">Stamp Rate (%):</label>
-                                        <div class="input-group" id="group-ss-stamp-rate">
-                                            <input type="text" inputmode="decimal" id="ss-stamp-rate" value="0.2" placeholder="0.2" class="text-input select-text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                        <div class="input-group h-10 px-2 flex items-center" id="group-ss-stamp-rate">
+                                            <input type="text" inputmode="decimal" id="ss-stamp-rate" value="0.2" placeholder="0.2" class="text-input text-xs sm:text-sm select-text p-0 w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
 
@@ -1240,7 +1240,7 @@
                             </div>
                             <div class="text-end">
                                 <div class="flex items-center gap-1 mb-1 justify-end">
-                                    <span class="info-icon" data-lang-tooltip="flatRateExplain"
+                                    <span class="info-icon" tabindex="0" role="button" aria-label="Flat rate info" data-lang-tooltip="flatRateExplain"
                                         data-tooltip="Simple interest equivalent: (Total Interest ÷ Principal) ÷ Years × 100">ℹ</span>
                                     <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
                                         data-lang-key="flatRateLabel">Flat Rate</span>
@@ -1257,7 +1257,7 @@
                                 <div class="flex items-center gap-1 mb-1">
                                     <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
                                         data-lang-key="firstInstAmountLabel">First Installment</span>
-                                    <span class="info-icon" data-lang-tooltip="firstInstExplain"
+                                    <span class="info-icon" tabindex="0" role="button" aria-label="First installment info" data-lang-tooltip="firstInstExplain"
                                         data-tooltip="Interest calculated on actual days from booking to first payment date">ℹ</span>
                                 </div>
                                 <span class="text-lg font-bold text-white select-text" id="summary-first-inst">-</span>
@@ -1293,14 +1293,14 @@
                                 <div class="flex items-center gap-1 mb-1">
                                     <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
                                         data-lang-key="totalStampLabel">Total Stamp</span>
-                                    <span class="info-icon" data-lang-tooltip="totalStampExplain"
+                                    <span class="info-icon" tabindex="0" role="button" aria-label="Total stamp info" data-lang-tooltip="totalStampExplain"
                                         data-tooltip="Quarterly stamp calculated on highest principal balance in each quarter">ℹ</span>
                                 </div>
                                 <span class="text-lg font-bold text-white select-text" id="summary-total-stamp">-</span>
                             </div>
                             <div class="text-end">
                                 <div class="flex items-center gap-1 mb-1 justify-end">
-                                    <span class="info-icon" data-lang-tooltip="flatRateExplain"
+                                    <span class="info-icon" tabindex="0" role="button" aria-label="Flat rate info" data-lang-tooltip="flatRateExplain"
                                         data-tooltip="Simple interest equivalent: (Total Interest ÷ Principal) ÷ Years × 100">ℹ</span>
                                     <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
                                         data-lang-key="flatRateLabel">Flat Rate</span>

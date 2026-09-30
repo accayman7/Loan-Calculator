@@ -498,6 +498,8 @@ function updateLangUI(lang) {
     document.querySelectorAll('[data-lang-tooltip]').forEach(el => {
         const key = el.dataset.langTooltip;
         el.dataset.tooltip = t(lang, key);
+        if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+        if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
     });
 
     // Dispatch event so other components can apply dynamic text formatting (e.g. adding (Months)/(Quarters))

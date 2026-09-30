@@ -363,19 +363,19 @@ function renderSsCd1List(newIdToAnimate = null) {
 
             <!-- Row 1: Core Financial Values with Dedicated Field Labels -->
             <div class="grid grid-cols-12 gap-2 items-end">
-                <div class="col-span-4">
+                <div class="col-span-5 min-w-0">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralNominalLabel">${t(lang, 'collateralNominalLabel')}</label>
                     <div class="input-group py-1 px-1.5">
                         <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-amount autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="100,000" aria-label="${t(lang, 'collateralNominalLabel')}" title="${t(lang, 'collateralNominalLabel')}">
                     </div>
                 </div>
-                <div class="col-span-5">
+                <div class="col-span-4 min-w-0">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralRedemptionLabel">${t(lang, 'collateralRedemptionLabel')}</label>
                     <div class="input-group py-1 px-1.5">
                         <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-redemption autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="90,000" aria-label="${t(lang, 'collateralRedemptionLabel')}" title="${t(lang, 'collateralRedemptionLabel')}">
                     </div>
                 </div>
-                <div class="col-span-3">
+                <div class="col-span-3 min-w-0">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderRate">${t(lang, 'colHeaderRate')}</label>
                     <div class="input-group py-1 px-1.5">
                         <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-rate p-0 text-center" data-id="${cd.id}" placeholder="19.0" aria-label="${t(lang, 'colHeaderRate')}" title="${t(lang, 'colHeaderRate')}">

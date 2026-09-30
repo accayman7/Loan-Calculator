@@ -777,8 +777,8 @@ function evaluateTdLoanCandidate(td2, params) {
             availableCdInterest: availableCdInterest,
             netLeftover: round2(netLoan - buffer - effectiveTd2),
             totalCollateral: td1,
-            maxAllowedLoan: round2((params && params.maxAllowedLoan !== undefined) ? params.maxAllowedLoan : (0.90 * td1)),
-            exceedsCollateralLimit: grossLoan > (((params && params.maxAllowedLoan !== undefined) ? params.maxAllowedLoan : (0.90 * td1)) + 0.01)
+            maxAllowedLoan: round2((params && params.maxAllowedLoan !== undefined) ? Math.min(params.maxAllowedLoan, 100000000) : Math.min(0.90 * td1, 100000000)),
+            exceedsCollateralLimit: grossLoan > (((params && params.maxAllowedLoan !== undefined) ? Math.min(params.maxAllowedLoan, 100000000) : Math.min(0.90 * td1, 100000000)) + 0.01)
         };
     }
 
@@ -821,6 +821,9 @@ function solveTdLoan(td1, tdRate, loanRate, N, dates, stampRate, adminFees, td2R
     } else {
         maxAllowedLoan = 0.90 * td1;
     }
+
+    const MAX_SECURED_LOAN = 100000000;
+    maxAllowedLoan = Math.min(maxAllowedLoan, MAX_SECURED_LOAN);
 
     // Default td2Rate to tdRate if not provided
     if (td2Rate === undefined || td2Rate === null || isNaN(td2Rate)) td2Rate = tdRate;

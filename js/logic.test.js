@@ -1272,6 +1272,21 @@ function testQuarterlyRateSolvingAndEarlySettlementPreM1() {
     const onM1Res = calculateEarlySettlement(sched.schedule, m1Date, 0, 12, 0, bookingDate);
     TestRunner.assertTrue(onM1Res.valid, 'Settlement on M1 installment date is valid');
     TestRunner.assertEqual(onM1Res.lastPaidInstallment, 1, 'Settlement on M1 has lastPaidInstallment = 1');
+
+    // 3. Banking Regulatory 100,000,000 Max Loan Limit Cap
+    const hugeCollateral = 200000000; // 200M EGP (90% = 180M)
+    const tdLoanRes = solveTdLoan(hugeCollateral, 20, 22, 12, { bookingDate, m1_Date: m1Date, isAdvanced: false }, 0, 0, 20, 1);
+    TestRunner.assertTrue(tdLoanRes.valid, 'solveTdLoan with large collateral is valid');
+    TestRunner.assertEqual(tdLoanRes.maxAllowedLoan, 100000000, 'maxAllowedLoan is capped at 100,000,000 (not 180,000,000)');
+
+    // Multi-collateral cap
+    const multiHugeCols = [
+        { id: 1, amount: '100000000', redemption: '95000000', rate: '20' },
+        { id: 2, amount: '100000000', redemption: '95000000', rate: '20' }
+    ];
+    const multiTdLoanRes = solveTdLoan(multiHugeCols, 20, 22, 12, { bookingDate, m1_Date: m1Date, isAdvanced: false }, 0, 0, 20, 1);
+    TestRunner.assertTrue(multiTdLoanRes.valid, 'solveTdLoan with multi large collaterals is valid');
+    TestRunner.assertEqual(multiTdLoanRes.maxAllowedLoan, 100000000, 'Multi-collateral maxAllowedLoan is capped at 100,000,000');
 }
 
 // Export for browser use
