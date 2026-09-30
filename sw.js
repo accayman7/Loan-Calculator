@@ -13,12 +13,14 @@ const PRE_CACHE = [
   './tailwind.css',
   './app.css',
   './js/version.js',
+  './js/translations.js',
   './js/logic.js',
   './js/ui.js',
   './js/dateinput.js',
   './js/datepicker.js',
   './js/earlysettlement.js',
   './js/selfsufficient.js',
+  './js/export.js',
   './js/app.js',
   './xlsx.mini.min.js'
 ];

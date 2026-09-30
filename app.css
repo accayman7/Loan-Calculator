@@ -75,12 +75,14 @@ a {
     color: #f3f4f6 !important;
 }
 
-body.scroll-lock {
+/* Scroll lock: applied to root to hide scrollbar and freeze viewport scrolling
+   without breaking position:sticky context on body child elements */
+html.scroll-lock {
     overflow: hidden !important;
 }
 
-html.scroll-lock {
-    overflow: hidden !important;
+body.scroll-lock {
+    overflow: visible !important;
 }
 
 input:-webkit-autofill,
@@ -142,6 +144,7 @@ nav>div {
     transition: all 200ms;
     background-color: #ffffff;
     border-color: #d1d5db;
+    container-type: inline-size;
 }
 
 .dark .input-group {
@@ -543,6 +546,8 @@ button:disabled {
 
 .text-input::placeholder {
     color: #9ca3af;
+    font-size: inherit;
+    letter-spacing: inherit;
 }
 
 .dark .text-input {
@@ -719,6 +724,33 @@ html[dir="rtl"] .input-group.relative .absolute {
     border-radius: 0.375rem !important;
 }
 
+/* Compact Date Inputs in Self-Sufficient Mode (Mobile Friendly) */
+.ss-cd-maturity-display,
+.ss-cd-date-display {
+    padding-right: 0.25rem !important;
+    padding-left: 0.25rem !important;
+    font-size: clamp(0.6875rem, 8cqw, 0.75rem);
+    letter-spacing: -0.025em;
+}
+
+html[dir="rtl"] .ss-cd-maturity-display,
+html[dir="rtl"] .ss-cd-date-display {
+    padding-right: 0.25rem !important;
+    padding-left: 0.25rem !important;
+}
+
+#ss-cd2-interest-date-display {
+    padding-right: 1.85rem !important;
+    padding-left: 0.4rem !important;
+    font-size: clamp(0.7rem, 8cqw, 0.8125rem);
+    letter-spacing: -0.025em;
+}
+
+html[dir="rtl"] #ss-cd2-interest-date-display {
+    padding-right: 0.4rem !important;
+    padding-left: 1.85rem !important;
+}
+
 @keyframes spin-once {
     from {
         transform: rotate(0deg);
@@ -793,6 +825,12 @@ html[data-theme="dark"] #message-box.toast-success {
 /* Sticky positioning optimization without 3D layer displacement */
 .sticky-optimized {
     will-change: scroll-position;
+}
+
+@media (min-width: 1024px) {
+    #summary-column {
+        top: 5rem !important; /* 80px: 64px fixed navbar + 16px comfortable clearance */
+    }
 }
 
 .preload,

@@ -40,6 +40,7 @@
     </div>
 
     <!-- Scripts under test -->
+    <script src="translations.js"></script>
     <script src="logic.js"></script>
     <script src="ui.js"></script>
 
@@ -95,6 +96,9 @@
 
             // 7. Update Banner XSS Protection Test
             testUpdateBannerXSSProtection();
+
+            // 8. Auto-Fit Input Text & Placeholder Scaling Test
+            testAutoFitInputText();
 
             displayTestResults();
         }
@@ -274,6 +278,33 @@
                 // Clean up element after test
                 banner.remove();
             }
+        }
+
+        function testAutoFitInputText() {
+            UITestRunner.assertTrue(typeof autoFitInputText === 'function', 'autoFitInputText is defined');
+            UITestRunner.assertTrue(typeof autoFitAllInputs === 'function', 'autoFitAllInputs is defined');
+
+            // Create a test input element with constrained width
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.style.width = '80px';
+            input.style.padding = '0 4px';
+            input.placeholder = 'DD/MM/YYYY';
+            document.body.appendChild(input);
+
+            // Run autoFitInputText
+            autoFitInputText(input, 13, 10.5);
+            const initialFontSize = parseFloat(input.style.fontSize) || 13;
+            UITestRunner.assertTrue(initialFontSize <= 13 && initialFontSize >= 10.5, 'autoFitInputText keeps font size within [10.5, 13]');
+
+            // Set a long string that overflows
+            input.value = '01/10/2029';
+            autoFitInputText(input, 13, 10.5);
+            const fittedSize = parseFloat(input.style.fontSize) || 13;
+            UITestRunner.assertTrue(fittedSize >= 10.5, 'autoFitInputText never goes below minFontSize (10.5px)');
+
+            // Clean up
+            input.remove();
         }
 
         function displayTestResults() {

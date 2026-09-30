@@ -16,42 +16,55 @@ let _ssLastSolution = null;
 let _ssLastInputs = null;
 
 /**
- * Compute the default CD interest accrual date from a booking date.
- * Rule: take (bookingDate + 1 day), adjust Friday → Sunday / Saturday → Sunday,
- * then place that day-of-month into the NEXT calendar month.
- * Weekend: Friday = day 5, Saturday = day 6 (Egyptian banking week).
+ * Compute the CD interest accrual start date from a booking date.
+ * Rule: advance by 1 day (bookingDate + 1 day).
+ * Egyptian banking weekend adjustment: Friday (5) -> Sunday (+2), Saturday (6) -> Sunday (+1).
+ *
+ * @param {Date} bookingDate
+ * @returns {Date}
+ */
+function ssAccrualStartDate(bookingDate) {
+    if (!bookingDate) bookingDate = new Date();
+    const next = new Date(bookingDate);
+    next.setDate(next.getDate() + 1);
+    if (next.getDay() === 5) next.setDate(next.getDate() + 2);
+    else if (next.getDay() === 6) next.setDate(next.getDate() + 1);
+    return next;
+}
+
+/**
+ * Compute the default CD interest coupon payment date from a booking date.
+ * Rule: First monthly interest coupon is paid exactly 1 month after accrual starts.
  *
  * @param {Date} bookingDate
  * @returns {Date}
  */
 function ssDefaultCdInterestDate(bookingDate) {
-    // Step 1: advance by 1 day
-    const next = new Date(bookingDate);
-    next.setDate(next.getDate() + 1);
-
-    // Step 2: weekend adjustment — the only possible weekend hit is Friday (day 5),
-    // which occurs when bookingDate is Thursday. No CD is ever booked on Fri/Sat,
-    // so booking+1 can only land on Mon–Fri. Fri → +2 to land on Sunday.
-    if (next.getDay() === 5) next.setDate(next.getDate() + 2);
-
-    // Step 3: put that day-of-month in the next calendar month after booking
-    return new Date(bookingDate.getFullYear(), bookingDate.getMonth() + 1, next.getDate());
+    const accrual = ssAccrualStartDate(bookingDate);
+    return (typeof addMonthsClamped === 'function')
+        ? addMonthsClamped(accrual, 1)
+        : new Date(accrual.getFullYear(), accrual.getMonth() + 1, accrual.getDate());
 }
 
 /**
  * Compute the default CD maturity date from a booking date.
- * Default is 3 years (36 months) from booking.
+ * Default is 3 years (36 full months) from the interest accrual start date.
  *
  * @param {Date} bookingDate
+ * @param {Date} [cdInterestDate]
  * @returns {Date}
  */
 function ssDefaultCdMaturityDate(bookingDate, cdInterestDate = null) {
     if (!bookingDate) bookingDate = new Date();
-    const targetYear = bookingDate.getFullYear() + 3;
-    const targetMonth = bookingDate.getMonth();
-    const targetDay = cdInterestDate ? cdInterestDate.getDate() : ssDefaultCdInterestDate(bookingDate).getDate();
-    const mat = new Date(targetYear, targetMonth, targetDay);
-    if (mat.getMonth() !== targetMonth) mat.setDate(0);
+    const accrual = ssAccrualStartDate(bookingDate);
+    const targetDay = (cdInterestDate && typeof cdInterestDate.getDate === 'function')
+        ? cdInterestDate.getDate()
+        : accrual.getDate();
+    const targetBase = new Date(accrual.getFullYear(), accrual.getMonth(), targetDay);
+    if (targetBase.getMonth() !== accrual.getMonth()) targetBase.setDate(0);
+    const mat = (typeof addMonthsClamped === 'function')
+        ? addMonthsClamped(targetBase, 36)
+        : new Date(accrual.getFullYear() + 3, accrual.getMonth(), targetDay);
     return mat;
 }
 
@@ -147,8 +160,8 @@ function updateTenorAdvisoryAndMatchButton(loanPeriod) {
                 advisoryIcon.textContent = '⚠️';
                 advisoryText.className = 'font-medium text-amber-900 dark:text-amber-200';
                 advisoryText.textContent = t(lang, 'advisoryMaturityExceeded')
-                    .replace('{loan}', loanPeriod)
-                    .replace('{cd}', minMaturity);
+                    .replace(/{loan}/g, loanPeriod)
+                    .replace(/{cd}/g, minMaturity);
             } else {
                 // Reassurance horizon style
                 advisoryBox.className = 'col-span-2 p-2.5 rounded-lg text-xs leading-snug border transition-all bg-green-50 dark:bg-green-950/40 border-green-300 dark:border-green-800/60 text-green-800 dark:text-green-300';
@@ -181,6 +194,7 @@ function _ssSeedCdDateField(dateObj, nativeEl, displayEl) {
             ? dateBuildValue(d, m, String(y), false)
             : `${d}/${m}/${y}`;
         displayEl.dataset.iso = iso;
+        if (typeof autoFitInputText === 'function') autoFitInputText(displayEl);
     }
 }
 
@@ -352,13 +366,13 @@ function renderSsCd1List(newIdToAnimate = null) {
                 <div class="col-span-4">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralNominalLabel">${t(lang, 'collateralNominalLabel')}</label>
                     <div class="input-group py-1 px-1.5">
-                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-amount p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="100,000" aria-label="${t(lang, 'collateralNominalLabel')}" title="${t(lang, 'collateralNominalLabel')}">
+                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-amount autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="100,000" aria-label="${t(lang, 'collateralNominalLabel')}" title="${t(lang, 'collateralNominalLabel')}">
                     </div>
                 </div>
                 <div class="col-span-5">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralRedemptionLabel">${t(lang, 'collateralRedemptionLabel')}</label>
                     <div class="input-group py-1 px-1.5">
-                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-redemption p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="90,000" aria-label="${t(lang, 'collateralRedemptionLabel')}" title="${t(lang, 'collateralRedemptionLabel')}">
+                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-redemption autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="90,000" aria-label="${t(lang, 'collateralRedemptionLabel')}" title="${t(lang, 'collateralRedemptionLabel')}">
                     </div>
                 </div>
                 <div class="col-span-3">
@@ -373,8 +387,8 @@ function renderSsCd1List(newIdToAnimate = null) {
             <div class="pt-2 border-t border-green-100/80 dark:border-green-900/40 grid grid-cols-12 gap-2 items-end">
                 <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="maturityDateLabel">${t(lang, 'maturityDateLabel')}</label>
-                    <div class="input-group relative py-1 px-1.5 flex items-center gap-0.5" title="${t(lang, 'maturityDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input text-xs sm:text-sm font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
+                    <div class="input-group py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'maturityDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input text-[11.5px] sm:text-xs font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="12" data-autofit-min="10.5" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
                         <button type="button" class="ss-cd-maturity-picker-btn flex-shrink-0 w-4 h-4 p-0 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open maturity date picker">
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -385,8 +399,8 @@ function renderSsCd1List(newIdToAnimate = null) {
                 </div>
                 <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="nextCouponDateLabel">${t(lang, 'nextCouponDateLabel')}</label>
-                    <div class="input-group relative py-1 px-1.5 flex items-center gap-0.5" title="${t(lang, 'nextCouponDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input text-xs sm:text-sm font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 text-center tracking-tight" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
+                    <div class="input-group py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'nextCouponDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input text-[11.5px] sm:text-xs font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="12" data-autofit-min="10.5" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
                         <button type="button" class="ss-cd-picker-btn flex-shrink-0 w-4 h-4 p-0 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open date picker">
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -416,10 +430,14 @@ function renderSsCd1List(newIdToAnimate = null) {
 
         const adjustAmountFontSize = (input) => {
             if (!input) return;
-            const len = input.value.length;
-            if (len >= 13) input.style.fontSize = '11px';
-            else if (len >= 11) input.style.fontSize = '12px';
-            else input.style.fontSize = '';
+            if (typeof autoFitInputText === 'function') {
+                autoFitInputText(input, 14, 10.5);
+            } else {
+                const len = input.value.length;
+                if (len >= 13) input.style.fontSize = '11px';
+                else if (len >= 11) input.style.fontSize = '12px';
+                else input.style.fontSize = '';
+            }
         };
 
         // Seed Next Coupon date if available
@@ -431,6 +449,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                     ? dateBuildValue(p[2], p[1], p[0], false)
                     : `${p[2]}/${p[1]}/${p[0]}`;
                 dateDisplay.dataset.iso = cd.dateISO;
+                if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay, 12, 10.5);
             }
         }
 
@@ -443,6 +462,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                     ? dateBuildValue(p[2], p[1], p[0], false)
                     : `${p[2]}/${p[1]}/${p[0]}`;
                 matDisplay.dataset.iso = cd.maturityISO;
+                if (typeof autoFitInputText === 'function') autoFitInputText(matDisplay, 12, 10.5);
             }
         }
 
@@ -492,17 +512,20 @@ function renderSsCd1List(newIdToAnimate = null) {
             const bkISO = document.getElementById('ss-booking-date-native')?.value;
             const bkDate = bkISO ? _ssParseNativeDate(bkISO) : new Date();
 
-            let targetYear = bkDate.getFullYear();
-            let targetMonth = bkDate.getMonth() + 1;
-            if (targetMonth > 11) {
-                targetYear += Math.floor(targetMonth / 12);
-                targetMonth = targetMonth % 12;
+            const accrual = ssAccrualStartDate(bkDate);
+            let target = new Date(accrual.getFullYear(), accrual.getMonth(), mDay);
+            if (target.getMonth() !== accrual.getMonth()) target.setDate(0);
+
+            // If coupon day is on or before accrual date, coupon falls in the following month
+            if (target <= accrual) {
+                target = (typeof addMonthsClamped === 'function')
+                    ? addMonthsClamped(new Date(accrual.getFullYear(), accrual.getMonth(), mDay), 1)
+                    : new Date(accrual.getFullYear(), accrual.getMonth() + 1, mDay);
             }
-            const maxDays = new Date(targetYear, targetMonth + 1, 0).getDate();
-            const validDay = Math.min(mDay, maxDays);
-            const yStr = String(targetYear);
-            const mStr = String(targetMonth + 1).padStart(2, '0');
-            const dStr = String(validDay).padStart(2, '0');
+
+            const yStr = String(target.getFullYear());
+            const mStr = String(target.getMonth() + 1).padStart(2, '0');
+            const dStr = String(target.getDate()).padStart(2, '0');
             cd.dateISO = `${yStr}-${mStr}-${dStr}`;
 
             if (dateNative) dateNative.value = cd.dateISO;
@@ -512,6 +535,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                     : `${dStr}/${mStr}/${yStr}`;
                 dateDisplay.dataset.iso = cd.dateISO;
                 dateDisplay.classList.remove('text-red-500');
+                if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay, 12, 10.5);
             }
             if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
         };
@@ -543,6 +567,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                             cd.maturityISO = matNative.value;
                             syncInterestDateFromMaturityDate(cd.maturityISO);
                             updateRemainingBadge(cd, row);
+                            if (typeof autoFitInputText === 'function') autoFitInputText(matDisplay, 12, 10.5);
                             const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
                             updateTenorAdvisoryAndMatchButton(p);
                         }
@@ -557,6 +582,7 @@ function renderSsCd1List(newIdToAnimate = null) {
             initDateInput(dateDisplay, dateNative);
             dateNative.addEventListener('change', () => {
                 cd.dateISO = dateNative.value;
+                if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay, 12, 10.5);
                 if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
             });
         }
@@ -575,6 +601,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                                 : `${d}/${m}/${y}`;
                             dateNative.value = `${y}-${m}-${d}`;
                             cd.dateISO = dateNative.value;
+                            if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay, 12, 10.5);
                             if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
                         }
                     });
@@ -664,6 +691,9 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
                 const targetHeight = Math.max(ssSection.scrollHeight, 900);
                 ssSection.style.maxHeight = (targetHeight + 200) + 'px';
                 ssSection.classList.add('opacity-100');
+                requestAnimationFrame(() => {
+                    if (typeof autoFitAllInputs === 'function') autoFitAllInputs(ssSection);
+                });
 
                 // Allow dynamic growth after transition completes without setting 'none' (which breaks close transitions)
                 setTimeout(() => {
@@ -960,6 +990,7 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
                         ssCD2Display.value = (typeof dateBuildValue === 'function')
                             ? dateBuildValue(d, m, String(y), false)
                             : `${d}/${m}/${y}`;
+                        if (typeof autoFitInputText === 'function') autoFitInputText(ssCD2Display, 13, 10.5);
                         ssCD2Native.value = `${y}-${m}-${d}`;
                         ssCD2Native.dispatchEvent(new Event('change'));
                     }
