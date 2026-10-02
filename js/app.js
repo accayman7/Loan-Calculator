@@ -1710,6 +1710,9 @@
                     advancedSection.style.maxHeight = '1200px';
                     advancedSection.classList.add('opacity-100');
                     if (typeof updateLangUI === 'function') updateLangUI(AppState.lang);
+                    requestAnimationFrame(() => {
+                        if (typeof autoFitAllInputs === 'function') autoFitAllInputs(advancedSection);
+                    });
                 } else {
                     // Collapse - no need to change label since it's hidden
                     advancedSection.classList.add('max-h-0', 'opacity-0');

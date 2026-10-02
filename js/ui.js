@@ -22,6 +22,7 @@ let toastTimer = null;
  */
 const ScrollLock = (() => {
     let lockCount = 0;
+    let savedScrollY = 0;
 
     function isAnyModalOrPickerOpen() {
         const openModals = document.querySelectorAll('.modal:not(.pointer-events-none)');
@@ -41,10 +42,26 @@ const ScrollLock = (() => {
         return false;
     }
 
+    function isMobileOrTouch() {
+        return window.innerWidth < 768 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    }
+
     function release() {
+        const wasMobile = document.body.style.position === 'fixed';
         lockCount = 0;
         document.documentElement.classList.remove('scroll-lock');
         document.body.classList.remove('scroll-lock');
+
+        if (wasMobile) {
+            // Restore body from fixed positioning and recover saved scroll position
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
+            document.body.style.width = '';
+            window.scrollTo(0, savedScrollY);
+        }
+
         ['paddingRight', 'paddingLeft'].forEach(prop => {
             document.body.style[prop] = '';
             const nav = document.querySelector('nav');
@@ -63,25 +80,33 @@ const ScrollLock = (() => {
         if (lockCount > 1 && document.body.classList.contains('scroll-lock')) return; // Already locked
 
         const docEl = document.documentElement;
-        // In desktop browsers without native scrollbar-gutter support, vertical scrollbar is on the right edge
-        // regardless of page direction (LTR or RTL).
-        // With scrollbar-gutter: stable on html, the gutter is natively preserved when overflow: hidden is added,
-        // so no manual padding is needed on modern browsers. For older browsers or legacy desktop setups without
-        // scrollbar-gutter support, only adjust padding on non-touch desktop viewports.
-        const isTouchOrMobile = window.innerWidth < 768 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-        const supportsScrollbarGutter = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scrollbar-gutter', 'stable');
-        const scrollbarWidth = (isTouchOrMobile || supportsScrollbarGutter) ? 0 : Math.max(0, window.innerWidth - docEl.clientWidth);
 
-        if (scrollbarWidth > 0) {
-            const pad = `${scrollbarWidth}px`;
-            document.body.style.paddingRight = pad;
-            const nav = document.querySelector('nav');
-            if (nav) nav.style.paddingRight = pad;
-            const updateBanner = document.getElementById('update-banner');
-            if (updateBanner) updateBanner.style.paddingRight = pad;
-            const messageBox = document.getElementById('message-box');
-            if (messageBox && !messageBox.classList.contains('hidden')) {
-                messageBox.style.paddingRight = pad;
+        if (isMobileOrTouch()) {
+            // Mobile: use position: fixed on body to freeze scroll without losing scroll position.
+            // overflow: hidden on <html> alone can cause the viewport to jump to the top on mobile.
+            savedScrollY = window.scrollY || window.pageYOffset || 0;
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${savedScrollY}px`;
+            document.body.style.left = '0';
+            document.body.style.right = '0';
+            document.body.style.width = '100%';
+        } else {
+            // Desktop: scrollbar-gutter: stable (via CSS media query) handles gutter preservation.
+            // For older browsers without scrollbar-gutter support, manually compensate padding.
+            const supportsScrollbarGutter = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scrollbar-gutter', 'stable');
+            const scrollbarWidth = supportsScrollbarGutter ? 0 : Math.max(0, window.innerWidth - docEl.clientWidth);
+
+            if (scrollbarWidth > 0) {
+                const pad = `${scrollbarWidth}px`;
+                document.body.style.paddingRight = pad;
+                const nav = document.querySelector('nav');
+                if (nav) nav.style.paddingRight = pad;
+                const updateBanner = document.getElementById('update-banner');
+                if (updateBanner) updateBanner.style.paddingRight = pad;
+                const messageBox = document.getElementById('message-box');
+                if (messageBox && !messageBox.classList.contains('hidden')) {
+                    messageBox.style.paddingRight = pad;
+                }
             }
         }
         docEl.classList.add('scroll-lock');
@@ -1765,11 +1790,14 @@ function initSwipeToClose() {
  * @param {number} [maxFontSize=13] - Maximum font size in px.
  * @param {number} [minFontSize=10.5] - Minimum font size floor in px.
  */
-function autoFitInputText(input, maxFontSize = 13, minFontSize = 10.5) {
+function autoFitInputText(input, maxFontSize = null, minFontSize = null) {
     if (!input || !(input instanceof HTMLElement)) return;
 
+    const max = maxFontSize !== null ? maxFontSize : (parseFloat(input.dataset?.autofitMax) || 13);
+    const min = minFontSize !== null ? minFontSize : (parseFloat(input.dataset?.autofitMin) || 10);
+
     // Reset font size to measure at maxFontSize
-    input.style.fontSize = `${maxFontSize}px`;
+    input.style.fontSize = `${max}px`;
 
     const text = input.value || input.placeholder || '';
     if (!text) return;
@@ -1790,12 +1818,12 @@ function autoFitInputText(input, maxFontSize = 13, minFontSize = 10.5) {
     const ctx = autoFitInputText._ctx;
     const fontFamily = style.fontFamily || 'Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     const fontWeight = style.fontWeight || '400';
-    ctx.font = `${fontWeight} ${maxFontSize}px ${fontFamily}`;
+    ctx.font = `${fontWeight} ${max}px ${fontFamily}`;
 
     const textWidth = ctx.measureText(text).width;
     if (textWidth > availWidth) {
         const scale = availWidth / textWidth;
-        const fittedSize = Math.max(minFontSize, Math.floor(maxFontSize * scale * 10) / 10);
+        const fittedSize = Math.max(min, Math.floor(max * scale * 10) / 10);
         input.style.fontSize = `${fittedSize}px`;
     }
 }
@@ -1810,7 +1838,7 @@ function autoFitAllInputs(scope = document) {
     const inputs = scope.querySelectorAll('.autofit-input, [data-autofit="true"]');
     inputs.forEach(inp => {
         const max = parseFloat(inp.dataset.autofitMax) || 13;
-        const min = parseFloat(inp.dataset.autofitMin) || 10.5;
+        const min = parseFloat(inp.dataset.autofitMin) || 10;
         autoFitInputText(inp, max, min);
     });
 }

@@ -2,10 +2,18 @@ html {
     min-height: 100%;
     max-width: 100vw;
     overflow-x: clip;
-    scrollbar-gutter: stable;
     background-color: #f9fafb;
     scroll-behavior: smooth;
     overscroll-behavior: none;
+}
+
+/* Only reserve scrollbar gutter on devices with classic (non-overlay) scrollbars.
+   Mobile/touch devices use overlay scrollbars with zero width, so scrollbar-gutter
+   is unnecessary and causes layout shifts when overflow toggles for modals/pickers. */
+@media (hover: hover) and (pointer: fine) {
+    html {
+        scrollbar-gutter: stable;
+    }
 }
 
 html.dark {
@@ -125,7 +133,7 @@ input:-webkit-autofill:active {
     color: #ffffff;
 }
 
-/* Force LTR direction on date inputs (even in RTL layouts) */
+/* Force LTR direction on date inputs (even in RTL layouts) and prevent wrapping */
 #start-date-display,
 #first-inst-date-display,
 #settlement-date-display,
@@ -135,6 +143,19 @@ input:-webkit-autofill:active {
 .ss-cd-date-display {
     direction: ltr !important;
     text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+}
+
+html:not([dir="rtl"]) #start-date-display,
+html:not([dir="rtl"]) #first-inst-date-display,
+html:not([dir="rtl"]) #settlement-date-display,
+html:not([dir="rtl"]) #ss-cd2-interest-date-display,
+html:not([dir="rtl"]) #ss-booking-date-display,
+html:not([dir="rtl"]) .ss-cd-maturity-display,
+html:not([dir="rtl"]) .ss-cd-date-display {
+    padding-left: 0.25rem !important;
 }
 
 /* Nav is positioned relative for snow effect overlay */
@@ -739,12 +760,12 @@ button:disabled {
 
 
 .input-group.relative input {
-    padding-right: 2.5rem !important;
+    padding-right: 2.25rem !important;
 }
 
 html[dir="rtl"] .input-group.relative input {
-    padding-right: 0.5rem !important;
-    padding-left: 2.5rem !important;
+    padding-right: 0.35rem !important;
+    padding-left: 2.25rem !important;
 }
 
 html[dir="rtl"] .input-group.relative .absolute {

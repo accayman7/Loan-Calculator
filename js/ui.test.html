@@ -123,6 +123,9 @@
             // 15. Loan Type Switch & Frequency Accordion Synchronization Test
             testLoanTypeSwitchAndFrequencyAccordionSynchronization();
 
+            // 16. Date Inputs Dynamic Fitting & Button Clearance Test
+            testDateInputsDynamicFittingAndClearance();
+
             displayTestResults();
         }
 
@@ -807,6 +810,59 @@
             UITestRunner.assertTrue(freqCont.classList.contains('hidden'), 'Frequency container receives hidden class after animation completes');
             UITestRunner.assertEqual(freqCont.style.maxHeight, '', 'Frequency container inline maxHeight is cleared');
             UITestRunner.assertEqual(freqCont.style.overflow, '', 'Frequency container inline overflow is cleared');
+
+            fixture.remove();
+        }
+
+        function testDateInputsDynamicFittingAndClearance() {
+            // Create test fixture containing a date input inside an input-group
+            const fixture = document.createElement('div');
+            fixture.style.width = '140px';
+            fixture.style.position = 'relative';
+            fixture.innerHTML = `
+                <div class="input-group relative" style="width: 100%; position: relative; display: flex; align-items: center; box-sizing: border-box;">
+                    <input type="text" id="test-date-mat" class="text-input ss-cd-maturity-display autofit-input" data-autofit="true" data-autofit-max="13" data-autofit-min="10" value="04/10/2029" style="box-sizing: border-box; width: 100%; padding-right: 36px; padding-left: 4px;">
+                    <button type="button" id="test-date-btn" style="position: absolute; right: 4px; width: 32px; height: 32px;"></button>
+                </div>
+            `;
+            document.body.appendChild(fixture);
+
+            const input = document.getElementById('test-date-mat');
+            const btn = document.getElementById('test-date-btn');
+
+            // Test 16.1: Date input has autofit-input class and data-autofit attributes
+            UITestRunner.assertTrue(input.classList.contains('autofit-input'), 'Date input has autofit-input class');
+            UITestRunner.assertEqual(input.dataset.autofit, 'true', 'Date input has data-autofit="true"');
+            UITestRunner.assertEqual(input.dataset.autofitMax, '13', 'Date input data-autofit-max is 13');
+            UITestRunner.assertEqual(input.dataset.autofitMin, '10', 'Date input data-autofit-min is 10');
+
+            // Test 16.2: autoFitInputText adjusts font size and scales down on narrow available width
+            autoFitInputText(input);
+            const parsedFontSize = parseFloat(input.style.fontSize);
+            UITestRunner.assertTrue(parsedFontSize >= 10 && parsedFontSize <= 13, `Auto-fit sets font size within bounds (got ${parsedFontSize}px)`);
+
+            // Test 16.3: Date input text does not overflow into trailing button area
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const style = getComputedStyle(input);
+            ctx.font = `${style.fontWeight} ${input.style.fontSize} ${style.fontFamily}`;
+            const textWidth = ctx.measureText(input.value).width;
+            const availWidth = input.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+
+            UITestRunner.assertTrue(textWidth <= availWidth + 1, `Date text (${textWidth.toFixed(1)}px) fits within available width (${availWidth}px)`);
+
+            // Test 16.4: autoFitAllInputs processes autofit-input in given scope
+            input.style.fontSize = '24px'; // Distort font size
+            autoFitAllInputs(fixture);
+            const refittedSize = parseFloat(input.style.fontSize);
+            UITestRunner.assertTrue(refittedSize <= 13, `autoFitAllInputs properly re-scales font size down to <= 13px (got ${refittedSize}px)`);
+
+            // Test 16.5: Empty or placeholder value handled gracefully
+            input.value = '';
+            input.placeholder = 'DD/MM/YYYY';
+            autoFitInputText(input);
+            const placeholderSize = parseFloat(input.style.fontSize);
+            UITestRunner.assertTrue(placeholderSize >= 10 && placeholderSize <= 13, `Placeholder auto-fits correctly within bounds (got ${placeholderSize}px)`);
 
             fixture.remove();
         }

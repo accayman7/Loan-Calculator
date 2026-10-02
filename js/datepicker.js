@@ -1124,6 +1124,7 @@
         if (confirmed && onConfirmCallback && selectedDate) {
             const finalDate = clampDateToRange(new Date(selectedDate));
             onConfirmCallback(finalDate);
+            if (typeof autoFitAllInputs === 'function') autoFitAllInputs();
         } else if (onConfirmCallback) {
             onConfirmCallback(null);
         }
@@ -1719,6 +1720,7 @@
             // Fix #4: Final safety clamp on confirm
             const finalDate = clampDateToRange(new Date(selectedDate));
             onConfirmCallback(finalDate);
+            if (typeof autoFitAllInputs === 'function') autoFitAllInputs();
         } else if (onConfirmCallback) {
             onConfirmCallback(null);
         }

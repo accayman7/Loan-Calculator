@@ -194,6 +194,7 @@ function _ssSeedCdDateField(dateObj, nativeEl, displayEl) {
             ? dateBuildValue(d, m, String(y), false)
             : `${d}/${m}/${y}`;
         displayEl.dataset.iso = iso;
+        if (typeof autoFitInputText === 'function') autoFitInputText(displayEl);
     }
 }
 
@@ -387,8 +388,8 @@ function renderSsCd1List(newIdToAnimate = null) {
                 <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="maturityDateLabel">${t(lang, 'maturityDateLabel')}</label>
                     <div class="input-group relative h-10 px-2 flex items-center" title="${t(lang, 'maturityDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input text-sm sm:text-base font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 w-full" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
-                        <button type="button" class="ss-cd-maturity-picker-btn absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" data-id="${cd.id}" aria-label="Open maturity date picker">
+                        <input type="text" inputmode="numeric" class="text-input text-xs sm:text-sm font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display autofit-input p-0 w-full tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="13" data-autofit-min="10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
+                        <button type="button" class="ss-cd-maturity-picker-btn absolute end-1 top-1 bottom-1 w-8 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" data-id="${cd.id}" aria-label="Open maturity date picker">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
@@ -399,8 +400,8 @@ function renderSsCd1List(newIdToAnimate = null) {
                 <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="nextCouponDateLabel">${t(lang, 'nextCouponDateLabel')}</label>
                     <div class="input-group relative h-10 px-2 flex items-center" title="${t(lang, 'nextCouponDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input text-sm sm:text-base font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 w-full" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
-                        <button type="button" class="ss-cd-picker-btn absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" data-id="${cd.id}" aria-label="Open date picker">
+                        <input type="text" inputmode="numeric" class="text-input text-xs sm:text-sm font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display autofit-input p-0 w-full tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="13" data-autofit-min="10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
+                        <button type="button" class="ss-cd-picker-btn absolute end-1 top-1 bottom-1 w-8 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" data-id="${cd.id}" aria-label="Open date picker">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
@@ -448,6 +449,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                     ? dateBuildValue(p[2], p[1], p[0], false)
                     : `${p[2]}/${p[1]}/${p[0]}`;
                 dateDisplay.dataset.iso = cd.dateISO;
+                if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay);
             }
         }
 
@@ -460,6 +462,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                     ? dateBuildValue(p[2], p[1], p[0], false)
                     : `${p[2]}/${p[1]}/${p[0]}`;
                 matDisplay.dataset.iso = cd.maturityISO;
+                if (typeof autoFitInputText === 'function') autoFitInputText(matDisplay);
             }
         }
 
@@ -532,6 +535,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                     : `${dStr}/${mStr}/${yStr}`;
                 dateDisplay.dataset.iso = cd.dateISO;
                 dateDisplay.classList.remove('text-red-500');
+                if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay);
             }
             if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
         };
@@ -563,6 +567,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                                 : `${d}/${m}/${y}`;
                             matNative.value = `${y}-${m}-${d}`;
                             cd.maturityISO = matNative.value;
+                            if (typeof autoFitInputText === 'function') autoFitInputText(matDisplay);
                             syncInterestDateFromMaturityDate(cd.maturityISO);
                             updateRemainingBadge(cd, row);
                             const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
@@ -599,6 +604,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                                 : `${d}/${m}/${y}`;
                             dateNative.value = `${y}-${m}-${d}`;
                             cd.dateISO = dateNative.value;
+                            if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay);
                             if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
                         }
                     }, { launcher: pickerBtn });
@@ -654,6 +660,10 @@ function renderSsCd1List(newIdToAnimate = null) {
 
         listEl.appendChild(row);
     });
+
+    if (typeof autoFitAllInputs === 'function') {
+        autoFitAllInputs(listEl);
+    }
 }
 
 /**

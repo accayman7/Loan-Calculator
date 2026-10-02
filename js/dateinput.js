@@ -526,6 +526,7 @@ function handleDateBlur(input, nativeInput, errorCallback) {
 
     // Update display with placeholders for empty segments
     input.value = dateBuildValue(segments.day, segments.month, segments.year, true);
+    if (typeof autoFitInputText === 'function') autoFitInputText(input);
 
     validateDateInputAndSync(input, nativeInput, errorCallback);
 }
@@ -633,6 +634,7 @@ function initDateInput(displayInput, nativeInput) {
         if (!nativeInput.value) {
             displayInput.value = '';
             displayInput.dataset.iso = '';
+            if (typeof autoFitInputText === 'function') autoFitInputText(displayInput);
             return;
         }
 
@@ -642,7 +644,10 @@ function initDateInput(displayInput, nativeInput) {
         displayInput.value = dateBuildValue(d, m, y, false);
         displayInput.dataset.iso = nativeInput.value;
         displayInput.classList.remove('text-red-500');
+        if (typeof autoFitInputText === 'function') autoFitInputText(displayInput);
     });
+
+    if (typeof autoFitInputText === 'function') autoFitInputText(displayInput);
 }
 
 /* --- Legacy wrapper for backwards compatibility --- */
