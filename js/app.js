@@ -226,7 +226,7 @@
         // 7. Setup Event Listeners
         setupEventListeners();
         setupMobileKeyboard();
-        setLoanType('unsecured');
+        setLoanType('unsecured', { immediate: true });
 
         // 8. Initialize Gestures
         if (typeof initSwipeToClose === 'function') initSwipeToClose();
@@ -239,6 +239,9 @@
 
     // --- Helper Logic ---
 
+    let freqAnimTimer = null;
+    let collateralAnimTimer = null;
+
     function setLoanType(type, options = {}) {
         AppState.loanType = type;
         const unsecuredBtn = document.getElementById('loan-type-unsecured-btn');
@@ -247,6 +250,15 @@
         const adminFeesInput = document.getElementById('admin-fees');
         const freqContainer = document.getElementById('frequency-container');
         const freqSel = document.getElementById('installment-freq');
+
+        if (freqAnimTimer) {
+            clearTimeout(freqAnimTimer);
+            freqAnimTimer = null;
+        }
+        if (collateralAnimTimer) {
+            clearTimeout(collateralAnimTimer);
+            collateralAnimTimer = null;
+        }
 
         if (type === 'secured') {
             if (unsecuredBtn) {
@@ -262,17 +274,56 @@
                     collateralSection.style.maxHeight = '1200px';
                     collateralSection.classList.add('opacity-100');
                     void collateralSection.offsetHeight;
-                    setTimeout(() => {
+                    collateralAnimTimer = setTimeout(() => {
                         collateralSection.style.transition = '';
                     }, 500);
                 } else {
                     collateralSection.classList.remove('max-h-0', 'opacity-0');
-                    collateralSection.style.maxHeight = '1200px';
                     collateralSection.classList.add('opacity-100');
+                    const targetHeight = Math.max(collateralSection.scrollHeight, 250);
+                    collateralSection.style.maxHeight = targetHeight + 'px';
+                    collateralAnimTimer = setTimeout(() => {
+                        if (AppState.loanType === 'secured') {
+                            collateralSection.style.maxHeight = '1200px';
+                        }
+                    }, 350);
                 }
             }
             if (freqContainer) {
-                freqContainer.classList.remove('hidden');
+                if (options.immediate) {
+                    freqContainer.classList.remove('hidden');
+                    freqContainer.style.maxHeight = '';
+                    freqContainer.style.opacity = '';
+                    freqContainer.style.marginTop = '';
+                    freqContainer.style.marginBottom = '';
+                    freqContainer.style.overflow = '';
+                    freqContainer.style.transition = '';
+                } else if (freqContainer.classList.contains('hidden')) {
+                    // Smoothly expand frequency container in sync with collateral section
+                    freqContainer.classList.remove('hidden');
+                    freqContainer.style.overflow = 'hidden';
+                    freqContainer.style.maxHeight = '0px';
+                    freqContainer.style.opacity = '0';
+                    freqContainer.style.marginTop = '0px';
+                    freqContainer.style.marginBottom = '0px';
+                    freqContainer.style.transition = 'none';
+                    void freqContainer.offsetHeight; // Force reflow
+
+                    const targetH = Math.max(freqContainer.scrollHeight, 70);
+                    freqContainer.style.transition = 'max-height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1), margin-top 300ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1)';
+                    freqContainer.style.maxHeight = targetH + 'px';
+                    freqContainer.style.opacity = '1';
+                    freqContainer.style.marginTop = '';
+                    freqContainer.style.marginBottom = '';
+
+                    freqAnimTimer = setTimeout(() => {
+                        if (AppState.loanType === 'secured') {
+                            freqContainer.style.overflow = 'visible';
+                            freqContainer.style.maxHeight = 'none';
+                            freqContainer.style.transition = '';
+                        }
+                    }, 350);
+                }
             }
             if (adminFeesInput) {
                 adminFeesInput.value = '1';
@@ -288,15 +339,95 @@
                 securedBtn.className = 'loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
             }
             if (collateralSection) {
-                collateralSection.classList.add('max-h-0', 'opacity-0');
-                collateralSection.style.maxHeight = '0';
-                collateralSection.classList.remove('opacity-100');
+                if (options.immediate || collateralSection.classList.contains('max-h-0')) {
+                    collateralSection.style.transition = 'none';
+                    collateralSection.classList.add('max-h-0', 'opacity-0');
+                    collateralSection.style.maxHeight = '0px';
+                    collateralSection.classList.remove('opacity-100');
+                    void collateralSection.offsetHeight;
+                    collateralAnimTimer = setTimeout(() => {
+                        collateralSection.style.transition = '';
+                    }, 50);
+                } else {
+                    // Instantly lock current pixel height without transition so animation starts immediately from actual height
+                    const currentH = collateralSection.getBoundingClientRect().height || collateralSection.scrollHeight;
+                    collateralSection.style.transition = 'none';
+                    collateralSection.style.maxHeight = currentH + 'px';
+                    void collateralSection.offsetHeight; // Force reflow to commit current height
+
+                    // Now animate down to 0 with explicit identical duration and cubic-bezier easing
+                    collateralSection.style.transition = 'max-height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)';
+                    collateralSection.classList.add('max-h-0', 'opacity-0');
+                    collateralSection.style.maxHeight = '0px';
+                    collateralSection.classList.remove('opacity-100');
+
+                    collateralAnimTimer = setTimeout(() => {
+                        if (AppState.loanType === 'unsecured') {
+                            collateralSection.style.transition = '';
+                        }
+                    }, 320);
+                }
             }
             const cashflowCard = document.getElementById('collateral-cashflow-card');
-            if (cashflowCard) cashflowCard.classList.add('hidden');
-            if (freqContainer) {
-                freqContainer.classList.add('hidden');
+            if (cashflowCard) {
+                if (options.immediate) {
+                    cashflowCard.classList.add('hidden');
+                } else {
+                    setTimeout(() => {
+                        if (AppState.loanType === 'unsecured') {
+                            cashflowCard.classList.add('hidden');
+                        }
+                    }, 300);
+                }
             }
+
+            // Close frequency dropdown if open before collapse
+            const freqDropdown = document.getElementById('freq-dropdown');
+            if (freqDropdown && typeof closeMenu === 'function' && typeof isMenuOpen === 'function' && isMenuOpen(freqDropdown)) {
+                closeMenu(freqDropdown);
+                const freqChevron = document.getElementById('freq-chevron');
+                if (freqChevron) freqChevron.style.transform = 'rotate(0deg)';
+            }
+
+            if (freqContainer) {
+                if (options.immediate || freqContainer.classList.contains('hidden')) {
+                    freqContainer.classList.add('hidden');
+                    freqContainer.style.maxHeight = '';
+                    freqContainer.style.opacity = '';
+                    freqContainer.style.marginTop = '';
+                    freqContainer.style.marginBottom = '';
+                    freqContainer.style.overflow = '';
+                    freqContainer.style.transition = '';
+                } else {
+                    // Smoothly collapse frequency container down to 0 in sync with collateralSection
+                    const currentH = freqContainer.getBoundingClientRect().height || freqContainer.scrollHeight;
+                    freqContainer.style.transition = 'none';
+                    freqContainer.style.overflow = 'hidden';
+                    freqContainer.style.maxHeight = currentH + 'px';
+                    freqContainer.style.opacity = '1';
+                    void freqContainer.offsetHeight; // Force reflow
+
+                    freqContainer.style.transition = 'max-height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1), margin-top 300ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1)';
+
+                    freqContainer.style.maxHeight = '0px';
+                    freqContainer.style.opacity = '0';
+                    freqContainer.style.marginTop = '0px';
+                    freqContainer.style.marginBottom = '0px';
+
+                    freqAnimTimer = setTimeout(() => {
+                        if (AppState.loanType === 'unsecured') {
+                            freqContainer.classList.add('hidden');
+                            freqContainer.style.maxHeight = '';
+                            freqContainer.style.opacity = '';
+                            freqContainer.style.marginTop = '';
+                            freqContainer.style.marginBottom = '';
+                            freqContainer.style.overflow = '';
+                            freqContainer.style.transition = '';
+                        }
+                    }, 320);
+                }
+            }
+
             if (freqSel && freqSel.value !== '1') {
                 freqSel.value = '1';
                 freqSel.dispatchEvent(new Event('change'));
@@ -1497,7 +1628,9 @@
             // Date picker button click handler
             const startPickerBtn = document.getElementById('start-date-picker-btn');
             if (startPickerBtn) {
-                startPickerBtn.addEventListener('click', () => {
+                startPickerBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (typeof haptic !== 'undefined') haptic('light');
                     if (typeof openDatePicker === 'function') {
                         openDatePicker(dateInputs.startDisplay, AppState.lang, (selectedDate) => {
@@ -1510,7 +1643,7 @@
                                 dateInputs.startNative.value = `${y}-${m}-${d}`;
                                 dateInputs.startNative.dispatchEvent(new Event('change'));
                             }
-                        });
+                        }, { launcher: startPickerBtn });
                     } else {
                         dateInputs.startNative.showPicker();
                     }
@@ -1530,13 +1663,17 @@
             // Date picker button click handler
             const firstPickerBtn = document.getElementById('first-inst-date-picker-btn');
             if (firstPickerBtn) {
-                firstPickerBtn.addEventListener('click', () => {
+                firstPickerBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (typeof haptic !== 'undefined') haptic('light');
                     if (typeof openDatePicker === 'function') {
                         // Pass booking date as minDate so pre-grant dates are greyed out.
                         // normalizeConstraint expects a Date object or DD/MM/YYYY string (not ISO).
                         const grantDateISO = dateInputs.startNative ? dateInputs.startNative.value : '';
                         const minDateObj = grantDateISO ? new Date(grantDateISO + 'T00:00:00') : null;
+                        const opts = { launcher: firstPickerBtn };
+                        if (minDateObj) opts.minDate = minDateObj;
                         openDatePicker(dateInputs.firstDisplay, AppState.lang, (selectedDate) => {
                             if (selectedDate) {
                                 dateInputs.firstDisplay.value = formatDate(selectedDate);
@@ -1546,7 +1683,7 @@
                                 dateInputs.firstNative.value = `${y}-${m}-${d}`;
                                 dateInputs.firstNative.dispatchEvent(new Event('change'));
                             }
-                        }, minDateObj ? { minDate: minDateObj } : {});
+                        }, opts);
                     } else {
                         dateInputs.firstNative.showPicker();
                     }

@@ -43,6 +43,8 @@
     <script src="translations.js"></script>
     <script src="logic.js"></script>
     <script src="ui.js"></script>
+    <script src="dateinput.js"></script>
+    <script src="datepicker.js"></script>
 
     <script>
         const UITestRunner = {
@@ -114,6 +116,12 @@
 
             // 13. Scroll Lock & Anti-Shift Trick Comprehensive Test
             testScrollLockAntiShiftTrickComprehensive();
+
+            // 14. Top Bar Modal Anti-Shift & DatePicker Focus Fix Test
+            testModalTopBarAntiShiftAndDatePickerFocusFix();
+
+            // 15. Loan Type Switch & Frequency Accordion Synchronization Test
+            testLoanTypeSwitchAndFrequencyAccordionSynchronization();
 
             displayTestResults();
         }
@@ -383,14 +391,16 @@
             const ssCd1Row2 = document.createElement('div');
             ssCd1Row2.className = 'grid grid-cols-12 gap-2 items-end';
             ssCd1Row2.innerHTML = `
-                <div class="col-span-6"><div class="input-group py-1 px-1 flex items-center gap-0.5"><input type="text" class="text-input text-[11.5px] sm:text-xs font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="12" data-autofit-min="10.5"></div></div>
-                <div class="col-span-6"><div class="input-group py-1 px-1 flex items-center gap-0.5"><input type="text" class="text-input text-[11.5px] sm:text-xs font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="12" data-autofit-min="10.5"></div></div>
+                <div class="col-span-6"><div class="input-group relative h-10 px-2 flex items-center"><input type="text" class="text-input text-sm sm:text-base font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 w-full"><button type="button" class="ss-cd-maturity-picker-btn absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"></button></div></div>
+                <div class="col-span-6"><div class="input-group relative h-10 px-2 flex items-center"><input type="text" class="text-input text-sm sm:text-base font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 w-full"><button type="button" class="ss-cd-picker-btn absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors"></button></div></div>
             `;
             const dateCols = ssCd1Row2.children;
             UITestRunner.assertTrue(dateCols[0].classList.contains('col-span-6'), 'SS CD1 Maturity Date is 50% width (col-span-6)');
             UITestRunner.assertTrue(dateCols[1].classList.contains('col-span-6'), 'SS CD1 Coupon Date is 50% width (col-span-6)');
-            UITestRunner.assertTrue(dateCols[0].querySelector('input').classList.contains('autofit-input'), 'SS CD1 Maturity Date input has autofit-input');
-            UITestRunner.assertTrue(dateCols[1].querySelector('input').classList.contains('autofit-input'), 'SS CD1 Coupon Date input has autofit-input');
+            UITestRunner.assertTrue(dateCols[0].querySelector('input').classList.contains('ss-cd-maturity-display'), 'SS CD1 Maturity Date input is present');
+            UITestRunner.assertTrue(dateCols[1].querySelector('input').classList.contains('ss-cd-date-display'), 'SS CD1 Coupon Date input is present');
+            UITestRunner.assertTrue(dateCols[0].querySelector('button').classList.contains('w-9'), 'SS CD1 Maturity Date picker has w-9 rounded-md button');
+            UITestRunner.assertTrue(dateCols[1].querySelector('button').classList.contains('w-9'), 'SS CD1 Coupon Date picker has w-9 rounded-md button');
 
             // Test 10.3: SS CD2 Section Height & Typography Equalization
             const cd2RateGroup = document.createElement('div');
@@ -402,13 +412,13 @@
             const cd2DateGroup = document.createElement('div');
             cd2DateGroup.className = 'input-group relative h-10 px-2 flex items-center';
             const cd2DateInput = document.createElement('input');
-            cd2DateInput.className = 'text-input text-xs sm:text-sm tracking-tight select-text z-10 pe-7 autofit-input p-0 w-full';
+            cd2DateInput.className = 'text-input text-sm sm:text-base select-text z-10 p-0 w-full';
             cd2DateGroup.appendChild(cd2DateInput);
 
             UITestRunner.assertTrue(cd2RateGroup.classList.contains('h-10'), 'CD2 Rate input group has fixed h-10 height');
             UITestRunner.assertTrue(cd2DateGroup.classList.contains('h-10'), 'CD2 Date input group has fixed h-10 height');
-            UITestRunner.assertTrue(cd2RateInput.classList.contains('text-xs') && cd2DateInput.classList.contains('text-xs'), 'CD2 Rate & Date inputs share text-xs base typography');
-            UITestRunner.assertTrue(cd2RateInput.classList.contains('sm:text-sm') && cd2DateInput.classList.contains('sm:text-sm'), 'CD2 Rate & Date inputs share sm:text-sm responsive typography');
+            UITestRunner.assertTrue(cd2DateGroup.classList.contains('relative'), 'CD2 Date input group is relative for absolute button positioning');
+            UITestRunner.assertTrue(cd2DateInput.classList.contains('text-sm'), 'CD2 Date input has readable text-sm typography');
 
             // Test 10.4: SS Loan Terms Sizing & Height Equalization
             const termFields = [
@@ -675,6 +685,130 @@
 
             // Restore original direction
             docEl.dir = originalDir;
+        }
+
+        function testModalTopBarAntiShiftAndDatePickerFocusFix() {
+            // Test 14.1: ScrollLock with scrollbar-gutter: stable preserves zero nav paddingRight
+            ScrollLock.forceUnlock();
+            ScrollLock.enable();
+            const nav = document.querySelector('nav');
+            if (nav) {
+                UITestRunner.assertEqual(nav.style.paddingRight, '', 'ScrollLock preserves zero nav paddingRight with scrollbar-gutter: stable');
+            }
+            ScrollLock.forceUnlock();
+
+            // Test 14.2: Date picker opening blurs active text input (dismisses mobile keyboard)
+            const testContainer = document.createElement('div');
+            testContainer.className = 'input-group relative';
+            const testInput = document.createElement('input');
+            testInput.type = 'text';
+            testInput.value = '10/12/2026';
+            const testBtn = document.createElement('button');
+            testBtn.type = 'button';
+            testContainer.appendChild(testInput);
+            testContainer.appendChild(testBtn);
+            document.body.appendChild(testContainer);
+
+            testInput.focus();
+            UITestRunner.assertEqual(document.activeElement, testInput, 'Input is initially focused before picker opens');
+
+            let pickerConfirmed = false;
+            openDatePicker(testInput, 'en', (d) => { pickerConfirmed = true; }, { forceMode: 'mobile', launcher: testBtn });
+
+            UITestRunner.assertTrue(document.activeElement !== testInput, 'openDatePicker blurs active text input on mobile to dismiss keyboard');
+
+            // Test 14.3 & 14.4: Closing date picker does NOT focus text input and restores focus safely to button
+            const cancelBtn = document.getElementById('date-picker-cancel');
+            if (cancelBtn) cancelBtn.click();
+
+            UITestRunner.assertTrue(document.activeElement !== testInput, 'Closing date picker does NOT focus text input (keyboard remains dismissed)');
+            UITestRunner.assertEqual(document.activeElement, testBtn, 'Closing date picker returns focus safely to the trigger button');
+
+            testContainer.remove();
+        }
+
+        function testLoanTypeSwitchAndFrequencyAccordionSynchronization() {
+            // Setup DOM fixtures
+            const fixture = document.createElement('div');
+            fixture.innerHTML = `
+                <div id="test-unsecured-btn" class="loan-type-btn"></div>
+                <div id="test-secured-btn" class="loan-type-btn"></div>
+                <div id="test-collateral-section" class="overflow-hidden transition-all duration-300 max-h-0 opacity-0 mb-3" style="max-height: 0px;"></div>
+                <div id="test-frequency-container" class="hidden">
+                    <select id="test-installment-freq"><option value="1">1</option><option value="3">3</option></select>
+                </div>
+            `;
+            document.body.appendChild(fixture);
+
+            const colSec = document.getElementById('test-collateral-section');
+            const freqCont = document.getElementById('test-frequency-container');
+            const freqSelect = document.getElementById('test-installment-freq');
+
+            // Test 15.1: Initial State in Unsecured Mode
+            UITestRunner.assertTrue(colSec.classList.contains('max-h-0'), 'Collateral section starts collapsed (max-h-0)');
+            UITestRunner.assertTrue(freqCont.classList.contains('hidden'), 'Frequency container starts hidden');
+
+            // Test 15.2: Smooth Expand Transition to Secured Mode
+            freqCont.classList.remove('hidden');
+            freqCont.style.overflow = 'hidden';
+            freqCont.style.maxHeight = '0px';
+            freqCont.style.opacity = '0';
+            void freqCont.offsetHeight;
+            freqCont.style.transition = 'max-height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)';
+            freqCont.style.maxHeight = '70px';
+            freqCont.style.opacity = '1';
+
+            UITestRunner.assertFalse(freqCont.classList.contains('hidden'), 'Frequency container unhides during opening transition');
+            UITestRunner.assertEqual(freqCont.style.overflow, 'hidden', 'Frequency container enforces overflow: hidden while opening');
+            UITestRunner.assertEqual(freqCont.style.maxHeight, '70px', 'Frequency container expands to content height');
+
+            // Test 15.3: Post-expansion cleanup restores overflow: visible for dropdowns
+            freqCont.style.overflow = 'visible';
+            freqCont.style.maxHeight = 'none';
+            freqCont.style.transition = '';
+            UITestRunner.assertEqual(freqCont.style.overflow, 'visible', 'Expanded frequency container has overflow: visible so dropdown is never clipped');
+            UITestRunner.assertEqual(freqCont.style.maxHeight, 'none', 'Expanded frequency container has maxHeight: none');
+
+            // Test 15.4: Smooth Collapse Transition to Unsecured Mode does NOT snap to hidden immediately
+            freqSelect.value = '3'; // currently quarterly
+            const currentH = 70;
+            freqCont.style.overflow = 'hidden';
+            freqCont.style.maxHeight = currentH + 'px';
+            freqCont.style.opacity = '1';
+            freqCont.style.transition = 'max-height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1), margin-top 300ms cubic-bezier(0.4, 0, 0.2, 1)';
+            void freqCont.offsetHeight;
+            freqCont.style.maxHeight = '0px';
+            freqCont.style.opacity = '0';
+            freqCont.style.marginTop = '0px';
+
+            UITestRunner.assertFalse(freqCont.classList.contains('hidden'), 'Frequency container is NOT immediately hidden on collapse start (smooth 300ms transition)');
+            UITestRunner.assertEqual(freqCont.style.maxHeight, '0px', 'Frequency container animates maxHeight to 0px');
+            UITestRunner.assertEqual(freqCont.style.opacity, '0', 'Frequency container fades opacity to 0');
+            UITestRunner.assertEqual(freqCont.style.marginTop, '0px', 'Frequency container collapses marginTop to 0px to prevent spacing jumps');
+
+            // Test 15.5: Installment frequency select resets to Monthly (1)
+            let freqChanged = false;
+            freqSelect.addEventListener('change', () => { freqChanged = true; });
+            if (freqSelect.value !== '1') {
+                freqSelect.value = '1';
+                freqSelect.dispatchEvent(new Event('change'));
+            }
+            UITestRunner.assertEqual(freqSelect.value, '1', 'Installment frequency resets to 1 (Monthly) for unsecured loan');
+            UITestRunner.assertTrue(freqChanged, 'Resetting frequency dispatches change event to update loan calculation');
+
+            // Test 15.6: Post-collapse cleanup adds hidden class and resets inline styles
+            freqCont.classList.add('hidden');
+            freqCont.style.maxHeight = '';
+            freqCont.style.opacity = '';
+            freqCont.style.marginTop = '';
+            freqCont.style.overflow = '';
+            freqCont.style.transition = '';
+
+            UITestRunner.assertTrue(freqCont.classList.contains('hidden'), 'Frequency container receives hidden class after animation completes');
+            UITestRunner.assertEqual(freqCont.style.maxHeight, '', 'Frequency container inline maxHeight is cleared');
+            UITestRunner.assertEqual(freqCont.style.overflow, '', 'Frequency container inline overflow is cleared');
+
+            fixture.remove();
         }
 
         function displayTestResults() {

@@ -29,6 +29,54 @@
     // #5: Cached item heights per column
     const columnItemHeights = new Map();
 
+    /**
+     * Identifies the optimal element to receive restored focus on modal close.
+     * Prefers explicit trigger buttons over form inputs to avoid triggering mobile keyboards.
+     */
+    function resolveLauncherElement(inputEl, options = {}) {
+        if (options && options.launcher && typeof options.launcher.focus === 'function') {
+            return options.launcher;
+        }
+        if (document.activeElement && (document.activeElement.tagName === 'BUTTON' || document.activeElement.getAttribute('role') === 'button')) {
+            return document.activeElement;
+        }
+        if (inputEl && inputEl.parentElement) {
+            const siblingBtn = inputEl.parentElement.querySelector('button');
+            if (siblingBtn) return siblingBtn;
+        }
+        return inputEl;
+    }
+
+    /**
+     * Restores focus safely on modal close without triggering mobile virtual keyboards.
+     */
+    function restoreFocusToLauncher() {
+        if (!launcherElement) return;
+        const target = launcherElement;
+        launcherElement = null;
+
+        const isInput = (typeof HTMLInputElement !== 'undefined' && target instanceof HTMLInputElement) ||
+                        (typeof HTMLTextAreaElement !== 'undefined' && target instanceof HTMLTextAreaElement);
+        const isTouchOrMobile = window.innerWidth < 768 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+        // Never focus text/numeric inputs on touch/mobile devices as it opens the virtual keyboard
+        if (isInput && isTouchOrMobile) {
+            const siblingBtn = target.parentElement?.querySelector('button');
+            if (siblingBtn && typeof siblingBtn.focus === 'function') {
+                try { siblingBtn.focus({ preventScroll: true }); } catch (_) {}
+            } else if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+            return;
+        }
+
+        if (typeof target.focus === 'function') {
+            try {
+                target.focus({ preventScroll: true });
+            } catch (_) {}
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // TRANSLATION HELPERS
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1082,10 +1130,7 @@
 
         onConfirmCallback = null;
 
-        if (launcherElement && typeof launcherElement.focus === 'function') {
-            launcherElement.focus();
-        }
-        launcherElement = null;
+        restoreFocusToLauncher();
         minDate = null;
         maxDate = null;
 
@@ -1490,7 +1535,7 @@
 
         currentLang = lang || 'en';
         onConfirmCallback = callback;
-        launcherElement = inputEl;
+        launcherElement = resolveLauncherElement(inputEl, options);
 
         // #3 & #4: Normalize constraints to midnight, support Date or string
         minDate = normalizeConstraint(options.minDate);
@@ -1555,9 +1600,15 @@
     // ═══════════════════════════════════════════════════════════════════════════
 
     function openMobileWheelPicker(inputEl, lang, callback, options = {}) {
+        // Ensure any active text input is blurred so mobile virtual keyboard dismisses
+        if (document.activeElement && typeof document.activeElement.blur === 'function' &&
+            (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+            try { document.activeElement.blur(); } catch (_) {}
+        }
+
         currentLang = lang || 'en';
         onConfirmCallback = callback;
-        launcherElement = inputEl;
+        launcherElement = resolveLauncherElement(inputEl, options);
 
         // Normalize constraints (Date or string to midnight)
         minDate = normalizeConstraint(options.minDate);
@@ -1674,13 +1725,8 @@
 
         onConfirmCallback = null;
 
-        // #8: Restore focus to launcher
-        if (launcherElement && typeof launcherElement.focus === 'function') {
-            launcherElement.focus();
-        }
-        launcherElement = null;
-
-        // Clear constraints
+        // #8: Restore focus safely to trigger launcher without opening mobile keyboard
+        restoreFocusToLauncher();
         minDate = null;
         maxDate = null;
 

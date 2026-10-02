@@ -152,10 +152,12 @@ function initEarlySettlement(appState, formInputs, animateToggleBounce, formatDa
 
         // Date picker button
         if (settlementDatePickerBtn) {
-            settlementDatePickerBtn.addEventListener('click', () => {
+            settlementDatePickerBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (typeof haptic !== 'undefined') haptic('light');
                 const period = getLoanPeriod();
-                const options = {};
+                const options = { launcher: settlementDatePickerBtn };
                 if (period) {
                     options.minDate = period.startDate;
                     const maxSettlementDate = new Date(period.endDate.getFullYear(), period.endDate.getMonth(), period.endDate.getDate() - 1);

@@ -194,7 +194,6 @@ function _ssSeedCdDateField(dateObj, nativeEl, displayEl) {
             ? dateBuildValue(d, m, String(y), false)
             : `${d}/${m}/${y}`;
         displayEl.dataset.iso = iso;
-        if (typeof autoFitInputText === 'function') autoFitInputText(displayEl);
     }
 }
 
@@ -365,19 +364,19 @@ function renderSsCd1List(newIdToAnimate = null) {
             <div class="grid grid-cols-12 gap-2 items-end">
                 <div class="col-span-5 min-w-0">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralNominalLabel">${t(lang, 'collateralNominalLabel')}</label>
-                    <div class="input-group py-1 px-1.5">
+                    <div class="input-group h-10 px-2 flex items-center">
                         <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-amount autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="100,000" aria-label="${t(lang, 'collateralNominalLabel')}" title="${t(lang, 'collateralNominalLabel')}">
                     </div>
                 </div>
                 <div class="col-span-4 min-w-0">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralRedemptionLabel">${t(lang, 'collateralRedemptionLabel')}</label>
-                    <div class="input-group py-1 px-1.5">
+                    <div class="input-group h-10 px-2 flex items-center">
                         <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-redemption autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="90,000" aria-label="${t(lang, 'collateralRedemptionLabel')}" title="${t(lang, 'collateralRedemptionLabel')}">
                     </div>
                 </div>
                 <div class="col-span-3 min-w-0">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderRate">${t(lang, 'colHeaderRate')}</label>
-                    <div class="input-group py-1 px-1.5">
+                    <div class="input-group h-10 px-2 flex items-center">
                         <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-rate p-0 text-center" data-id="${cd.id}" placeholder="19.0" aria-label="${t(lang, 'colHeaderRate')}" title="${t(lang, 'colHeaderRate')}">
                     </div>
                 </div>
@@ -387,10 +386,10 @@ function renderSsCd1List(newIdToAnimate = null) {
             <div class="pt-2 border-t border-green-100/80 dark:border-green-900/40 grid grid-cols-12 gap-2 items-end">
                 <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="maturityDateLabel">${t(lang, 'maturityDateLabel')}</label>
-                    <div class="input-group py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'maturityDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input text-[11.5px] sm:text-xs font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="12" data-autofit-min="10.5" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
-                        <button type="button" class="ss-cd-maturity-picker-btn flex-shrink-0 w-4 h-4 p-0 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open maturity date picker">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
+                    <div class="input-group relative h-10 px-2 flex items-center" title="${t(lang, 'maturityDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input text-sm sm:text-base font-medium flex-1 min-w-0 select-text z-10 ss-cd-maturity-display p-0 w-full" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'maturityDateLabel')}" title="${t(lang, 'maturityDateLabel')}">
+                        <button type="button" class="ss-cd-maturity-picker-btn absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" data-id="${cd.id}" aria-label="Open maturity date picker">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                             <input type="date" class="ss-cd-maturity-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
@@ -399,10 +398,10 @@ function renderSsCd1List(newIdToAnimate = null) {
                 </div>
                 <div class="col-span-6">
                     <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="nextCouponDateLabel">${t(lang, 'nextCouponDateLabel')}</label>
-                    <div class="input-group py-1 px-1 flex items-center gap-0.5" title="${t(lang, 'nextCouponDateLabel')}">
-                        <input type="text" inputmode="numeric" class="text-input text-[11.5px] sm:text-xs font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="12" data-autofit-min="10.5" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
-                        <button type="button" class="ss-cd-picker-btn flex-shrink-0 w-4 h-4 p-0 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded z-20 transition-colors relative" data-id="${cd.id}" aria-label="Open date picker">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none">
+                    <div class="input-group relative h-10 px-2 flex items-center" title="${t(lang, 'nextCouponDateLabel')}">
+                        <input type="text" inputmode="numeric" class="text-input text-sm sm:text-base font-medium flex-1 min-w-0 select-text z-10 ss-cd-date-display p-0 w-full" data-id="${cd.id}" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off" aria-label="${t(lang, 'nextCouponDateLabel')}" title="${t(lang, 'nextCouponDateLabel')}">
+                        <button type="button" class="ss-cd-picker-btn absolute end-1 top-1 bottom-1 w-9 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" data-id="${cd.id}" aria-label="Open date picker">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-gray-400 pointer-events-none" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                             <input type="date" class="ss-cd-date-native absolute inset-0 opacity-0 w-full h-full pointer-events-none" tabindex="-1" data-id="${cd.id}">
@@ -449,7 +448,6 @@ function renderSsCd1List(newIdToAnimate = null) {
                     ? dateBuildValue(p[2], p[1], p[0], false)
                     : `${p[2]}/${p[1]}/${p[0]}`;
                 dateDisplay.dataset.iso = cd.dateISO;
-                if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay, 12, 10.5);
             }
         }
 
@@ -462,7 +460,6 @@ function renderSsCd1List(newIdToAnimate = null) {
                     ? dateBuildValue(p[2], p[1], p[0], false)
                     : `${p[2]}/${p[1]}/${p[0]}`;
                 matDisplay.dataset.iso = cd.maturityISO;
-                if (typeof autoFitInputText === 'function') autoFitInputText(matDisplay, 12, 10.5);
             }
         }
 
@@ -535,7 +532,6 @@ function renderSsCd1List(newIdToAnimate = null) {
                     : `${dStr}/${mStr}/${yStr}`;
                 dateDisplay.dataset.iso = cd.dateISO;
                 dateDisplay.classList.remove('text-red-500');
-                if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay, 12, 10.5);
             }
             if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
         };
@@ -552,7 +548,9 @@ function renderSsCd1List(newIdToAnimate = null) {
         }
 
         if (matPickerBtn && matDisplay && matNative) {
-            matPickerBtn.addEventListener('click', () => {
+            matPickerBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (typeof haptic !== 'undefined') haptic('light');
                 if (typeof openDatePicker === 'function') {
                     openDatePicker(matDisplay, _ssAppState?.lang || 'en', (selectedDate) => {
@@ -567,11 +565,10 @@ function renderSsCd1List(newIdToAnimate = null) {
                             cd.maturityISO = matNative.value;
                             syncInterestDateFromMaturityDate(cd.maturityISO);
                             updateRemainingBadge(cd, row);
-                            if (typeof autoFitInputText === 'function') autoFitInputText(matDisplay, 12, 10.5);
                             const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
                             updateTenorAdvisoryAndMatchButton(p);
                         }
-                    });
+                    }, { launcher: matPickerBtn });
                 } else {
                     matNative.showPicker();
                 }
@@ -582,13 +579,14 @@ function renderSsCd1List(newIdToAnimate = null) {
             initDateInput(dateDisplay, dateNative);
             dateNative.addEventListener('change', () => {
                 cd.dateISO = dateNative.value;
-                if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay, 12, 10.5);
                 if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
             });
         }
 
         if (pickerBtn && dateDisplay && dateNative) {
-            pickerBtn.addEventListener('click', () => {
+            pickerBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (typeof haptic !== 'undefined') haptic('light');
                 if (typeof openDatePicker === 'function') {
                     openDatePicker(dateDisplay, _ssAppState?.lang || 'en', (selectedDate) => {
@@ -601,10 +599,9 @@ function renderSsCd1List(newIdToAnimate = null) {
                                 : `${d}/${m}/${y}`;
                             dateNative.value = `${y}-${m}-${d}`;
                             cd.dateISO = dateNative.value;
-                            if (typeof autoFitInputText === 'function') autoFitInputText(dateDisplay, 12, 10.5);
                             if (typeof updateSelfSufficient === 'function') updateSelfSufficient();
                         }
-                    });
+                    }, { launcher: pickerBtn });
                 } else {
                     dateNative.showPicker();
                 }
@@ -913,7 +910,9 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
 
     const ssBDPickerBtn = document.getElementById('ss-booking-date-picker-btn');
     if (ssBDPickerBtn && ssBDDisplay && ssBDNative) {
-        ssBDPickerBtn.addEventListener('click', () => {
+        ssBDPickerBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             if (typeof haptic !== 'undefined') haptic('light');
             if (typeof openDatePicker === 'function') {
                 openDatePicker(ssBDDisplay, _ssAppState.lang, (selectedDate) => {
@@ -927,7 +926,7 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
                         ssBDNative.value = `${y}-${m}-${d}`;
                         ssBDNative.dispatchEvent(new Event('change'));
                     }
-                });
+                }, { launcher: ssBDPickerBtn });
             } else {
                 ssBDNative.showPicker();
             }
@@ -979,7 +978,9 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
 
     const ssCD2PickerBtn = document.getElementById('ss-cd2-interest-date-picker-btn');
     if (ssCD2PickerBtn && ssCD2Display && ssCD2Native) {
-        ssCD2PickerBtn.addEventListener('click', () => {
+        ssCD2PickerBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             if (typeof haptic !== 'undefined') haptic('light');
             if (typeof openDatePicker === 'function') {
                 openDatePicker(ssCD2Display, _ssAppState.lang, (selectedDate) => {
@@ -990,11 +991,10 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
                         ssCD2Display.value = (typeof dateBuildValue === 'function')
                             ? dateBuildValue(d, m, String(y), false)
                             : `${d}/${m}/${y}`;
-                        if (typeof autoFitInputText === 'function') autoFitInputText(ssCD2Display, 13, 10.5);
                         ssCD2Native.value = `${y}-${m}-${d}`;
                         ssCD2Native.dispatchEvent(new Event('change'));
                     }
-                });
+                }, { launcher: ssCD2PickerBtn });
             } else {
                 ssCD2Native.showPicker();
             }

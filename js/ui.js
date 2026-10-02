@@ -63,11 +63,14 @@ const ScrollLock = (() => {
         if (lockCount > 1 && document.body.classList.contains('scroll-lock')) return; // Already locked
 
         const docEl = document.documentElement;
-        // In desktop browsers (Windows/Linux/macOS), vertical scrollbar is on the right edge
-        // regardless of page direction (LTR or RTL). On touch/mobile devices, overlay scrollbars
-        // are used and applying padding causes horizontal layout shift/scroll.
+        // In desktop browsers without native scrollbar-gutter support, vertical scrollbar is on the right edge
+        // regardless of page direction (LTR or RTL).
+        // With scrollbar-gutter: stable on html, the gutter is natively preserved when overflow: hidden is added,
+        // so no manual padding is needed on modern browsers. For older browsers or legacy desktop setups without
+        // scrollbar-gutter support, only adjust padding on non-touch desktop viewports.
         const isTouchOrMobile = window.innerWidth < 768 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-        const scrollbarWidth = isTouchOrMobile ? 0 : Math.max(0, window.innerWidth - docEl.clientWidth);
+        const supportsScrollbarGutter = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scrollbar-gutter', 'stable');
+        const scrollbarWidth = (isTouchOrMobile || supportsScrollbarGutter) ? 0 : Math.max(0, window.innerWidth - docEl.clientWidth);
 
         if (scrollbarWidth > 0) {
             const pad = `${scrollbarWidth}px`;
@@ -555,7 +558,9 @@ function showToast(message, type = 'normal') {
     const isRTL = document.documentElement.dir === 'rtl' || document.documentElement.getAttribute('dir') === 'rtl';
     const paddingProp = isRTL ? 'paddingLeft' : 'paddingRight';
     if (document.body.classList.contains('scroll-lock')) {
-        const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+        const isTouchOrMobile = window.innerWidth < 768 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+        const supportsScrollbarGutter = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scrollbar-gutter', 'stable');
+        const scrollbarWidth = (isTouchOrMobile || supportsScrollbarGutter) ? 0 : Math.max(0, window.innerWidth - document.documentElement.clientWidth);
         if (scrollbarWidth > 0) {
             msgBox.style[paddingProp] = `${scrollbarWidth}px`;
         }
