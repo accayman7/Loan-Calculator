@@ -53,13 +53,23 @@ const ScrollLock = (() => {
         document.body.classList.remove('scroll-lock');
 
         if (wasMobile) {
+            // Temporarily disable smooth scrolling so scroll restoration is completely instant and silent
+            const docEl = document.documentElement;
+            const prevBehavior = docEl.style.scrollBehavior;
+            docEl.style.scrollBehavior = 'auto';
+
             // Restore body from fixed positioning and recover saved scroll position
             document.body.style.position = '';
             document.body.style.top = '';
             document.body.style.left = '';
             document.body.style.right = '';
             document.body.style.width = '';
-            window.scrollTo(0, savedScrollY);
+            window.scrollTo({ top: savedScrollY, left: 0, behavior: 'instant' });
+
+            // Re-apply original scrollBehavior in the next animation frame
+            requestAnimationFrame(() => {
+                docEl.style.scrollBehavior = prevBehavior;
+            });
         }
 
         ['paddingRight', 'paddingLeft'].forEach(prop => {
@@ -1381,6 +1391,8 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
+window.escapeHtml = escapeHtml;
+window.safeEscapeHtml = escapeHtml;
 
 function renderHistoryList(history, lang) {
     const historyList = document.getElementById('history-list');

@@ -73,7 +73,9 @@
         if (typeof target.focus === 'function') {
             try {
                 target.focus({ preventScroll: true });
-            } catch (_) {}
+            } catch (_) {
+                target.focus();
+            }
         }
     }
 
@@ -1659,7 +1661,9 @@
 
         requestAnimationFrame(() => {
             const dayCol = document.getElementById('col-day');
-            if (dayCol) dayCol.focus();
+            if (dayCol) {
+                try { dayCol.focus({ preventScroll: true }); } catch (_) { dayCol.focus(); }
+            }
         });
 
         if (typeof BackHandler !== 'undefined') {

@@ -337,7 +337,8 @@ function renderSsCd1List(newIdToAnimate = null) {
         row.id = `ss-cd1-card-${cd.id}`;
         row.className = `ss-cd-card p-2.5 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-900/60 shadow-xs transition-all space-y-2.5 ${cd.id === newIdToAnimate ? 'item-enter' : ''}`;
 
-        const cdLabel = `CD₁ #${index + 1}`;
+        const rawLabel = lang === 'ar' ? `شهادة ${index + 1}` : `Certificate #${index + 1}`;
+        const cdLabel = (typeof escapeHtml === 'function') ? escapeHtml(rawLabel) : rawLabel;
 
         row.innerHTML = `
             <!-- Card Header: Title & Action Button -->
@@ -1388,8 +1389,8 @@ function copySelfSufficientOffer() {
 📅 التاريخ: ${dateStr}
 
 1️⃣ *الخطة الاستثمارية:*
-• شهادتك الحالية (CD₁): ${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)
-• الشهادة الجديدة المضافة (CD₂): ${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)
+• شهادتك الحالية: ${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)
+• الشهادة الجديدة المضافة: ${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)
 ⭐ *إجمالي شهاداتك:* ${fmt(totalTds)} ${curr}
 ⏳ المدة: ${months} شهر
 
@@ -1411,8 +1412,8 @@ function copySelfSufficientOffer() {
 📅 Date: ${dateStr}
 
 1️⃣ *The Investment Plan:*
-• Your Existing Certificate (CD₁): ${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)
-• New Certificate Added (CD₂): ${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)
+• Your Existing Certificate: ${fmt(cd1Total)} ${curr} (${cd1Rate.toFixed(2)}%)
+• New Certificate Added: ${fmt(td2)} ${curr} (${td2Rate.toFixed(2)}%)
 ⭐ *Total Certificates Owned:* ${fmt(totalTds)} ${curr}
 ⏳ Duration: ${months} Months
 
@@ -1510,8 +1511,8 @@ function generateSelfSufficientHtml(params) {
     } = params;
 
     const planTitle = isAr ? '1️⃣ الخطة الاستثمارية' : '1️⃣ THE INVESTMENT PLAN';
-    const existingCdLabel = isAr ? 'شهادتك الحالية (CD₁):' : 'Your Existing Certificate (CD₁):';
-    const newCdLabel = isAr ? 'الشهادة الجديدة المضافة (CD₂):' : 'New Certificate Added (CD₂):';
+    const existingCdLabel = isAr ? 'شهادتك الحالية:' : 'Your Existing Certificate:';
+    const newCdLabel = isAr ? 'الشهادة الجديدة المضافة:' : 'New Certificate Added:';
     const totalCdsLabel = isAr ? 'إجمالي شهاداتك الجديدة:' : 'Total Certificates Owned:';
     const durationLabel = isAr ? 'مدة الاستثمار:' : 'Duration:';
     const durationVal = isAr ? `${months} شهر (${years} سنوات)` : `${months} Months (${years} Years)`;

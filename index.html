@@ -317,11 +317,11 @@
 
                                 <!-- Column Headers & List Wrapper -->
                                 <div>
-                                    <div class="collateral-grid gap-1 sm:gap-1.5 px-1 sm:px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                                        <div id="col-header-num" class="text-center" data-lang-key="colHeaderNum">#</div>
-                                        <div id="col-header-nominal" class="text-center" data-lang-key="colHeaderNominal">Nominal</div>
-                                        <div id="col-header-redemption" class="text-center" data-lang-key="colHeaderRedemption">Redemption</div>
-                                        <div id="col-header-rate" class="text-center" data-lang-key="colHeaderRate">Rate %</div>
+                                    <div id="collateral-headers-row" class="hidden">
+                                        <div id="col-header-num" data-lang-key="colHeaderNum">#</div>
+                                        <div id="col-header-nominal" data-lang-key="colHeaderNominal">Nominal</div>
+                                        <div id="col-header-redemption" data-lang-key="colHeaderRedemption">Redemption</div>
+                                        <div id="col-header-rate" data-lang-key="colHeaderRate">Rate %</div>
                                     </div>
 
                                     <div id="collaterals-list" class="space-y-1.5 sm:space-y-2 mt-1">
@@ -575,7 +575,7 @@
                         </div>
 
                         <div id="advanced-section"
-                            class="overflow-x-visible overflow-y-hidden transition-all duration-300 max-h-0 opacity-0 origin-top">
+                            class="overflow-hidden transition-all duration-300 max-h-0 opacity-0 origin-top">
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
@@ -886,16 +886,16 @@
                                         <svg class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                         </svg>
-                                        <span class="text-xs font-bold text-green-900 dark:text-green-200 whitespace-nowrap" data-lang-key="ssCd1SectionTitle">Existing Certificates (CD₁)</span>
+                                        <span class="text-xs font-bold text-green-900 dark:text-green-200 whitespace-nowrap" data-lang-key="ssCd1SectionTitle">Existing Certificates</span>
                                     </div>
                                     <div class="flex items-center gap-1 flex-shrink-0">
-                                        <button type="button" id="ss-clear-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 py-1 px-1.5 sm:px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap" title="Clear all CD₁" aria-label="Clear all CD₁">
+                                        <button type="button" id="ss-clear-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 py-1 px-1.5 sm:px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap" title="Clear all certificates" aria-label="Clear all certificates">
                                             <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                             <span data-lang-key="clearAllBtn" class="hidden sm:inline whitespace-nowrap">Clear All</span>
                                         </button>
                                         <button type="button" id="ss-add-cd-btn" class="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 py-1 px-2 sm:px-2.5 rounded-lg bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 transition-colors whitespace-nowrap">
                                             <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                            <span data-lang-key="addCd1Btn" class="whitespace-nowrap">Add CD₁</span>
+                                            <span data-lang-key="addCd1Btn" class="whitespace-nowrap">Add Certificate</span>
                                         </button>
                                     </div>
                                 </div>
@@ -912,17 +912,17 @@
                                     <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200" data-lang-key="ssCd2SectionTitle">New Certificate (CD₂)</span>
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200" data-lang-key="ssCd2SectionTitle">New Certificate</span>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2 sm:gap-3">
                                     <div>
-                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="td2RateLabel" for="td2-rate">CD₂ Rate (%):</label>
+                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="td2RateLabel" for="td2-rate">New Certificate Rate (%):</label>
                                         <div class="input-group h-10 px-2 flex items-center" id="group-td2-rate">
                                             <input type="text" inputmode="decimal" id="td2-rate" placeholder="19.0" class="text-input text-xs sm:text-sm select-text p-0 w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssCd2InterestDateLabel" for="ss-cd2-interest-date-display">CD₂ First Interest Date:</label>
+                                        <label class="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="ssCd2InterestDateLabel" for="ss-cd2-interest-date-display">First Interest Date:</label>
                                         <div class="input-group relative h-10 px-2 flex items-center">
                                             <input type="text" inputmode="numeric" id="ss-cd2-interest-date-display" class="text-input text-xs sm:text-sm font-medium select-text z-10 p-0 w-full autofit-input tracking-tight" data-autofit="true" data-autofit-max="13" data-autofit-min="10" placeholder="DD/MM/YYYY" maxlength="10" autocomplete="off">
                                             <button type="button" id="ss-cd2-interest-date-picker-btn" class="absolute end-1 top-1 bottom-1 w-8 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md z-20 transition-colors" aria-label="Open date picker">
@@ -988,8 +988,8 @@
                                             <input type="text" inputmode="numeric" pattern="[0-9]*" id="ss-loan-period" value="36" placeholder="36" class="text-input text-xs sm:text-sm select-text p-0 w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                         </div>
                                         <div class="mt-1 flex justify-end">
-                                            <button type="button" id="ss-match-cd1-btn" class="hidden text-[9.5px] sm:text-[10px] font-bold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 px-1.5 py-0.5 rounded transition-colors whitespace-nowrap cursor-pointer truncate max-w-full" title="Match CD₁ maturity">
-                                                <span id="ss-match-cd1-text">⚡ Match CD₁: 36 mos</span>
+                                            <button type="button" id="ss-match-cd1-btn" class="hidden text-[9.5px] sm:text-[10px] font-bold text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 bg-green-100/80 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-900 px-1.5 py-0.5 rounded transition-colors whitespace-nowrap cursor-pointer truncate max-w-full" title="Match certificate maturity">
+                                                <span id="ss-match-cd1-text">⚡ Match Certificate: 36 mos</span>
                                             </button>
                                         </div>
                                     </div>
@@ -1060,7 +1060,7 @@
 
                                     <div class="flex justify-between items-center">
                                         <span class="text-xs text-green-800 dark:text-green-300"
-                                            data-lang-key="ssTd2Label">New CD (CD₂):</span>
+                                            data-lang-key="ssTd2Label">New Certificate:</span>
                                         <span id="ss-td2-display"
                                             class="font-bold text-green-900 dark:text-white select-text">-</span>
                                     </div>
@@ -1229,83 +1229,87 @@
 
                     <div class="summary-divider"></div>
 
-                    <div id="std-installments-view"
-                        class="transition-all duration-500 ease-in-out overflow-hidden max-h-24 opacity-100">
-                        <div class="summary-grid items-center pt-1">
-                            <div>
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
-                                    data-lang-key="monthlyInstallmentLabel">Monthly Installment</p>
-                                <span class="text-xl font-extrabold text-white select-text"
-                                    id="summary-std-inst">-</span>
-                            </div>
-                            <div class="text-end">
-                                <div class="flex items-center gap-1 mb-1 justify-end">
-                                    <span class="info-icon" tabindex="0" role="button" aria-label="Flat rate info" data-lang-tooltip="flatRateExplain"
-                                        data-tooltip="Simple interest equivalent: (Total Interest ÷ Principal) ÷ Years × 100">ℹ</span>
-                                    <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
-                                        data-lang-key="flatRateLabel">Flat Rate</span>
+                    <div id="std-installments-view" class="summary-collapse-wrapper expanded">
+                        <div class="summary-collapse-inner">
+                            <div class="summary-grid items-center pt-1">
+                                <div>
+                                    <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                        data-lang-key="monthlyInstallmentLabel">Monthly Installment</p>
+                                    <span class="text-xl font-extrabold text-white select-text"
+                                        id="summary-std-inst">-</span>
                                 </div>
-                                <span class="text-lg font-bold text-white select-text flat-rate-display">-</span>
+                                <div class="text-end">
+                                    <div class="flex items-center gap-1 mb-1 justify-end">
+                                        <span class="info-icon" tabindex="0" role="button" aria-label="Flat rate info" data-lang-tooltip="flatRateExplain"
+                                            data-tooltip="Simple interest equivalent: (Total Interest ÷ Principal) ÷ Years × 100">ℹ</span>
+                                        <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
+                                            data-lang-key="flatRateLabel">Flat Rate</span>
+                                    </div>
+                                    <span class="text-lg font-bold text-white select-text flat-rate-display">-</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="adv-installments-view"
-                        class="space-y-4 pt-1 transition-all duration-500 ease-in-out overflow-hidden max-h-0 opacity-0 pointer-events-none">
-                        <div class="summary-grid items-center">
-                            <div>
-                                <div class="flex items-center gap-1 mb-1">
-                                    <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
-                                        data-lang-key="firstInstAmountLabel">First Installment</span>
-                                    <span class="info-icon" tabindex="0" role="button" aria-label="First installment info" data-lang-tooltip="firstInstExplain"
-                                        data-tooltip="Interest calculated on actual days from booking to first payment date">ℹ</span>
+                    <div id="adv-installments-view" class="summary-collapse-wrapper">
+                        <div class="summary-collapse-inner">
+                            <div class="space-y-4 pt-1">
+                                <div class="summary-grid items-center">
+                                    <div>
+                                        <div class="flex items-center gap-1 mb-1">
+                                            <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
+                                                data-lang-key="firstInstAmountLabel">First Installment</span>
+                                            <span class="info-icon" tabindex="0" role="button" aria-label="First installment info" data-lang-tooltip="firstInstExplain"
+                                                data-tooltip="Interest calculated on actual days from booking to first payment date">ℹ</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-white select-text" id="summary-first-inst">-</span>
+                                        <p class="text-indigo-200 text-xs font-medium mt-0.5" id="summary-first-date"></p>
+                                    </div>
+                                    <div class="text-end">
+                                        <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                            data-lang-key="regularInstLabel">Regular Installment</p>
+                                        <span class="text-lg font-bold text-white select-text"
+                                            id="summary-regular-inst">-</span>
+                                    </div>
                                 </div>
-                                <span class="text-lg font-bold text-white select-text" id="summary-first-inst">-</span>
-                                <p class="text-indigo-200 text-xs font-medium mt-0.5" id="summary-first-date"></p>
-                            </div>
-                            <div class="text-end">
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
-                                    data-lang-key="regularInstLabel">Regular Installment</p>
-                                <span class="text-lg font-bold text-white select-text"
-                                    id="summary-regular-inst">-</span>
-                            </div>
-                        </div>
 
-                        <div class="summary-divider"></div>
+                                <div class="summary-divider"></div>
 
-                        <div class="summary-grid items-center">
-                            <div>
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
-                                    id="summary-admin-fees-label" data-lang-key="adminFeesLabel">Admin Fees</p>
-                                <span class="text-lg font-bold text-white select-text" id="summary-admin-fees">-</span>
-                            </div>
-                            <div class="text-end">
-                                <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
-                                    data-lang-key="netLoanLabel">Net Loan Amount</p>
-                                <span class="text-lg font-bold text-white select-text" id="summary-net-loan">-</span>
-                            </div>
-                        </div>
-
-                        <div class="summary-divider"></div>
-
-                        <div class="summary-grid items-center">
-                            <div>
-                                <div class="flex items-center gap-1 mb-1">
-                                    <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
-                                        data-lang-key="totalStampLabel">Total Stamp</span>
-                                    <span class="info-icon" tabindex="0" role="button" aria-label="Total stamp info" data-lang-tooltip="totalStampExplain"
-                                        data-tooltip="Quarterly stamp calculated on highest principal balance in each quarter">ℹ</span>
+                                <div class="summary-grid items-center">
+                                    <div>
+                                        <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                            id="summary-admin-fees-label" data-lang-key="adminFeesLabel">Admin Fees</p>
+                                        <span class="text-lg font-bold text-white select-text" id="summary-admin-fees">-</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <p class="text-indigo-100 text-xs uppercase font-medium mb-1 opacity-80"
+                                            data-lang-key="netLoanLabel">Net Loan Amount</p>
+                                        <span class="text-lg font-bold text-white select-text" id="summary-net-loan">-</span>
+                                    </div>
                                 </div>
-                                <span class="text-lg font-bold text-white select-text" id="summary-total-stamp">-</span>
-                            </div>
-                            <div class="text-end">
-                                <div class="flex items-center gap-1 mb-1 justify-end">
-                                    <span class="info-icon" tabindex="0" role="button" aria-label="Flat rate info" data-lang-tooltip="flatRateExplain"
-                                        data-tooltip="Simple interest equivalent: (Total Interest ÷ Principal) ÷ Years × 100">ℹ</span>
-                                    <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
-                                        data-lang-key="flatRateLabel">Flat Rate</span>
+
+                                <div class="summary-divider"></div>
+
+                                <div class="summary-grid items-center">
+                                    <div>
+                                        <div class="flex items-center gap-1 mb-1">
+                                            <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
+                                                data-lang-key="totalStampLabel">Total Stamp</span>
+                                            <span class="info-icon" tabindex="0" role="button" aria-label="Total stamp info" data-lang-tooltip="totalStampExplain"
+                                                data-tooltip="Quarterly stamp calculated on highest principal balance in each quarter">ℹ</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-white select-text" id="summary-total-stamp">-</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="flex items-center gap-1 mb-1 justify-end">
+                                            <span class="info-icon" tabindex="0" role="button" aria-label="Flat rate info" data-lang-tooltip="flatRateExplain"
+                                                data-tooltip="Simple interest equivalent: (Total Interest ÷ Principal) ÷ Years × 100">ℹ</span>
+                                            <span class="text-indigo-100 text-xs uppercase font-medium opacity-80"
+                                                data-lang-key="flatRateLabel">Flat Rate</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-white select-text flat-rate-display">-</span>
+                                    </div>
                                 </div>
-                                <span class="text-lg font-bold text-white select-text flat-rate-display">-</span>
                             </div>
                         </div>
                     </div>
@@ -1456,124 +1460,126 @@
         <div
             class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
         </div>
-        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto scrollbar-hide transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
-            style="padding-bottom: env(safe-area-inset-bottom);">
-            <div class="modal-content py-6 text-left px-6">
-                <div class="relative flex items-center justify-center pb-3 mb-2">
-                    <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full absolute -top-2 md:hidden"></div>
-                    <p id="about-modal-title"
-                        class="text-2xl font-bold text-gray-800 dark:text-gray-100 text-center w-full"
-                        data-lang-key="aboutTitle">About</p>
-                    <button type="button" aria-label="Close"
-                        class="absolute right-0 top-1 modal-close cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                        id="close-about">
-                        <svg class="fill-current text-gray-800 dark:text-gray-100" xmlns="http://www.w3.org/2000/svg"
-                            width="18" height="18" viewBox="0 0 18 18">
-                            <path
-                                d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z">
+        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[85vh] md:max-h-[88vh] transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
+            style="max-height: 85vh; max-height: 85dvh; padding-bottom: env(safe-area-inset-bottom);">
+            <!-- Mobile Drag Handle: Placed in its own flow row above header, never overlaps -->
+            <div class="w-full flex justify-center pt-2.5 pb-0.5 md:hidden flex-shrink-0">
+                <div class="modal-drag-bar"></div>
+            </div>
+
+            <!-- Pinned Header: Title & Close Button (Always on the right in both RTL and LTR) -->
+            <div class="px-5 py-2.5 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
+                <div class="w-8 flex-shrink-0"></div>
+                <p id="about-modal-title"
+                    class="text-xl font-bold text-gray-800 dark:text-gray-100 text-center flex-1"
+                    data-lang-key="aboutTitle">About</p>
+                <button type="button" aria-label="Close"
+                    class="modal-close p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400 flex items-center justify-center flex-shrink-0"
+                    id="close-about">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Scrollable Modal Body -->
+            <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4 scrollbar-hide">
+                <div class="flex flex-col items-center justify-center">
+                    <img src="./icon.png" alt="App Icon" class="w-16 h-16 rounded-2xl shadow-md mb-2">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white" data-lang-key="appTitle">Loan Calculator
+                    </h3>
+                    <p id="app-version-display" class="text-xs text-gray-400 mt-0.5">&nbsp;</p>
+                    <p class="text-center text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1 px-2" data-lang-key="aboutDesc">
+                        A professional loan calculator PWA designed for accurate financial planning.
+                    </p>
+                    <!-- Compliance Disclaimer -->
+                    <div
+                        class="flex items-center gap-2 mt-3 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                        <svg class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                        </svg>
+                        <p class="text-xs text-green-700 dark:text-green-300" data-lang-key="localOnlyDisclaimer">
+                            All calculations run locally. No data is transmitted.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="space-y-2.5">
+                    <button id="share-btn"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-md shadow-indigo-500/20 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            aria-hidden="true">
+                            <circle cx="18" cy="5" r="3"></circle>
+                            <circle cx="6" cy="12" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                        <span data-lang-key="shareBtnLabel">Share App</span>
+                    </button>
+
+                    <button id="about-install-btn"
+                        class="hidden w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-md shadow-emerald-500/20 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span data-lang-key="installAppAbout">Install App</span>
+                    </button>
+
+                    <button id="open-whats-new-btn"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold transition-all active:scale-95 border border-emerald-300/60 dark:border-emerald-700/60 text-sm">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span data-lang-key="viewWhatsNewBtn">✨ What's New & App Guide</span>
+                    </button>
+
+                    <button id="force-update-btn"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium transition-all active:scale-95 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
                             </path>
                         </svg>
+                        <span data-lang-key="checkUpdates">Check for Updates</span>
                     </button>
                 </div>
-            </div>
 
-            <div class="flex flex-col items-center justify-center my-4">
-                <img src="./icon.png" alt="App Icon" class="w-20 h-20 rounded-2xl shadow-lg mb-4">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white" data-lang-key="appTitle">Loan Calculator
-                </h3>
-                <p id="app-version-display" class="text-xs text-gray-400 mt-1">&nbsp;</p>
-                <p class="text-center text-gray-500 dark:text-gray-400 text-sm mt-2 px-4" data-lang-key="aboutDesc">
-                    A professional loan calculator PWA designed for accurate financial planning.
-                </p>
-                <!-- Compliance Disclaimer -->
                 <div
-                    class="flex items-center gap-2 mt-4 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <svg class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                    </svg>
-                    <p class="text-xs text-green-700 dark:text-green-300" data-lang-key="localOnlyDisclaimer">
-                        All calculations run locally. No data is transmitted.
-                    </p>
-                </div>
-            </div>
+                    class="border-t border-gray-100 dark:border-gray-800 pt-3 flex flex-col items-center pb-2">
+                    <p class="text-xs font-semibold uppercase text-gray-400 mb-2 tracking-wider" data-lang-key="devContact">
+                        Developer Contact</p>
 
-            <div class="space-y-3 mt-6 mb-6 px-6">
-                <button id="share-btn"
-                    class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        aria-hidden="true">
-                        <circle cx="18" cy="5" r="3"></circle>
-                        <circle cx="6" cy="12" r="3"></circle>
-                        <circle cx="18" cy="19" r="3"></circle>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                    </svg>
-                    <span data-lang-key="shareBtnLabel">Share App</span>
-                </button>
+                    <div class="flex items-center gap-4 mb-2">
+                        <a href="mailto:ayman.alsebaey7@gmail.com"
+                            class="bg-gray-100 dark:bg-gray-800 p-2.5 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <rect x="3" y="5" width="18" height="14" rx="2" stroke-width="2"></rect>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 6 9-6">
+                                </path>
+                            </svg>
+                        </a>
 
-                <button id="about-install-btn"
-                    class="hidden w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        aria-hidden="true">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    <span data-lang-key="installAppAbout">Install App</span>
-                </button>
+                        <a href="https://t.me/accayman7" target="_blank"
+                            class="bg-gray-100 dark:bg-gray-800 p-2.5 rounded-full text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                        </a>
+                    </div>
 
-                <button id="open-whats-new-btn"
-                    class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold transition-all active:scale-95 border border-emerald-300/60 dark:border-emerald-700/60">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span data-lang-key="viewWhatsNewBtn">✨ What's New & App Guide</span>
-                </button>
-
-                <button id="force-update-btn"
-                    class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium transition-all active:scale-95">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                        aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                        </path>
-                    </svg>
-                    <span data-lang-key="checkUpdates">Check for Updates</span>
-                </button>
-
-
-            </div>
-
-            <div
-                class="border-t border-gray-100 dark:border-gray-800 pt-6 flex flex-col items-center pb-12 md:pb-2 px-6">
-                <p class="text-xs font-semibold uppercase text-gray-400 mb-4 tracking-wider" data-lang-key="devContact">
-                    Developer Contact</p>
-
-                <div class="flex items-center gap-4 mb-4">
-                    <a href="mailto:ayman.alsebaey7@gmail.com"
-                        class="bg-gray-100 dark:bg-gray-800 p-3 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <rect x="3" y="5" width="18" height="14" rx="2" stroke-width="2"></rect>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 6 9-6">
-                            </path>
-                        </svg>
-                    </a>
-
-                    <a href="https://t.me/accayman7" target="_blank"
-                        class="bg-gray-100 dark:bg-gray-800 p-3 rounded-full text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                        </svg>
-                    </a>
-                </div>
-
-                <div class="text-center">
-                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ayman Alsebaey</p>
+                    <div class="text-center">
+                        <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Ayman Alsebaey</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1587,8 +1593,8 @@
         </div>
         <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe h-[85vh] md:h-auto md:max-h-[88vh] flex flex-col">
             
-            <!-- Modal Header -->
-            <div class="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0">
+            <!-- Modal Header (Always on the right in both RTL and LTR) -->
+            <div class="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">✨</span>
                     <h3 id="whats-new-modal-title" class="text-base sm:text-lg font-bold text-gray-900 dark:text-white" data-lang-key="whatsNewModalTitle">

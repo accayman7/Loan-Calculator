@@ -21,6 +21,8 @@
         /* Hidden fixtures */
         #test-fixtures { display: none; }
     </style>
+    <link rel="stylesheet" href="../tailwind.css">
+    <link rel="stylesheet" href="../app.css">
 </head>
 <body>
     <h1>🛡️ UI & UX Regression Test Suite</h1>
@@ -125,6 +127,12 @@
 
             // 16. Date Inputs Dynamic Fitting & Button Clearance Test
             testDateInputsDynamicFittingAndClearance();
+
+            // 17. About Modal Viewport Fit & ScrollLock Silent Restoration Test
+            testAboutModalHeightAndScrollLockInstantRestoration();
+
+            // 18. Arabic RTL Collateral Layout & Date Picker Right Alignment Test
+            testArabicRTLCollateralAndDatePickerAlignment();
 
             displayTestResults();
         }
@@ -436,22 +444,45 @@
                 UITestRunner.assertTrue(f.inputClass.includes('text-xs sm:text-sm'), `${f.id} input matches CD2 typography`);
             });
 
-            // Test 10.5: Standard Mode Collateral Proportional & Parallel Grid Alignment
-            const stdRow = document.createElement('div');
-            stdRow.className = 'collateral-grid gap-1 sm:gap-1.5 items-center';
-            stdRow.innerHTML = `
-                <div class="flex items-center justify-center">#</div>
-                <div class="min-w-0"><div class="input-group py-1 px-1"><input type="text" class="text-input text-xs select-text col-amount-input autofit-input p-0 text-center tracking-tight" data-autofit="true"></div></div>
-                <div class="min-w-0"><div class="input-group py-1 px-1"><input type="text" class="text-input text-xs select-text col-redemption-input autofit-input p-0 text-center tracking-tight" data-autofit="true"></div></div>
-                <div class="min-w-0"><div class="input-group py-1 px-1"><input type="text" class="text-input text-xs select-text col-rate-input autofit-input p-0 text-center tracking-tight" data-autofit="true"></div></div>
+            // Test 10.5: Standard Mode Collateral Dedicated Card Layout (SS-style)
+            const stdCard = document.createElement('div');
+            stdCard.className = 'p-2.5 sm:p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 space-y-2.5 transition-all shadow-sm';
+            stdCard.innerHTML = `
+                <div class="flex items-center justify-between pb-1.5 border-b border-indigo-100 dark:border-indigo-900/40">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200" id="test-col-label">CD #1</span>
+                    </div>
+                    <div>
+                        <button type="button" class="col-remove-btn flex items-center gap-1 text-[11px] font-medium text-gray-400">✕</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-2 items-end">
+                    <div class="col-span-5 min-w-0">
+                        <label class="block text-[10.5px] sm:text-[11px] font-medium">Nominal</label>
+                        <div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm font-semibold select-text col-amount-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="14" data-autofit-min="10"></div>
+                    </div>
+                    <div class="col-span-4 min-w-0">
+                        <label class="block text-[10.5px] sm:text-[11px] font-medium">Redemption</label>
+                        <div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm font-semibold select-text col-redemption-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="14" data-autofit-min="10"></div>
+                    </div>
+                    <div class="col-span-3 min-w-0">
+                        <label class="block text-[10.5px] sm:text-[11px] font-medium">Rate %</label>
+                        <div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm font-semibold select-text col-rate-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="14" data-autofit-min="10"></div>
+                    </div>
+                </div>
             `;
-            const stdCols = stdRow.children;
-            UITestRunner.assertTrue(stdRow.classList.contains('collateral-grid'), 'Standard Collateral row uses proportional collateral-grid class');
-            UITestRunner.assertEqual(stdCols.length, 4, 'Standard Collateral row has exactly 4 proportional columns');
-            UITestRunner.assertTrue(stdCols[1].querySelector('input').classList.contains('autofit-input'), 'Standard Nominal input has autofit-input');
-            UITestRunner.assertTrue(stdCols[2].querySelector('input').classList.contains('autofit-input'), 'Standard Redemption input has autofit-input');
-            UITestRunner.assertTrue(stdCols[3].querySelector('input').classList.contains('autofit-input'), 'Standard Rate input has autofit-input (prevents mobile text clipping)');
-            UITestRunner.assertTrue(stdCols[1].classList.contains('min-w-0') && stdCols[2].classList.contains('min-w-0') && stdCols[3].classList.contains('min-w-0'), 'All input columns maintain min-w-0 for flex/grid safety');
+            const cardHeader = stdCard.querySelector('.flex.items-center.justify-between');
+            const inputsRow = stdCard.querySelector('.grid.grid-cols-12');
+            const stdCols = inputsRow.children;
+            UITestRunner.assertTrue(!!cardHeader, 'Standard Collateral row has dedicated card header for badge & action button');
+            UITestRunner.assertEqual(stdCols.length, 3, 'Standard Collateral row has 3 dedicated input columns (col-span-5, col-span-4, col-span-3)');
+            UITestRunner.assertTrue(stdCols[0].classList.contains('col-span-5'), 'Nominal column has col-span-5 for wide 9-digit values');
+            UITestRunner.assertTrue(stdCols[1].classList.contains('col-span-4'), 'Redemption column has col-span-4');
+            UITestRunner.assertTrue(stdCols[2].classList.contains('col-span-3'), 'Rate column has col-span-3');
+            UITestRunner.assertTrue(stdCols[0].querySelector('input').classList.contains('autofit-input'), 'Standard Nominal input has autofit-input');
+            UITestRunner.assertTrue(stdCols[1].querySelector('input').classList.contains('autofit-input'), 'Standard Redemption input has autofit-input');
+            UITestRunner.assertTrue(stdCols[2].querySelector('input').classList.contains('autofit-input'), 'Standard Rate input has autofit-input');
+            UITestRunner.assertTrue(stdCols[0].classList.contains('min-w-0') && stdCols[1].classList.contains('min-w-0') && stdCols[2].classList.contains('min-w-0'), 'All input columns maintain min-w-0 for flex/grid safety');
 
             // Test 10.6: Collateral Summary Tooltip Accessibility & Overflow Guardrail
             const maxLoanCard = document.createElement('div');
@@ -546,29 +577,41 @@
             UITestRunner.assertFalse(sCards[1].classList.contains('overflow-hidden'), 'Max Loan card does NOT have overflow-hidden (tooltips preserved on mobile)');
             UITestRunner.assertFalse(sCards[2].classList.contains('overflow-hidden'), 'Min Rate card does NOT have overflow-hidden (tooltips preserved on mobile)');
 
-            // Test 11.4: Mobile Standard Collateral Row Alignment & Rate 19.1 Fit
-            const mobileStdRow = document.createElement('div');
-            mobileStdRow.className = 'collateral-grid gap-1 items-center p-1.5';
-            mobileStdRow.innerHTML = `
-                <div class="flex items-center justify-center text-[10px] font-bold"><span>CD 1</span></div>
-                <div class="min-w-0"><div class="input-group py-1 px-1"><input type="text" class="text-input text-xs col-amount-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" value="100,000"></div></div>
-                <div class="min-w-0"><div class="input-group py-1 px-1"><input type="text" class="text-input text-xs col-redemption-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" value="90,000"></div></div>
-                <div class="min-w-0"><div class="input-group py-1 px-1"><input type="text" class="text-input text-xs col-rate-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" value="19.1"></div></div>
+            // Test 11.4: Mobile Standard Collateral Card Layout, 9-Digit Fit & Rate 25.55 Fit
+            const mobileStdCard = document.createElement('div');
+            mobileStdCard.className = 'p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 space-y-2.5';
+            mobileStdCard.innerHTML = `
+                <div class="flex items-center justify-between pb-1.5 border-b border-indigo-100">
+                    <span class="text-xs font-bold" id="m-col1-label">CD #1</span>
+                    <button type="button" class="col-remove-btn text-[11px]">✕ Remove</button>
+                </div>
+                <div class="grid grid-cols-12 gap-2 items-end">
+                    <div class="col-span-5 min-w-0"><div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm col-amount-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="14" data-autofit-min="10" value="100,000,000"></div></div>
+                    <div class="col-span-4 min-w-0"><div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm col-redemption-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="14" data-autofit-min="10" value="90,000,000"></div></div>
+                    <div class="col-span-3 min-w-0"><div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm col-rate-input autofit-input p-0 text-center tracking-tight" data-autofit="true" data-autofit-max="14" data-autofit-min="10" value="25.55"></div></div>
+                </div>
             `;
-            mobileWrapper.appendChild(mobileStdRow);
+            mobileWrapper.appendChild(mobileStdCard);
 
-            const mStdCols = mobileStdRow.children;
-            UITestRunner.assertTrue(mobileStdRow.classList.contains('collateral-grid'), 'Mobile standard collateral uses collateral-grid');
-            UITestRunner.assertEqual(mStdCols.length, 4, 'Mobile standard collateral has 4 columns');
+            const mInputsRow = mobileStdCard.querySelector('.grid.grid-cols-12');
+            const mStdCols = mInputsRow.children;
+            UITestRunner.assertEqual(mStdCols.length, 3, 'Mobile standard collateral card has 3 input columns');
 
-            const mRateInput = mStdCols[3].querySelector('input');
+            const mNomInput = mStdCols[0].querySelector('input');
+            const mRedInput = mStdCols[1].querySelector('input');
+            const mRateInput = mStdCols[2].querySelector('input');
+
+            UITestRunner.assertTrue(mNomInput.classList.contains('autofit-input'), 'Mobile Nominal input has autofit-input');
+            UITestRunner.assertEqual(mNomInput.value, '100,000,000', 'Mobile Nominal input displays 9-digit number 100,000,000');
+            autoFitInputText(mNomInput, 14, 10);
+            const mNomFontSize = parseFloat(mNomInput.style.fontSize) || 14;
+            UITestRunner.assertTrue(mNomFontSize >= 10 && mNomFontSize <= 14, 'Mobile 9-digit nominal 100,000,000 font size fits comfortably within 10px-14px bounds in 5-col card');
+
             UITestRunner.assertTrue(mRateInput.classList.contains('autofit-input'), 'Mobile Rate input has autofit-input');
-            UITestRunner.assertEqual(mRateInput.value, '19.1', 'Mobile Rate input displays 19.1');
-
-            // Apply autofit to test fit
-            autoFitInputText(mRateInput, 12, 9.5);
-            const mRateFontSize = parseFloat(mRateInput.style.fontSize) || 12;
-            UITestRunner.assertTrue(mRateFontSize >= 9.5 && mRateFontSize <= 12, 'Mobile Rate 19.1 font size stays within safe readable bounds');
+            UITestRunner.assertEqual(mRateInput.value, '25.55', 'Mobile Rate input displays 2-digit 2-decimal rate 25.55');
+            autoFitInputText(mRateInput, 14, 10);
+            const mRateFontSize = parseFloat(mRateInput.style.fontSize) || 14;
+            UITestRunner.assertTrue(mRateFontSize >= 10 && mRateFontSize <= 14, 'Mobile Rate 25.55 font size stays within safe readable bounds');
 
             // Clean up
             mobileWrapper.remove();
@@ -867,6 +910,225 @@
             fixture.remove();
         }
 
+        function testAboutModalHeightAndScrollLockInstantRestoration() {
+            // Test 17.1: ScrollLock instant restoration (smooth scroll disabled during release)
+            const docEl = document.documentElement;
+            docEl.style.scrollBehavior = 'smooth';
+
+            // Simulate mobile fixed body scroll lock
+            document.body.style.position = 'fixed';
+            document.body.style.top = '-150px';
+
+            let behaviorDuringScrollTo = null;
+            const originalScrollTo = window.scrollTo;
+            window.scrollTo = function (options) {
+                behaviorDuringScrollTo = docEl.style.scrollBehavior;
+                if (typeof options === 'object') {
+                    UITestRunner.assertEqual(options.behavior, 'instant', 'ScrollLock.release uses behavior: instant');
+                }
+            };
+
+            ScrollLock.forceUnlock();
+
+            UITestRunner.assertEqual(behaviorDuringScrollTo, 'auto', 'ScrollLock temporarily sets scrollBehavior to auto during scroll restoration');
+            UITestRunner.assertEqual(document.body.style.position, '', 'Body fixed positioning is cleanly removed');
+            UITestRunner.assertEqual(document.body.style.top, '', 'Body top offset is cleanly removed');
+
+            // Restore window.scrollTo
+            window.scrollTo = originalScrollTo;
+            docEl.style.scrollBehavior = '';
+
+            // Test 17.2: About Modal Structure & Viewport Height Constraints
+            const aboutModal = document.createElement('div');
+            aboutModal.id = 'about-modal-test';
+            aboutModal.innerHTML = `
+                <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[85vh] md:max-h-[88vh]" style="max-height: 85vh; max-height: 85dvh; padding-bottom: env(safe-area-inset-bottom);">
+                    <div class="w-full flex justify-center pt-2.5 pb-0.5 md:hidden flex-shrink-0">
+                        <div class="modal-drag-bar"></div>
+                    </div>
+                    <div class="px-5 py-2.5 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
+                        <div class="w-8 flex-shrink-0"></div>
+                        <p id="test-about-title" class="text-xl font-bold text-center flex-1">About</p>
+                        <button type="button" id="test-close-about" class="modal-close p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400 flex items-center justify-center flex-shrink-0"></button>
+                    </div>
+                    <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4 scrollbar-hide">
+                        <div class="flex flex-col items-center">
+                            <img src="./icon.png" class="w-16 h-16 rounded-2xl shadow-md mb-2">
+                        </div>
+                        <div class="space-y-2.5">
+                            <button id="test-share-btn" class="w-full py-2.5"></button>
+                        </div>
+                        <div class="border-t pt-3 flex flex-col items-center pb-2">
+                            <p>Developer Contact</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(aboutModal);
+
+            const container = aboutModal.querySelector('.modal-container');
+            UITestRunner.assertTrue(container.classList.contains('max-h-[85vh]'), 'About modal container has max-h-[85vh] constraint');
+            UITestRunner.assertTrue(container.classList.contains('flex-col'), 'About modal container uses flex-col layout');
+            UITestRunner.assertTrue(container.classList.contains('overflow-hidden'), 'About modal container clips outer overflow');
+            UITestRunner.assertTrue(container.style.maxHeight.includes('85'), 'About modal container has explicit inline max-height constraint');
+
+            // Drag handle separation test
+            const dragBar = container.querySelector('.modal-drag-bar');
+            UITestRunner.assertTrue(dragBar !== null, 'About modal has dedicated mobile drag handle (.modal-drag-bar)');
+            UITestRunner.assertTrue(dragBar.parentElement.classList.contains('md:hidden'), 'Drag handle container is hidden on desktop');
+
+            // Header pinned test & LTR lock (close button always on right)
+            const header = container.querySelector('.justify-between');
+            UITestRunner.assertTrue(header !== null, 'About modal header uses flex justify-between layout');
+            UITestRunner.assertEqual(header.getAttribute('dir'), 'ltr', 'About modal header enforces dir="ltr" so close icon is always on the right in both RTL and LTR');
+            const closeBtn = header.querySelector('#test-close-about');
+            UITestRunner.assertTrue(closeBtn !== null, 'Close button is inside header row');
+            const titleEl = header.querySelector('#test-about-title');
+            UITestRunner.assertTrue(titleEl !== null && titleEl.classList.contains('flex-1'), 'About title occupies flex-1 center space');
+
+            // Scrollable body test
+            const body = container.querySelector('.overflow-y-auto');
+            UITestRunner.assertTrue(body !== null, 'About modal has scrollable body with overflow-y-auto');
+            UITestRunner.assertTrue(body.classList.contains('flex-1'), 'Scrollable body expands to fill available height');
+
+            aboutModal.remove();
+        }
+
+        function testArabicRTLCollateralAndDatePickerAlignment() {
+            // Save initial dir
+            const docEl = document.documentElement;
+            const originalDir = docEl.getAttribute('dir');
+
+            // Switch to RTL
+            docEl.setAttribute('dir', 'rtl');
+
+            // 18.1: Date picker mirrored layout in RTL: Calendar icon on LEFT, Date text on RIGHT
+            const dateFixture = document.createElement('div');
+            dateFixture.className = 'input-group relative';
+            dateFixture.style.width = '160px';
+            dateFixture.innerHTML = `
+                <input type="text" id="test-rtl-date-input" class="text-input autofit-input" value="04/10/2029">
+                <button type="button" id="test-rtl-date-btn" class="absolute p-1 text-gray-400"></button>
+            `;
+            document.body.appendChild(dateFixture);
+
+            const rtlInput = document.getElementById('test-rtl-date-input');
+            const rtlBtn = document.getElementById('test-rtl-date-btn');
+            const inputStyles = getComputedStyle(rtlInput);
+            const btnStyles = getComputedStyle(rtlBtn);
+
+            const padRight = parseFloat(inputStyles.paddingRight);
+            const padLeft = parseFloat(inputStyles.paddingLeft);
+
+            UITestRunner.assertTrue(padLeft >= 30, `In RTL, date input has padding-left >= 30px for button clearance on the left (got ${padLeft}px)`);
+            UITestRunner.assertTrue(padRight <= 10, `In RTL, date input keeps compact padding-right <= 10px (got ${padRight}px)`);
+            UITestRunner.assertEqual(inputStyles.textAlign, 'right', 'In RTL, date input aligns text to the right');
+            UITestRunner.assertEqual(inputStyles.direction, 'ltr', 'In RTL, date input enforces direction: ltr to maintain DD/MM/YYYY formatting');
+            UITestRunner.assertTrue(btnStyles.left !== 'auto' && parseFloat(btnStyles.left) <= 8, `In RTL, date picker button is positioned on the left (left: ${btnStyles.left})`);
+            UITestRunner.assertTrue(btnStyles.right === 'auto' || parseFloat(btnStyles.right) > 50, 'In RTL, date picker button is not pinned to the right');
+
+            // 18.2: Display date fields enforce LTR and right-alignment in RTL
+            const displayDate = document.createElement('input');
+            displayDate.id = 'start-date-display';
+            displayDate.className = 'text-input';
+            document.body.appendChild(displayDate);
+            const displayStyles = getComputedStyle(displayDate);
+            UITestRunner.assertEqual(displayStyles.direction, 'ltr', 'Date display input enforces direction: ltr in RTL layout');
+            UITestRunner.assertEqual(displayStyles.textAlign, 'right', 'Date display input enforces text-align: right in RTL layout');
+            UITestRunner.assertTrue(parseFloat(displayStyles.paddingLeft) >= 30, 'Date display input has padding-left clearance for left-aligned icon in RTL');
+            displayDate.remove();
+            dateFixture.remove();
+
+            // 18.3: Switch to LTR and verify mirrored symmetry (Calendar icon on RIGHT, Date text on LEFT)
+            docEl.setAttribute('dir', 'ltr');
+            const ltrFixture = document.createElement('div');
+            ltrFixture.className = 'input-group relative';
+            ltrFixture.style.width = '160px';
+            ltrFixture.innerHTML = `
+                <input type="text" id="test-ltr-date-input" class="text-input autofit-input" value="04/10/2029">
+                <button type="button" id="test-ltr-date-btn" class="absolute p-1 text-gray-400"></button>
+            `;
+            document.body.appendChild(ltrFixture);
+
+            const ltrInput = document.getElementById('test-ltr-date-input');
+            const ltrBtn = document.getElementById('test-ltr-date-btn');
+            const ltrInStyles = getComputedStyle(ltrInput);
+            const ltrBtnStyles = getComputedStyle(ltrBtn);
+
+            UITestRunner.assertEqual(ltrInStyles.textAlign, 'left', 'In LTR, date input aligns text to the left');
+            UITestRunner.assertTrue(parseFloat(ltrInStyles.paddingRight) >= 30, 'In LTR, date input has padding-right clearance for right-aligned icon');
+            UITestRunner.assertTrue(ltrBtnStyles.right !== 'auto' && parseFloat(ltrBtnStyles.right) <= 8, 'In LTR, date picker button is positioned on the right');
+            UITestRunner.assertTrue(ltrBtnStyles.left === 'auto' || parseFloat(ltrBtnStyles.left) > 50, 'In LTR, date picker button is not pinned to the left');
+            ltrFixture.remove();
+
+            // 18.4: Collateral Card Mobile Sizing & Label Fit (SS-style in Arabic RTL)
+            docEl.setAttribute('dir', 'rtl');
+            const colFixture = document.createElement('div');
+            colFixture.className = 'p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 space-y-2.5';
+            colFixture.style.width = '320px'; // narrow mobile screen width
+            colFixture.innerHTML = `
+                <div class="flex items-center justify-between pb-1.5 border-b border-indigo-100 dark:border-indigo-900/40" id="col1-header">
+                    <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200" id="col1-label">ضمانة 1</span>
+                    <button type="button" class="col-remove-btn flex items-center gap-1 text-[11px] font-medium text-gray-400" id="col1-remove">
+                        <span>مسح</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-12 gap-2 items-end" id="col1-inputs">
+                    <div class="col-span-5 min-w-0"><div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm" value="100,000,000"></div></div>
+                    <div class="col-span-4 min-w-0"><div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm" value="90,000,000"></div></div>
+                    <div class="col-span-3 min-w-0"><div class="input-group py-1 px-1.5"><input type="text" class="text-input text-xs sm:text-sm" value="25.55"></div></div>
+                </div>
+            `;
+            document.body.appendChild(colFixture);
+
+            const col1Header = document.getElementById('col1-header');
+            const col1Label = document.getElementById('col1-label');
+            const col1Remove = document.getElementById('col1-remove');
+            const col1Inputs = document.getElementById('col1-inputs');
+
+            UITestRunner.assertTrue(col1Header.classList.contains('justify-between'), 'Card header spaces badge and action button to opposite ends');
+            UITestRunner.assertEqual(col1Label.textContent.trim(), 'ضمانة 1', 'Collateral label displays full Arabic text without any truncation');
+
+            const colNomCol = col1Inputs.children[0];
+            const colRateCol = col1Inputs.children[2];
+            const colNomWidth = colNomCol.getBoundingClientRect().width;
+            const colRateWidth = colRateCol.getBoundingClientRect().width;
+
+            UITestRunner.assertTrue(colNomWidth >= 115, `Collateral Nominal column in card receives ample width (got ${colNomWidth.toFixed(1)}px >= 115px) for 9 digits`);
+            UITestRunner.assertTrue(colNomWidth > colRateWidth * 1.3, `Nominal column (${colNomWidth.toFixed(1)}px) is significantly wider than Rate column (${colRateWidth.toFixed(1)}px)`);
+            UITestRunner.assertTrue(colRateWidth >= 65, `Rate column (${colRateWidth.toFixed(1)}px) has ample space for 2-digit 2-decimal rates`);
+
+            colFixture.remove();
+
+            // 18.5: Native date picker input padding & zero horizontal overflow test
+            const advTest = document.createElement('div');
+            advTest.style.width = '350px';
+            advTest.innerHTML = `
+                <div class="input-group relative" style="width: 100%;">
+                    <input type="text" class="text-input" value="01/01/2026">
+                    <button type="button" class="absolute end-1 top-1 bottom-1 w-8" style="width: 32px; height: 32px; box-sizing: border-box;">
+                        <input type="date" class="absolute inset-0 opacity-0 w-full h-full">
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(advTest);
+            const nativeDate = advTest.querySelector('input[type="date"]');
+            const nativePadRight = parseFloat(getComputedStyle(nativeDate).paddingRight) || 0;
+            const nativePadLeft = parseFloat(getComputedStyle(nativeDate).paddingLeft) || 0;
+            UITestRunner.assertEqual(nativePadRight, 0, 'Native date picker input has paddingRight: 0 to prevent expanding outside button wrapper');
+            UITestRunner.assertEqual(nativePadLeft, 0, 'Native date picker input has paddingLeft: 0');
+            const testBtn = advTest.querySelector('button');
+            UITestRunner.assertTrue(testBtn.scrollWidth <= testBtn.clientWidth + 1, 'Date picker button wrapper does not overflow horizontally');
+            advTest.remove();
+
+            // Restore original dir
+            if (originalDir) {
+                docEl.setAttribute('dir', originalDir);
+            } else {
+                docEl.removeAttribute('dir');
+            }
+        }
+
         function displayTestResults() {
             const resultsDiv = document.getElementById('results');
             let html = `
@@ -885,7 +1147,8 @@
             UITestRunner.results.forEach(r => {
                 const cls = r.pass ? 'result-pass' : 'result-fail';
                 const icon = r.pass ? '✓' : '✗';
-                html += `<li class="result-item ${cls}">${icon} ${r.message}</li>`;
+                const details = !r.pass && r.actual !== undefined ? ` (Actual: "${r.actual}", Expected: "${r.expected}")` : '';
+                html += `<li class="result-item ${cls}">${icon} ${r.message}${details}</li>`;
             });
             html += '</ul>';
 

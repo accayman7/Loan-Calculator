@@ -133,7 +133,7 @@ input:-webkit-autofill:active {
     color: #ffffff;
 }
 
-/* Force LTR direction on date inputs (even in RTL layouts) and prevent wrapping */
+/* Date inputs direction & alignment: LTR by default, mirrored in RTL */
 #start-date-display,
 #first-inst-date-display,
 #settlement-date-display,
@@ -146,16 +146,21 @@ input:-webkit-autofill:active {
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: clip !important;
+    padding-left: 0.35rem !important;
+    padding-right: 2.25rem !important;
 }
 
-html:not([dir="rtl"]) #start-date-display,
-html:not([dir="rtl"]) #first-inst-date-display,
-html:not([dir="rtl"]) #settlement-date-display,
-html:not([dir="rtl"]) #ss-cd2-interest-date-display,
-html:not([dir="rtl"]) #ss-booking-date-display,
-html:not([dir="rtl"]) .ss-cd-maturity-display,
-html:not([dir="rtl"]) .ss-cd-date-display {
-    padding-left: 0.25rem !important;
+html[dir="rtl"] #start-date-display,
+html[dir="rtl"] #first-inst-date-display,
+html[dir="rtl"] #settlement-date-display,
+html[dir="rtl"] #ss-cd2-interest-date-display,
+html[dir="rtl"] #ss-booking-date-display,
+html[dir="rtl"] .ss-cd-maturity-display,
+html[dir="rtl"] .ss-cd-date-display {
+    direction: ltr !important;
+    text-align: right !important;
+    padding-right: 0.35rem !important;
+    padding-left: 2.25rem !important;
 }
 
 /* Nav is positioned relative for snow effect overlay */
@@ -593,15 +598,27 @@ button:disabled {
     color: #ffffff;
 }
 
-/* Standard Collateral 4-Column Grid: Proportional & Equalized Layout
-   Column 1 (# badge): 1.8fr (~15%)
-   Column 2 (Nominal): 3.6fr (~30%)
-   Column 3 (Redemption): 3.6fr (~30%) - EXACT PARALLEL WIDTH TO NOMINAL
-   Column 4 (Rate %): 3.0fr (~25%) - WIDE ENOUGH TO PREVENT ANY MOBILE TEXT CLIPPING
+/* Standard Collateral 4-Column Grid: Content-Optimized Proportions
+   Column 1 (# badge): 2.0fr (~16.7%) mobile, 1.8fr (~15%) desktop - fits 'CD 1 ✕' & 'ضمانة 1 ✕'
+   Column 2 (Nominal): 3.8fr (~31.7%) mobile, 4.1fr (~34.2%) desktop - fits 9-digit amounts (100,000,000)
+   Column 3 (Redemption): 3.8fr (~31.7%) mobile, 4.1fr (~34.2%) desktop - fits 9-digit amounts (90,000,000)
+   Column 4 (Rate %): 2.4fr (~20.0%) mobile, 2.0fr (~16.7%) desktop - comfortably fits rates like 25.55 or 19.0
 */
 .collateral-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.8fr) minmax(0, 3.6fr) minmax(0, 3.6fr) minmax(0, 3fr);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3.8fr) minmax(0, 3.8fr) minmax(0, 2.4fr);
+}
+
+@media (min-width: 640px) {
+    .collateral-grid {
+        grid-template-columns: minmax(0, 1.8fr) minmax(0, 4.1fr) minmax(0, 4.1fr) minmax(0, 2fr);
+    }
+}
+
+/* Ensure inputs inside collateral-grid do not inherit excessive padding from .text-input */
+.collateral-grid .text-input {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
 }
 
 /* Self-Sufficient CD1 Card Container */
@@ -759,18 +776,45 @@ button:disabled {
 }
 
 
-.input-group.relative input {
+/* Native date picker input inside button must not inherit text padding */
+.input-group.relative input[type="date"],
+button input[type="date"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* LTR Date Inputs (Default): Date on left, calendar icon on right */
+.input-group.relative > input:not([type="date"]),
+.input-group.relative > input[type="text"] {
+    direction: ltr !important;
+    text-align: left !important;
     padding-right: 2.25rem !important;
+    padding-left: 0.35rem !important;
 }
 
-html[dir="rtl"] .input-group.relative input {
-    padding-right: 0.35rem !important;
+.input-group.relative > .absolute,
+.input-group.relative > button {
+    right: 0.25rem !important;
+    left: auto !important;
+    border-radius: 0.375rem !important;
+}
+
+/* RTL Date Inputs: Mirrored layout (Calendar icon on left, date text on right) */
+html[dir="rtl"] .input-group.relative > input:not([type="date"]),
+html[dir="rtl"] .input-group.relative > input[type="text"] {
+    direction: ltr !important;
+    text-align: right !important;
     padding-left: 2.25rem !important;
+    padding-right: 0.35rem !important;
 }
 
-html[dir="rtl"] .input-group.relative .absolute {
-    right: auto !important;
+html[dir="rtl"] .input-group.relative > .absolute,
+html[dir="rtl"] .input-group.relative > button {
     left: 0.25rem !important;
+    right: auto !important;
     border-radius: 0.375rem !important;
 }
 
@@ -1906,6 +1950,7 @@ html[dir="rtl"] .tutorial-tooltip.from-radio.pulse {
     align-items: center;
     padding: 1rem 1.25rem;
     border-bottom: 1px solid #e5e7eb;
+    direction: ltr;
 }
 
 .dark .desktop-calendar-header {
@@ -2526,3 +2571,52 @@ html.dark .donut-legend-item:hover {
     }
 }
 
+/* Mobile bottom sheet drag handle */
+.modal-drag-bar {
+    width: 2.75rem;
+    height: 4px;
+    background-color: #d1d5db;
+    border-radius: 9999px;
+}
+.dark .modal-drag-bar {
+    background-color: #4b5563;
+}
+
+/* Dark mode separator fallback for collateral card header */
+.dark .dark\:border-indigo-900\/40,
+:is(.dark *) .dark\:border-indigo-900\/40 {
+    border-color: rgb(49 46 129 / 0.4);
+}
+
+/* Animated Collapsible Loan Summary Views */
+.summary-collapse-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition: grid-template-rows 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.25s ease,
+                visibility 0.38s;
+    pointer-events: none;
+}
+
+.summary-collapse-wrapper.expanded {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: grid-template-rows 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.3s ease 0.05s;
+}
+
+.summary-collapse-wrapper > .summary-collapse-inner {
+    min-height: 0;
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .summary-collapse-wrapper,
+    .summary-collapse-wrapper.expanded {
+        transition: none !important;
+    }
+}

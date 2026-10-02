@@ -453,39 +453,53 @@
         collaterals.forEach((col, index) => {
             const row = document.createElement('div');
             row.id = `col-row-${col.id}`;
-            row.className = `collateral-grid gap-1 sm:gap-1.5 items-center p-1.5 sm:p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 transition-all ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
+            row.className = `p-2.5 sm:p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 space-y-2.5 transition-all shadow-sm ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
             
             const colIndex = index + 1;
             const badgePrefix = t(AppState.lang, 'collateralBadge') || 'CD';
-            const colLabel = safeEscapeHtml(`${badgePrefix} ${colIndex}`);
+            const colLabel = safeEscapeHtml(`${badgePrefix} #${colIndex}`);
             const colItemName = safeEscapeHtml(`${t(AppState.lang, 'collateralItemLabel')} ${colIndex}`);
             
             row.innerHTML = `
-                <div class="flex items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] font-bold text-gray-600 dark:text-gray-300">
-                    <span id="col-label-${col.id}" class="whitespace-nowrap" dir="auto">${colLabel}</span>
-                    ${collaterals.length > 1 ? `
-                    <button type="button" class="col-remove-btn text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="removeCollateralBtn" data-lang-aria-label="removeCollateralBtn" title="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                    ` : `
-                    <button type="button" class="col-clear-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 p-0.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="clearCollateralBtn" data-lang-aria-label="clearCollateralBtn" title="${t(AppState.lang, 'clearCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'clearCollateralBtn')} (${colItemName})">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                    `}
-                </div>
-                <div class="min-w-0">
-                    <div class="input-group py-1 px-1">
-                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-amount-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-nominal" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
+                <!-- Card Header: Title & Action Button -->
+                <div class="flex items-center justify-between pb-1.5 border-b border-indigo-100 dark:border-indigo-900/50">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200" id="col-label-${col.id}">${colLabel}</span>
+                    </div>
+                    <div>
+                        ${collaterals.length > 1 ? `
+                        <button type="button" class="col-remove-btn flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-red-500 dark:hover:text-red-400 py-0.5 px-1.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="removeCollateralBtn" data-lang-aria-label="removeCollateralBtn" title="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            <span>${t(AppState.lang, 'removeCollateralBtn')}</span>
+                        </button>
+                        ` : `
+                        <button type="button" class="col-clear-btn flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 py-0.5 px-1.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="clearCollateralBtn" data-lang-aria-label="clearCollateralBtn" title="${t(AppState.lang, 'clearCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'clearCollateralBtn')} (${colItemName})">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <span>${t(AppState.lang, 'clearCollateralBtn')}</span>
+                        </button>
+                        `}
                     </div>
                 </div>
-                <div class="min-w-0">
-                    <div class="input-group py-1 px-1">
-                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-redemption-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-redemption" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
+
+                <!-- Inputs Row: 3 Columns with Dedicated Field Labels -->
+                <div class="grid grid-cols-12 gap-2 items-end">
+                    <div class="col-span-5 min-w-0">
+                        <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralNominalLabel">${t(AppState.lang, 'collateralNominalLabel')}</label>
+                        <div class="input-group py-1 px-1.5">
+                            <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text col-amount-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="14" data-autofit-min="10" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
+                        </div>
                     </div>
-                </div>
-                <div class="min-w-0">
-                    <div class="input-group py-1 px-1">
-                        <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs select-text col-rate-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="12" data-autofit-min="9.5" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" aria-labelledby="col-label-${col.id} col-header-rate" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
+                    <div class="col-span-4 min-w-0">
+                        <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralRedemptionLabel">${t(AppState.lang, 'collateralRedemptionLabel')}</label>
+                        <div class="input-group py-1 px-1.5">
+                            <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text col-redemption-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="14" data-autofit-min="10" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
+                        </div>
+                    </div>
+                    <div class="col-span-3 min-w-0">
+                        <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderRate">${t(AppState.lang, 'colHeaderRate')}</label>
+                        <div class="input-group py-1 px-1.5">
+                            <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text col-rate-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="14" data-autofit-min="10" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
+                        </div>
                     </div>
                 </div>
                 <span id="col-amount-error-${col.id}" class="sr-only" role="alert"></span>
@@ -501,15 +515,15 @@
 
             if (amountInput) {
                 amountInput.value = col.amount || '';
-                if (typeof autoFitInputText === 'function') autoFitInputText(amountInput, 12, 9.5);
+                if (typeof autoFitInputText === 'function') autoFitInputText(amountInput, 14, 10);
             }
             if (redemptionInput) {
                 redemptionInput.value = col.redemption || '';
-                if (typeof autoFitInputText === 'function') autoFitInputText(redemptionInput, 12, 9.5);
+                if (typeof autoFitInputText === 'function') autoFitInputText(redemptionInput, 14, 10);
             }
             if (rateInput) {
                 rateInput.value = col.rate || '';
-                if (typeof autoFitInputText === 'function') autoFitInputText(rateInput, 12, 9.5);
+                if (typeof autoFitInputText === 'function') autoFitInputText(rateInput, 14, 10);
             }
 
             const validateColRedemption = () => {
@@ -565,7 +579,7 @@
                     col.amount = e.target.value;
                     validateColRedemption();
                     recalcCollateralMetrics();
-                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 12, 9.5);
+                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 14, 10);
                 });
             }
 
@@ -575,7 +589,7 @@
                     col.redemption = e.target.value;
                     validateColRedemption();
                     recalcCollateralMetrics();
-                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 12, 9.5);
+                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 14, 10);
                 });
             }
 
@@ -585,14 +599,14 @@
                     col.rate = e.target.value;
                     validateColRate();
                     recalcCollateralMetrics(true);
-                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 12, 9.5);
+                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 14, 10);
                 });
                 rateInput.addEventListener('blur', (e) => {
                     if (typeof formatRateInputBlur === 'function') formatRateInputBlur(e.target);
                     col.rate = e.target.value;
                     validateColRate();
                     recalcCollateralMetrics();
-                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 12, 9.5);
+                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 14, 10);
                 });
             }
 
@@ -977,15 +991,11 @@
         if (!std || !adv) return;
 
         if (isAdvanced) {
-            std.classList.remove('max-h-24', 'opacity-100');
-            std.classList.add('max-h-0', 'opacity-0', 'pointer-events-none');
-            adv.classList.remove('max-h-0', 'opacity-0', 'pointer-events-none');
-            adv.classList.add('max-h-96', 'opacity-100');
+            std.classList.remove('expanded');
+            adv.classList.add('expanded');
         } else {
-            std.classList.add('max-h-24', 'opacity-100');
-            std.classList.remove('max-h-0', 'opacity-0', 'pointer-events-none');
-            adv.classList.add('max-h-0', 'opacity-0', 'pointer-events-none');
-            adv.classList.remove('max-h-96', 'opacity-100');
+            adv.classList.remove('expanded');
+            std.classList.add('expanded');
         }
     }
 
@@ -1707,16 +1717,18 @@
                     // Update label immediately when opening
                     if (dateLabel) dateLabel.textContent = t(AppState.lang, "bookingDateLabel");
                     advancedSection.classList.remove('max-h-0', 'opacity-0');
-                    advancedSection.style.maxHeight = '1200px';
+                    advancedSection.style.maxHeight = (advancedSection.scrollHeight + 40) + 'px';
                     advancedSection.classList.add('opacity-100');
                     if (typeof updateLangUI === 'function') updateLangUI(AppState.lang);
                     requestAnimationFrame(() => {
                         if (typeof autoFitAllInputs === 'function') autoFitAllInputs(advancedSection);
                     });
                 } else {
-                    // Collapse - no need to change label since it's hidden
+                    // Collapse smoothly with real scrollHeight
+                    advancedSection.style.maxHeight = advancedSection.scrollHeight + 'px';
+                    advancedSection.offsetHeight; // Force reflow for instant smooth collapse
                     advancedSection.classList.add('max-h-0', 'opacity-0');
-                    advancedSection.style.maxHeight = '0';
+                    advancedSection.style.maxHeight = '0px';
                     advancedSection.classList.remove('opacity-100');
                     if (typeof updateLangUI === 'function') updateLangUI(AppState.lang);
                 }
