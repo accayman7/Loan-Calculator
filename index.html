@@ -1463,12 +1463,12 @@
         <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[85vh] md:max-h-[88vh] transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
             style="max-height: 85vh; max-height: 85dvh; padding-bottom: env(safe-area-inset-bottom);">
             <!-- Mobile Drag Handle: Placed in its own flow row above header, never overlaps -->
-            <div class="w-full flex justify-center pt-2.5 pb-0.5 md:hidden flex-shrink-0">
+            <div class="modal-drag-handle md:hidden" aria-hidden="true">
                 <div class="modal-drag-bar"></div>
             </div>
 
             <!-- Pinned Header: Title & Close Button (Always on the right in both RTL and LTR) -->
-            <div class="px-5 py-2.5 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
+            <div class="px-5 py-2 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
                 <div class="w-8 flex-shrink-0"></div>
                 <p id="about-modal-title"
                     class="text-xl font-bold text-gray-800 dark:text-gray-100 text-center flex-1"
@@ -1593,8 +1593,13 @@
         </div>
         <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe h-[85vh] md:h-auto md:max-h-[88vh] flex flex-col">
             
+            <!-- Mobile Drag Handle: Placed in its own flow row above header, never overlaps -->
+            <div class="modal-drag-handle md:hidden" aria-hidden="true">
+                <div class="modal-drag-bar"></div>
+            </div>
+
             <!-- Modal Header (Always on the right in both RTL and LTR) -->
-            <div class="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
+            <div class="px-5 pt-2 pb-3 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">✨</span>
                     <h3 id="whats-new-modal-title" class="text-base sm:text-lg font-bold text-gray-900 dark:text-white" data-lang-key="whatsNewModalTitle">

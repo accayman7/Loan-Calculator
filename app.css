@@ -2572,12 +2572,24 @@ html.dark .donut-legend-item:hover {
 }
 
 /* Mobile bottom sheet drag handle */
+.modal-drag-handle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.75rem 0 0.25rem;
+    width: 100%;
+    flex-shrink: 0;
+    cursor: grab;
+    touch-action: pan-y;
+}
+
 .modal-drag-bar {
-    width: 2.75rem;
-    height: 4px;
+    width: 3rem;
+    height: 5px;
     background-color: #d1d5db;
     border-radius: 9999px;
 }
+
 .dark .modal-drag-bar {
     background-color: #4b5563;
 }
