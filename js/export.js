@@ -1,9 +1,12 @@
 // js/export.js - Export & Print Utilities (Print/PDF & Excel XLSX)
 // Standalone module for handling report generation, printing, and Excel exports
 
-let _exportAppState = null;
-let _exportDateInputs = null;
-let xlsxLoadPromise = null;
+(function () {
+    'use strict';
+
+    let _exportAppState = null;
+    let _exportDateInputs = null;
+    let xlsxLoadPromise = null;
 
 /**
  * Initialize the Export module with application state and inputs
@@ -484,3 +487,4 @@ window.ExportManager = {
     loadXLSX,
     buildPrintReportHtmlDocument
 };
+})();

@@ -16,14 +16,7 @@
         TOAST: 100
     };
 
-    // Lazy loading promise for XLSX library
-    // Export and print utilities are maintained in js/export.js
-    function loadXLSX() {
-        if (typeof window.loadXLSX === 'function') {
-            return window.loadXLSX();
-        }
-        return Promise.resolve();
-    }
+    // Note: Export and print utilities are maintained in js/export.js (ExportManager)
 
     const MENU_CLASSES = {
         VISIBLE: ['visible', 'opacity-100', 'scale-100', 'translate-y-0', 'pointer-events-auto'],
@@ -34,40 +27,16 @@
     const AppState = {
         activeKey: 'installment', // Default
         loanType: 'unsecured',
-        lang: 'en',
-        theme: 'system',
+        lang: localStorage.getItem('language') || (navigator.language.startsWith('ar') ? 'ar' : 'en'),
+        theme: localStorage.getItem('theme') || 'system',
         lastRes: {},
         schedule: []
     };
 
-    // Multi-collateral system state
-    let collaterals = [
-        { id: 1, amount: '', redemption: '', rate: '' }
-    ];
-    let nextCollateralId = 2;
-
-    window.getCollaterals = () => collaterals.map(c => ({
-        amount: safeParseFloat(c.amount) || 0,
-        redemption: safeParseFloat(c.redemption) || 0,
-        rate: safeParseFloat(c.rate) || 0
-    }));
-
+    // Multi-collateral system state (delegated to js/collaterals.js)
+    window.getCollaterals = () => (typeof CollateralManager !== 'undefined' ? CollateralManager.get() : []);
     window.setMainCollateralsFromCd1 = (cd1List) => {
-        if (!Array.isArray(cd1List) || cd1List.length === 0) return;
-        collaterals = cd1List.map((c, idx) => {
-            const rawAmt = safeParseFloat(c.amount);
-            const rawRed = safeParseFloat(c.redemption);
-            const rawRate = safeParseFloat(c.rate);
-            return {
-                id: idx + 1,
-                amount: !isNaN(rawAmt) && rawAmt > 0 ? (typeof fmt === 'function' ? fmt(rawAmt) : String(rawAmt)) : '',
-                redemption: !isNaN(rawRed) && rawRed > 0 ? (typeof fmt === 'function' ? fmt(rawRed) : String(rawRed)) : '',
-                rate: !isNaN(rawRate) && rawRate > 0 ? (rawRate % 1 === 0 ? rawRate.toFixed(1) : String(rawRate)) : ''
-            };
-        });
-        nextCollateralId = collaterals.length + 1;
-        renderCollaterals();
-        recalcCollateralMetrics(false);
+        if (typeof CollateralManager !== 'undefined') CollateralManager.setFromCd1(cd1List);
     };
 
     /**
@@ -124,6 +93,11 @@
 
     // --- Initialization ---
     window.addEventListener('load', () => {
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
         // 1. Initialize DOM Cache securely
         formInputs = {
             amount: document.getElementById('loan-amount'),
@@ -443,524 +417,14 @@
     }
     window.setLoanType = setLoanType;
 
-    // --- Collateral Management (Secured Loans & CDs) ---
-    function renderCollaterals(newIdToAnimate = null) {
-        const listEl = document.getElementById('collaterals-list');
-        if (!listEl) return;
+    // --- Collateral Management (Delegated to js/collaterals.js) ---
+    const renderCollaterals = (id) => (typeof CollateralManager !== 'undefined') && CollateralManager.render(id);
+    const recalcCollateralMetrics = (auto) => (typeof CollateralManager !== 'undefined') && CollateralManager.recalc(auto);
+    const updateCollateralWarnings = () => (typeof CollateralManager !== 'undefined') && CollateralManager.updateWarnings();
+    const updateCollateralCashflow = () => (typeof CollateralManager !== 'undefined') && CollateralManager.updateCashflow();
+    const updateSelfCoveringChip = () => (typeof CollateralManager !== 'undefined') && CollateralManager.updateSelfCoveringChip();
+    const applySelfCoveringLoanAmount = () => (typeof CollateralManager !== 'undefined') && CollateralManager.applySelfCoveringLoanAmount();
 
-        listEl.innerHTML = '';
-        const fragment = document.createDocumentFragment();
-        collaterals.forEach((col, index) => {
-            const row = document.createElement('div');
-            row.id = `col-row-${col.id}`;
-            row.className = `p-2.5 sm:p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 space-y-2.5 transition-all shadow-sm ${col.id === newIdToAnimate ? 'item-enter' : ''}`;
-            
-            const colIndex = index + 1;
-            const badgePrefix = t(AppState.lang, 'collateralBadge') || 'CD';
-            const colLabel = safeEscapeHtml(`${badgePrefix} #${colIndex}`);
-            const colItemName = safeEscapeHtml(`${t(AppState.lang, 'collateralItemLabel')} ${colIndex}`);
-            
-            row.innerHTML = `
-                <!-- Card Header: Title & Action Button -->
-                <div class="flex items-center justify-between pb-1.5 border-b border-indigo-100 dark:border-indigo-900/50">
-                    <div class="flex items-center gap-1.5 min-w-0">
-                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200" id="col-label-${col.id}">${colLabel}</span>
-                    </div>
-                    <div>
-                        ${collaterals.length > 1 ? `
-                        <button type="button" class="col-remove-btn flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-red-500 dark:hover:text-red-400 py-0.5 px-1.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="removeCollateralBtn" data-lang-aria-label="removeCollateralBtn" title="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'removeCollateralBtn')} (${colItemName})">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            <span>${t(AppState.lang, 'removeCollateralBtn')}</span>
-                        </button>
-                        ` : `
-                        <button type="button" class="col-clear-btn flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 py-0.5 px-1.5 rounded transition-colors" data-id="${col.id}" data-col-index="${colIndex}" data-lang-title="clearCollateralBtn" data-lang-aria-label="clearCollateralBtn" title="${t(AppState.lang, 'clearCollateralBtn')} (${colItemName})" aria-label="${t(AppState.lang, 'clearCollateralBtn')} (${colItemName})">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            <span>${t(AppState.lang, 'clearCollateralBtn')}</span>
-                        </button>
-                        `}
-                    </div>
-                </div>
-
-                <!-- Inputs Row: 3 Columns with Dedicated Field Labels -->
-                <div class="grid grid-cols-12 gap-2 items-end">
-                    <div class="col-span-5 min-w-0">
-                        <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralNominalLabel">${t(AppState.lang, 'collateralNominalLabel')}</label>
-                        <div class="input-group py-1 px-1.5">
-                            <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text col-amount-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="14" data-autofit-min="10" data-lang-aria-label="collateralNominalLabel" data-lang-title="collateralNominalLabel" placeholder="100,000" aria-label="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralNominalLabel')} (${colItemName})">
-                        </div>
-                    </div>
-                    <div class="col-span-4 min-w-0">
-                        <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralRedemptionLabel">${t(AppState.lang, 'collateralRedemptionLabel')}</label>
-                        <div class="input-group py-1 px-1.5">
-                            <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text col-redemption-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="14" data-autofit-min="10" data-lang-aria-label="collateralRedemptionLabel" data-lang-title="collateralRedemptionLabel" placeholder="90,000" aria-label="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})">
-                        </div>
-                    </div>
-                    <div class="col-span-3 min-w-0">
-                        <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderRate">${t(AppState.lang, 'colHeaderRate')}</label>
-                        <div class="input-group py-1 px-1.5">
-                            <input type="text" dir="ltr" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text col-rate-input autofit-input p-0 text-center tracking-tight" data-id="${col.id}" data-col-index="${colIndex}" data-autofit="true" data-autofit-max="14" data-autofit-min="10" data-lang-aria-label="collateralRateLabel" data-lang-title="collateralRateLabel" placeholder="19.0" aria-label="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})" title="${t(AppState.lang, 'collateralRateLabel')} (${colItemName})">
-                        </div>
-                    </div>
-                </div>
-                <span id="col-amount-error-${col.id}" class="sr-only" role="alert"></span>
-                <span id="col-redemption-error-${col.id}" class="sr-only" role="alert"></span>
-                <span id="col-rate-error-${col.id}" class="sr-only" role="alert"></span>
-            `;
-
-            const amountInput = row.querySelector('.col-amount-input');
-            const redemptionInput = row.querySelector('.col-redemption-input');
-            const rateInput = row.querySelector('.col-rate-input');
-            const removeBtn = row.querySelector('.col-remove-btn');
-            const clearBtn = row.querySelector('.col-clear-btn');
-
-            if (amountInput) {
-                amountInput.value = col.amount || '';
-                if (typeof autoFitInputText === 'function') autoFitInputText(amountInput, 14, 10);
-            }
-            if (redemptionInput) {
-                redemptionInput.value = col.redemption || '';
-                if (typeof autoFitInputText === 'function') autoFitInputText(redemptionInput, 14, 10);
-            }
-            if (rateInput) {
-                rateInput.value = col.rate || '';
-                if (typeof autoFitInputText === 'function') autoFitInputText(rateInput, 14, 10);
-            }
-
-            const validateColRedemption = () => {
-                const a = safeParseFloat(amountInput?.value);
-                const red = safeParseFloat(redemptionInput?.value);
-                const grp = redemptionInput?.parentElement;
-                const errEl = row.querySelector(`#col-redemption-error-${col.id}`);
-                if (!isNaN(a) && a > 0 && !isNaN(red) && red > a) {
-                    if (grp) grp.classList.add('error-state');
-                    if (redemptionInput) {
-                        redemptionInput.setAttribute('aria-invalid', 'true');
-                        redemptionInput.setAttribute('aria-describedby', `col-redemption-error-${col.id}`);
-                        redemptionInput.title = t(AppState.lang, 'errorRedemptionExceedsNominal');
-                    }
-                    if (errEl) errEl.textContent = `${colItemName}: ${t(AppState.lang, 'errorRedemptionExceedsNominal')}`;
-                } else {
-                    if (grp) grp.classList.remove('error-state');
-                    if (redemptionInput) {
-                        redemptionInput.removeAttribute('aria-invalid');
-                        redemptionInput.removeAttribute('aria-describedby');
-                        redemptionInput.title = `${t(AppState.lang, 'collateralRedemptionLabel')} (${colItemName})`;
-                    }
-                    if (errEl) errEl.textContent = '';
-                }
-            };
-
-            const validateColRate = () => {
-                const r = safeParseFloat(rateInput?.value);
-                const grp = rateInput?.parentElement;
-                const errEl = row.querySelector(`#col-rate-error-${col.id}`);
-                if (!isNaN(r) && r > 100) {
-                    if (grp) grp.classList.add('error-state');
-                    if (rateInput) {
-                        rateInput.setAttribute('aria-invalid', 'true');
-                        rateInput.setAttribute('aria-describedby', `col-rate-error-${col.id}`);
-                        rateInput.title = t(AppState.lang, 'maxRate');
-                    }
-                    if (errEl) errEl.textContent = `${colItemName}: ${t(AppState.lang, 'maxRate')}`;
-                } else {
-                    if (grp) grp.classList.remove('error-state');
-                    if (rateInput) {
-                        rateInput.removeAttribute('aria-invalid');
-                        rateInput.removeAttribute('aria-describedby');
-                        rateInput.title = `${t(AppState.lang, 'collateralRateLabel')} (${colItemName})`;
-                    }
-                    if (errEl) errEl.textContent = '';
-                }
-            };
-
-            if (amountInput) {
-                amountInput.addEventListener('input', (e) => {
-                    if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
-                    col.amount = e.target.value;
-                    validateColRedemption();
-                    recalcCollateralMetrics();
-                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 14, 10);
-                });
-            }
-
-            if (redemptionInput) {
-                redemptionInput.addEventListener('input', (e) => {
-                    if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
-                    col.redemption = e.target.value;
-                    validateColRedemption();
-                    recalcCollateralMetrics();
-                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 14, 10);
-                });
-            }
-
-            if (rateInput) {
-                rateInput.addEventListener('input', (e) => {
-                    if (typeof validateRateInput === 'function') validateRateInput(e.target);
-                    col.rate = e.target.value;
-                    validateColRate();
-                    recalcCollateralMetrics(true);
-                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 14, 10);
-                });
-                rateInput.addEventListener('blur', (e) => {
-                    if (typeof formatRateInputBlur === 'function') formatRateInputBlur(e.target);
-                    col.rate = e.target.value;
-                    validateColRate();
-                    recalcCollateralMetrics();
-                    if (typeof autoFitInputText === 'function') autoFitInputText(e.target, 14, 10);
-                });
-            }
-
-            if (removeBtn) {
-                removeBtn.addEventListener('click', () => {
-                    if (typeof haptic !== 'undefined') haptic('light');
-                    row.classList.remove('item-enter');
-                    row.classList.add('item-exit');
-                    setTimeout(() => {
-                        collaterals = collaterals.filter(c => c.id !== col.id);
-                        renderCollaterals();
-                        recalcCollateralMetrics();
-                        announceCollateralStatus(t(AppState.lang, 'collateralRemoved').replace('{index}', colIndex));
-                    }, 240);
-                });
-            }
-
-            if (clearBtn) {
-                clearBtn.addEventListener('click', () => {
-                    if (typeof haptic !== 'undefined') haptic('light');
-                    col.amount = '';
-                    col.redemption = '';
-                    col.rate = '';
-                    if (amountInput) {
-                        amountInput.value = '';
-                        if (typeof autoFitInputText === 'function') autoFitInputText(amountInput, 12, 9.5);
-                    }
-                    if (redemptionInput) {
-                        redemptionInput.value = '';
-                        if (typeof autoFitInputText === 'function') autoFitInputText(redemptionInput, 12, 9.5);
-                    }
-                    if (rateInput) {
-                        rateInput.value = '';
-                        if (typeof autoFitInputText === 'function') autoFitInputText(rateInput, 12, 9.5);
-                    }
-                    validateColRedemption();
-                    validateColRate();
-                    recalcCollateralMetrics();
-                });
-            }
-
-            fragment.appendChild(row);
-        });
-
-        listEl.appendChild(fragment);
-
-        recalcCollateralMetrics();
-    }
-
-    /**
-     * Unified collateral summary calculations (Suggestion #2)
-     * Calculates total collateral, maximum loan (min of 90% nominal or redemption value),
-     * required minimum rate (+2%), and monthly CD return in a single pass.
-     * @param {Array} colList - Array of collateral objects {amount, redemption, rate, period}
-     * @returns {Object} Calculated summary metrics
-     */
-    function getCollateralSummary(colList) {
-        let totalCollateral = 0;
-        let maxRate = 0;
-        let totalMonthlyCdReturn = 0;
-        let hasCollateral = false;
-        let totalMaxLoan = 0;
-
-        if (Array.isArray(colList)) {
-            colList.forEach(c => {
-                const a = safeParseFloat(c.amount) || 0;
-                const r = safeParseFloat(c.rate) || 0;
-                const red = safeParseFloat(c.redemption);
-                if (a > 0) {
-                    totalCollateral += a;
-                    hasCollateral = true;
-                    // Rule: 90% of nominal value or redemption value, whichever is lower
-                    const colMax = (red !== undefined && red !== null && !isNaN(red) && red > 0)
-                        ? Math.min(a * 0.90, red)
-                        : a * 0.90;
-                    totalMaxLoan += colMax;
-                }
-                if (r > maxRate) {
-                    maxRate = r;
-                }
-                if (a > 0 && r > 0) {
-                    totalMonthlyCdReturn += (a * r) / 1200;
-                }
-            });
-        }
-
-        const MAX_SECURED_LOAN = 100000000;
-        const maxLoan = Math.min(totalMaxLoan, MAX_SECURED_LOAN);
-        const minRate = maxRate > 0 ? maxRate + 2 : 0;
-
-        return {
-            totalCollateral,
-            maxRate,
-            totalMonthlyCdReturn,
-            hasCollateral,
-            maxLoan,
-            minRate
-        };
-    }
-
-    function recalcCollateralMetrics(autoFillRate = false) {
-        if (AppState.loanType !== 'secured') return;
-
-        const { totalCollateral, maxLoan, minRate } = getCollateralSummary(collaterals);
-
-        const totalColEl = document.getElementById('summary-total-collateral');
-        const maxLoanEl = document.getElementById('summary-max-loan');
-        const minRateEl = document.getElementById('summary-min-rate');
-
-        const fitSummarySpan = (el, text) => {
-            if (!el) return;
-            el.textContent = text;
-            if (text.length >= 14) {
-                el.style.fontSize = '9px';
-                el.style.letterSpacing = '-0.04em';
-            } else if (text.length >= 11) {
-                el.style.fontSize = '10.5px';
-                el.style.letterSpacing = '-0.02em';
-            } else {
-                el.style.fontSize = '';
-                el.style.letterSpacing = '';
-            }
-        };
-
-        fitSummarySpan(totalColEl, totalCollateral > 0 ? displayFmt(totalCollateral) : '-');
-        fitSummarySpan(maxLoanEl, maxLoan > 0 ? displayFmt(maxLoan) : '-');
-        fitSummarySpan(minRateEl, minRate > 0 ? minRate.toFixed(2) + '%' : '-');
-
-        // Auto-set loan rate if requested or if rate is empty
-        if (autoFillRate && minRate > 0 && formInputs.rate) {
-            formInputs.rate.value = minRate.toFixed(2);
-            validateInput('rate');
-        }
-
-        updateCollateralWarnings();
-        updateCollateralCashflow();
-        updateSelfCoveringChip();
-    }
-
-    function updateCollateralWarnings() {
-        const wAmount = document.getElementById('warning-loan-amount');
-        const wRate = document.getElementById('warning-loan-rate');
-
-        if (AppState.loanType !== 'secured') {
-            if (wAmount) wAmount.classList.add('hidden');
-            if (wRate) wRate.classList.add('hidden');
-            return;
-        }
-
-        const { totalCollateral, maxLoan: maxAllowedLoan, minRate: minRequiredRate, maxRate } = getCollateralSummary(collaterals);
-
-        const enteredAmount = safeParseFloat(formInputs.amount?.value) || 0;
-        const enteredRate = safeParseFloat(formInputs.rate?.value) || 0;
-
-        if (wAmount) {
-            if (totalCollateral > 0 && enteredAmount > maxAllowedLoan) {
-                const span = wAmount.querySelector('.warning-text');
-                if (span) {
-                    span.textContent = t(AppState.lang, 'warningExceeds90Collateral').replace('{max}', displayFmt(maxAllowedLoan));
-                }
-                wAmount.classList.remove('hidden');
-            } else {
-                wAmount.classList.add('hidden');
-            }
-        }
-
-        if (wRate) {
-            if (maxRate > 0 && enteredRate > 0 && enteredRate < minRequiredRate) {
-                const span = wRate.querySelector('.warning-text');
-                if (span) {
-                    span.textContent = t(AppState.lang, 'warningBelowMinRate').replace('{min}', minRequiredRate.toFixed(2));
-                }
-                wRate.classList.remove('hidden');
-            } else {
-                wRate.classList.add('hidden');
-            }
-        }
-    }
-
-    function updateCollateralCashflow() {
-        const card = document.getElementById('collateral-cashflow-card');
-        if (!card) return;
-
-        if (AppState.loanType !== 'secured') {
-            card.classList.add('hidden');
-            return;
-        }
-
-        const { totalMonthlyCdReturn, hasCollateral } = getCollateralSummary(collaterals);
-
-        // Get calculated or entered installment
-        const lastM = AppState.lastRes?.M || safeParseFloat(formInputs.installment?.value) || 0;
-        const freq = AppState.lastRes?.freq || (document.getElementById('installment-freq')?.value === '3' ? 3 : 1);
-        const monthlyInstallment = freq === 3 ? (lastM / 3) : lastM;
-
-        if (!hasCollateral || monthlyInstallment <= 0) {
-            card.classList.add('hidden');
-            return;
-        }
-
-        let netDiff = totalMonthlyCdReturn - monthlyInstallment;
-        // Eliminate floating-point micro-precision artifacts (e.g. -0.0000000000001)
-        if (Math.abs(netDiff) < 0.005) {
-            netDiff = 0;
-        }
-        const isSurplus = netDiff >= 0;
-
-        const cdReturnEl = document.getElementById('cashflow-cd-return');
-        const loanInstEl = document.getElementById('cashflow-loan-inst');
-        const netDiffEl = document.getElementById('cashflow-net-diff');
-        const badgeEl = document.getElementById('cashflow-badge');
-        const diffBoxEl = document.getElementById('cashflow-diff-box');
-        const explainEl = document.getElementById('cashflow-explain');
-
-        if (cdReturnEl) cdReturnEl.textContent = '+' + displayFmt(totalMonthlyCdReturn);
-        if (loanInstEl) loanInstEl.textContent = '-' + displayFmt(monthlyInstallment);
-        if (netDiffEl) {
-            netDiffEl.textContent = (isSurplus ? '+' : '') + displayFmt(netDiff);
-            netDiffEl.className = isSurplus
-                ? 'font-black text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm select-text'
-                : 'font-black text-red-600 dark:text-red-400 text-xs sm:text-sm select-text';
-        }
-
-        if (diffBoxEl) {
-            diffBoxEl.className = isSurplus
-                ? 'bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]'
-                : 'cashflow-diff-deficit border p-1.5 rounded-lg flex flex-col justify-between min-h-[44px]';
-        }
-
-        if (badgeEl) {
-            badgeEl.textContent = isSurplus ? t(AppState.lang, 'cashflowSurplusBadge') : t(AppState.lang, 'cashflowDeficitBadge');
-            badgeEl.className = isSurplus
-                ? 'text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
-                : 'cashflow-badge-deficit text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap';
-        }
-
-        if (explainEl) {
-            explainEl.textContent = isSurplus
-                ? t(AppState.lang, 'cashflowSurplusExplain')
-                : t(AppState.lang, 'cashflowDeficitExplain');
-        }
-
-        // Self-covering reference loan amount
-        const selfRow = document.getElementById('cashflow-self-covering-row');
-        const selfAmtEl = document.getElementById('cashflow-self-covering-amount');
-        const selfP = calculateSelfCoveringLoanAmount();
-        if (selfRow && selfAmtEl && selfP > 0) {
-            selfAmtEl.textContent = selfP.toLocaleString('en-US') + ' EGP';
-            selfRow.classList.remove('hidden');
-        } else if (selfRow) {
-            selfRow.classList.add('hidden');
-        }
-
-        card.classList.remove('hidden');
-    }
-
-    /**
-     * Calculates the loan amount P (integer) at which CDs' periodic interest
-     * exactly covers the loan installment — i.e. the net cashflow is zero or minimal surplus.
-     * Guaranteed to never produce a negative cashflow (e.g. -0.01).
-     * Returns 0 if data is insufficient or calculation is infeasible.
-     */
-    function calculateSelfCoveringLoanAmount() {
-        if (AppState.loanType !== 'secured') return 0;
-
-        let totalMonthlyCdReturn = 0;
-        collaterals.forEach(c => {
-            const a = safeParseFloat(c.amount) || 0;
-            const r = safeParseFloat(c.rate) || 0;
-            if (a > 0 && r > 0) totalMonthlyCdReturn += (a * r) / 1200;
-        });
-        if (totalMonthlyCdReturn <= 0) return 0;
-
-        const rateVal = safeParseFloat(formInputs.rate?.value);
-        const periodVal = parseInt(formInputs.period?.value);
-        const freqVal = document.getElementById('installment-freq')?.value === '3' ? 3 : 1;
-
-        if (isNaN(rateVal) || rateVal < 0 || isNaN(periodVal) || periodVal <= 0) return 0;
-
-        const mTarget = totalMonthlyCdReturn * freqVal; // periodic CD return
-        const i = (rateVal / 100) * (freqVal / 12);    // periodic loan rate
-
-        const pExact = (i === 0)
-            ? (mTarget * periodVal)
-            : (mTarget * (Math.pow(1 + i, periodVal) - 1) / (i * Math.pow(1 + i, periodVal)));
-
-        if (!isFinite(pExact) || pExact <= 0) return 0;
-
-        let pInt = Math.floor(pExact);
-
-        // Helper to compute rounded installment for candidate P
-        const getM = (pCandidate) => {
-            const rawM = (i === 0)
-                ? (pCandidate / periodVal)
-                : (pCandidate * i * Math.pow(1 + i, periodVal) / (Math.pow(1 + i, periodVal) - 1));
-            return typeof round2 === 'function' ? round2(rawM) : Math.round(rawM * 100) / 100;
-        };
-
-        // Guarantee that the resulting installment does not exceed mTarget
-        // so that net cashflow (totalMonthlyCdReturn - installment) is always >= 0 (never -0.01)
-        while (pInt > 0 && ((getM(pInt) / freqVal) - totalMonthlyCdReturn > 0.0049)) {
-            pInt--;
-        }
-
-        return pInt > 0 ? pInt : 0;
-    }
-
-    /**
-     * Shows or hides the helper chip below the Loan Amount input that
-     * advertises the 100%-covered loan amount.
-     */
-    function updateSelfCoveringChip() {
-        const chipContainer = document.getElementById('self-covering-chip-container');
-        const chipVal = document.getElementById('self-covering-chip-val');
-        if (!chipContainer || !chipVal) return;
-
-        if (AppState.loanType !== 'secured') {
-            chipContainer.classList.add('hidden');
-            return;
-        }
-
-        const p = calculateSelfCoveringLoanAmount();
-        if (p > 0) {
-            chipVal.textContent = p.toLocaleString('en-US') + ' EGP';
-            chipContainer.classList.remove('hidden');
-        } else {
-            chipContainer.classList.add('hidden');
-        }
-    }
-
-    /**
-     * Applies the 100%-self-covering loan amount to the Loan Amount input
-     * and triggers recalculation.
-     */
-    function applySelfCoveringLoanAmount() {
-        const p = calculateSelfCoveringLoanAmount();
-        if (p <= 0 || !formInputs.amount) return;
-
-        if (typeof haptic !== 'undefined') haptic('medium');
-
-        // Format like the currency input normally formats values
-        formInputs.amount.value = p.toLocaleString('en-US');
-        formInputs.amount.dispatchEvent(new Event('input', { bubbles: true }));
-        validateInput('amount');
-
-        // Switch calc target to installment (standard mode)
-        const instRadio = document.querySelector('input[name="calc-target"][value="installment"]');
-        if (instRadio && !instRadio.checked) {
-            instRadio.checked = true;
-            instRadio.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-
-        if (coreInputsFilled()) appCalculate();
-    }
 
     function getNextEditableCoreInput(currentEl) {
         let foundCurrent = false;
@@ -1473,38 +937,18 @@
             });
         }
 
-        const addColBtn = document.getElementById('add-collateral-btn');
-        if (addColBtn) {
-            addColBtn.addEventListener('click', () => {
-                if (typeof haptic !== 'undefined') haptic('light');
-                const newId = nextCollateralId++;
-                collaterals.push({ id: newId, amount: '', redemption: '', rate: '', period: '' });
-                renderCollaterals(newId);
-                announceCollateralStatus(t(AppState.lang, 'collateralAdded').replace('{index}', collaterals.length));
+        // Initialize Multi-Collateral Manager
+        if (typeof CollateralManager !== 'undefined' && CollateralManager.init) {
+            CollateralManager.init({
+                getLang: () => AppState.lang,
+                getLoanType: () => AppState.loanType,
+                getFormInputs: () => formInputs,
+                getLastResult: () => AppState.lastRes,
+                onRecalcRequired: () => { if (coreInputsFilled()) appCalculate(); },
+                validateInput: (key) => validateInput(key)
             });
         }
 
-        const clearColBtn = document.getElementById('clear-collateral-btn');
-        if (clearColBtn) {
-            clearColBtn.addEventListener('click', () => {
-                if (typeof haptic !== 'undefined') haptic('medium');
-                collaterals = [{ id: 1, amount: '', redemption: '', rate: '', period: '' }];
-                nextCollateralId = 2;
-                renderCollaterals();
-                recalcCollateralMetrics();
-                announceCollateralStatus(t(AppState.lang, 'collateralsCleared'));
-            });
-        }
-
-        // Self-covering loan amount buttons
-        const applySelfBtn = document.getElementById('apply-self-covering-btn');
-        if (applySelfBtn) {
-            applySelfBtn.addEventListener('click', () => applySelfCoveringLoanAmount());
-        }
-        const selfChip = document.getElementById('self-covering-chip');
-        if (selfChip) {
-            selfChip.addEventListener('click', () => applySelfCoveringLoanAmount());
-        }
 
         // --- RADIO BUTTON LISTENER ---
         document.querySelectorAll('input[name="calc-target"]').forEach(radio => {
@@ -1774,14 +1218,14 @@
                 periodLabels.forEach(periodLabel => {
                     const base = t(AppState.lang, 'loanPeriodBase');
                     const unit = f === 3
-                        ? (AppState.lang === 'ar' ? ' (أرباع)' : ' (quarters)')
-                        : (AppState.lang === 'ar' ? ' (أشهر)' : ' (months)');
+                        ? t(AppState.lang, 'quartersUnitSuffix')
+                        : t(AppState.lang, 'monthsUnitSuffix');
                     periodLabel.textContent = base + unit;
                 });
 
                 instLabels.forEach(instLabel => {
                     instLabel.textContent = f === 3
-                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        ? t(AppState.lang, 'quarterlyInstallmentLabel')
                         : t(AppState.lang, 'monthlyInstallmentLabel');
                 });
             };
@@ -1819,13 +1263,13 @@
                 const stdInstLabel = document.querySelector('#std-installments-view [data-lang-key="monthlyInstallmentLabel"]');
                 if (stdInstLabel) {
                     stdInstLabel.textContent = f === 3
-                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        ? t(AppState.lang, 'quarterlyInstallmentLabel')
                         : t(AppState.lang, 'monthlyInstallmentLabel');
                 }
                 const regInstLabel = document.querySelector('[data-lang-key="regularInstLabel"]');
                 if (regInstLabel) {
                     regInstLabel.textContent = f === 3
-                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        ? t(AppState.lang, 'quarterlyInstallmentLabel')
                         : t(AppState.lang, 'regularInstLabel');
                 }
 
@@ -2001,10 +1445,16 @@
         if (closeSchedBtn) closeSchedBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); if (typeof closeScheduleUI === 'function') closeScheduleUI(); });
 
         const pdfBtn = document.getElementById('export-pdf-button');
-        if (pdfBtn) pdfBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('medium'); printReport(); });
+        if (pdfBtn) pdfBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('medium');
+            if (typeof window.printReport === 'function') window.printReport();
+        });
 
         const xlsxBtn = document.getElementById('export-xlsx-button');
-        if (xlsxBtn) xlsxBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('medium'); exportExcel(); });
+        if (xlsxBtn) xlsxBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('medium');
+            if (typeof window.exportExcel === 'function') window.exportExcel();
+        });
 
         // Modals
         setupModalListeners();
@@ -2013,8 +1463,8 @@
         const updateBtn = document.getElementById('force-update-btn');
         if (updateBtn) updateBtn.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); checkUpdates(); });
 
-        // Install
-        setupInstallListeners();
+        // Install (Delegated to js/pwa-install.js)
+        if (typeof setupInstallListeners === 'function') setupInstallListeners(() => AppState.lang);
 
         // Keyboard
         document.addEventListener('keydown', handleKeyboard);
@@ -2032,8 +1482,8 @@
                 const res = AppState.lastRes;
                 const freq = res.freq || 1;
                 const periodUnit = freq === 3
-                    ? (AppState.lang === 'ar' ? ' ربع' : ' Quarters')
-                    : (AppState.lang === 'ar' ? ' شهر' : ' Months');
+                    ? t(AppState.lang, 'quartersUnitWord')
+                    : t(AppState.lang, 'monthsUnitWord');
 
                 let text = `*${t(AppState.lang, 'appTitle')} - ${t(AppState.lang, 'summaryTitle')}*\n`;
                 text += `-------------------\n`;
@@ -2051,14 +1501,14 @@
 
                     text += `${t(AppState.lang, 'firstInstAmountLabel')}: ${displayFmt(m1_Payment)} (${firstDate})\n`;
                     const regLabel = freq === 3
-                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        ? t(AppState.lang, 'quarterlyInstallmentLabel')
                         : t(AppState.lang, 'regularInstLabel');
                     text += `${regLabel}: ${displayFmt(res.M)}\n`;
                     text += `${t(AppState.lang, 'adminFeesLabel')}: ${displayFmt(fees)}\n`;
                     text += `${t(AppState.lang, 'netLoanLabel')}: ${displayFmt(netLoan)}\n`;
                 } else {
                     const instLabel = freq === 3
-                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        ? t(AppState.lang, 'quarterlyInstallmentLabel')
                         : t(AppState.lang, 'monthlyInstallmentLabel');
                     text += `${instLabel}: ${displayFmt(res.M)}\n`;
                 }
@@ -2145,7 +1595,7 @@
         let valStr = formInputs[key].value;
         let val = safeParseFloat(valStr);
 
-        let errMsg = AppState.lang === 'ar' ? 'قيمة غير صالحة' : 'Invalid value';
+        let errMsg = t(AppState.lang, 'invalidValue');
         let isValid = true;
 
         if (valStr.trim() === '') {
@@ -2163,29 +1613,29 @@
         } else if (key === 'amount') {
             if (valStr.includes('.') || (val % 1 !== 0)) {
                 isValid = false;
-                errMsg = AppState.lang === 'ar' ? 'أرقام صحيحة فقط' : 'Whole numbers only';
+                errMsg = t(AppState.lang, 'wholeNumbersOnly');
             } else if (val > 999999999999) {
                 isValid = false;
-                errMsg = AppState.lang === 'ar' ? 'القيمة كبيرة جداً' : 'Value too large';
+                errMsg = t(AppState.lang, 'valueTooLarge');
             }
         } else if (key === 'installment') {
             if (val > 999999999) {
                 isValid = false;
-                errMsg = AppState.lang === 'ar' ? 'القيمة كبيرة جداً' : 'Value too large';
+                errMsg = t(AppState.lang, 'valueTooLarge');
             }
         } else if (key === 'rate') {
             if (val > 100) {
                 isValid = false;
-                errMsg = AppState.lang === 'ar' ? 'الحد الأقصى 100%' : 'Max rate is 100%';
+                errMsg = t(AppState.lang, 'maxRate');
             }
         } else if (key === 'period') {
             const freqVal = document.getElementById('installment-freq')?.value || '1';
             const maxPeriod = freqVal === '3' ? 200 : 600;
             if (val > maxPeriod) {
                 isValid = false;
-                errMsg = AppState.lang === 'ar'
-                    ? (freqVal === '3' ? 'الحد الأقصى 200 ربع' : 'الحد الأقصى 600 شهر')
-                    : (freqVal === '3' ? 'Max 200 quarters' : 'Max 600 months');
+                errMsg = freqVal === '3'
+                    ? t(AppState.lang, 'maxPeriodQuarters')
+                    : t(AppState.lang, 'maxPeriodMonths');
             }
         }
 
@@ -2394,7 +1844,7 @@
                 const regInstLabel = document.querySelector('[data-lang-key="regularInstLabel"]');
                 if (regInstLabel) {
                     regInstLabel.textContent = freq === 3
-                        ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                        ? t(AppState.lang, 'quarterlyInstallmentLabel')
                         : t(AppState.lang, 'regularInstLabel');
                 }
 
@@ -2423,7 +1873,7 @@
             const stdInstLabel = document.querySelector('#std-installments-view [data-lang-key="monthlyInstallmentLabel"]');
             if (stdInstLabel) {
                 stdInstLabel.textContent = freq === 3
-                    ? (AppState.lang === 'ar' ? 'القسط الربع سنوي' : 'Quarterly Installment')
+                    ? t(AppState.lang, 'quarterlyInstallmentLabel')
                     : t(AppState.lang, 'monthlyInstallmentLabel');
             }
 
@@ -2628,188 +2078,102 @@
 
     // --- Modal Logic ---
     function setupModalListeners() {
-        const historyModal = document.getElementById('history-modal');
-        const historyBtn = document.getElementById('history-btn');
-        const closeHistory = document.getElementById('close-history');
-        const historyList = document.getElementById('history-list');
+        // History Modal & Storage Management (Delegated to js/history.js)
+        if (typeof HistoryManager !== 'undefined' && HistoryManager.init) {
+            HistoryManager.init({
+                getLang: () => AppState.lang,
+                onRestore: (item) => {
+                    AppState.activeKey = item.activeKey || 'installment';
+                    const radio = document.querySelector(`input[name="calc-target"][value="${AppState.activeKey}"]`);
+                    if (radio) radio.checked = true;
 
-        if (historyBtn && historyModal) {
-            historyBtn.addEventListener('click', () => {
-                if (typeof haptic !== 'undefined') haptic('light');
-                let history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
-                let migrated = false;
-                history.forEach((item, idx) => {
-                    if (!item.id) {
-                        item.id = 'calc_' + (Date.parse(item.date) || Date.now()) + '_' + idx;
-                        migrated = true;
+                    if (typeof updateInputState === 'function') updateInputState(inputGroups, formInputs, errorLabels, AppState.activeKey, AppState.lang);
+                    formInputs.amount.value = item.values.amount;
+                    formInputs.rate.value = item.values.rate;
+                    formInputs.period.value = item.values.period;
+                    formInputs.installment.value = item.values.installment;
+
+                    // Restore frequency BEFORE dates (affects date logic)
+                    const freqSel = document.getElementById('installment-freq');
+                    if (freqSel) {
+                        freqSel.value = item.values.freq || '1';
+                        freqSel.dispatchEvent(new Event('change'));
                     }
-                });
-                if (migrated) localStorage.setItem('loanHistory', JSON.stringify(history));
-                if (typeof renderHistoryList === 'function') renderHistoryList(history, AppState.lang);
-                if (typeof toggleModal === 'function') toggleModal(historyModal, true);
-            });
-            closeHistory.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); if (typeof toggleModal === 'function') toggleModal(historyModal, false); });
-            historyModal.addEventListener('click', (e) => {
-                if ((e.target === historyModal || e.target.classList.contains('modal-overlay')) && typeof toggleModal === 'function') { if (typeof haptic !== 'undefined') haptic('light'); toggleModal(historyModal, false); }
-            });
+                    if (item.values.startDate && dateInputs.startNative) {
+                        dateInputs.startNative.value = item.values.startDate;
+                        dateInputs.startNative.dispatchEvent(new Event('change'));
+                    }
 
-            if (historyList) {
-                historyList.addEventListener('click', (e) => {
-                    // Check if delete button was clicked
-                    const deleteBtn = e.target.closest('.delete-btn');
-                    if (deleteBtn) {
-                        e.stopPropagation();
-                        const card = deleteBtn.closest('.history-card');
-                        const targetId = deleteBtn.dataset.id;
-                        const targetIndex = parseInt(deleteBtn.dataset.index, 10);
-                        if (!card) return;
-                        if (typeof haptic !== 'undefined') haptic('light');
+                    // Restore advanced options if saved
+                    const advancedToggle = document.getElementById('advanced-toggle');
+                    if (item.values.isAdvanced && advancedToggle) {
+                        advancedToggle.checked = true;
+                        advancedToggle.dispatchEvent(new Event('change'));
 
-                        // Immediately delete from storage using unique ID (or fallback to index)
-                        let history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
-                        if (targetId) {
-                            history = history.filter((it, idx) => (it.id || `legacy_${idx}`) !== targetId);
-                        } else if (!isNaN(targetIndex)) {
-                            history.splice(targetIndex, 1);
+                        // Restore first installment date
+                        if (item.values.firstInstDate && dateInputs.firstNative) {
+                            dateInputs.firstNative.value = item.values.firstInstDate;
+                            dateInputs.firstNative.dispatchEvent(new Event('change'));
                         }
-                        localStorage.setItem('loanHistory', JSON.stringify(history));
 
-                        // Hide overflow to prevent horizontal scrollbar during slide
-                        historyList.style.overflowX = 'hidden';
+                        // Restore admin fees
+                        const adminFeesInput = document.getElementById('admin-fees');
+                        if (adminFeesInput && item.values.adminFees) {
+                            adminFeesInput.value = item.values.adminFees;
+                        }
 
-                        // Animate the card out
-                        card.style.transition = 'all 0.25s ease-out';
-                        card.style.transform = 'translateX(100%)';
-                        card.style.opacity = '0';
-                        card.style.maxHeight = card.offsetHeight + 'px';
-                        card.style.overflow = 'hidden';
-
-                        setTimeout(() => {
-                            card.style.maxHeight = '0';
-                            card.style.marginBottom = '0';
-                            card.style.padding = '0';
-                            card.style.border = 'none';
-
-                            setTimeout(() => {
-                                card.remove();
-                                if (history.length === 0) {
-                                    if (typeof toggleModal === 'function') toggleModal(historyModal, false);
-                                }
-                            }, 200);
-                        }, 150);
-                        return;
+                        // Restore stamp rate
+                        const stampRateInput = document.getElementById('stamp-rate');
+                        if (stampRateInput && item.values.stampRate) {
+                            stampRateInput.value = item.values.stampRate;
+                        }
+                    } else if (advancedToggle) {
+                        advancedToggle.checked = false;
+                        advancedToggle.dispatchEvent(new Event('change'));
                     }
 
-                    // Check if card was clicked (load action)
-                    const card = e.target.closest('.history-card');
-                    if (card) {
-                        const targetId = card.dataset.id;
-                        const targetIndex = parseInt(card.dataset.index, 10);
-                        if (typeof haptic !== 'undefined') haptic('medium');
-                        const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
-                        const item = targetId ? history.find((it, idx) => (it.id || `legacy_${idx}`) === targetId) : history[targetIndex];
-                        if (item) {
-                            AppState.activeKey = item.activeKey || 'installment';
-                            const radio = document.querySelector(`input[name="calc-target"][value="${AppState.activeKey}"]`);
-                            if (radio) radio.checked = true;
-
-                            if (typeof updateInputState === 'function') updateInputState(inputGroups, formInputs, errorLabels, AppState.activeKey, AppState.lang);
-                            formInputs.amount.value = item.values.amount;
-                            formInputs.rate.value = item.values.rate;
-                            formInputs.period.value = item.values.period;
-                            formInputs.installment.value = item.values.installment;
-
-                            // Restore frequency BEFORE dates (affects date logic)
-                            const freqSel = document.getElementById('installment-freq');
-                            if (freqSel) {
-                                freqSel.value = item.values.freq || '1';
-                                freqSel.dispatchEvent(new Event('change'));
-                            }
-                            if (item.values.startDate) {
-                                dateInputs.startNative.value = item.values.startDate;
-                                dateInputs.startNative.dispatchEvent(new Event('change'));
-                            }
-
-                            // Restore advanced options if saved
-                            const advancedToggle = document.getElementById('advanced-toggle');
-                            if (item.values.isAdvanced && advancedToggle) {
-                                advancedToggle.checked = true;
-                                advancedToggle.dispatchEvent(new Event('change'));
-
-                                // Restore first installment date
-                                if (item.values.firstInstDate && dateInputs.firstNative) {
-                                    dateInputs.firstNative.value = item.values.firstInstDate;
-                                    dateInputs.firstNative.dispatchEvent(new Event('change'));
-                                }
-
-                                // Restore admin fees
-                                const adminFeesInput = document.getElementById('admin-fees');
-                                if (adminFeesInput && item.values.adminFees) {
-                                    adminFeesInput.value = item.values.adminFees;
-                                }
-
-                                // Restore stamp rate
-                                const stampRateInput = document.getElementById('stamp-rate');
-                                if (stampRateInput && item.values.stampRate) {
-                                    stampRateInput.value = item.values.stampRate;
-                                }
-                            } else if (advancedToggle) {
-                                advancedToggle.checked = false;
-                                advancedToggle.dispatchEvent(new Event('change'));
-                            }
-
-                            // Restore Loan Type & Collaterals
-                            if (item.values && item.values.loanType) {
-                                setLoanType(item.values.loanType);
-                                if (item.values.collaterals && Array.isArray(item.values.collaterals)) {
-                                    collaterals = item.values.collaterals;
-                                    renderCollaterals();
-                                }
-                            }
-
-                            if (typeof toggleModal === 'function') toggleModal(historyModal);
-                            appCalculate();
+                    // Restore Loan Type & Collaterals
+                    if (item.values && item.values.loanType) {
+                        setLoanType(item.values.loanType);
+                        if (item.values.collaterals && Array.isArray(item.values.collaterals) && typeof CollateralManager !== 'undefined') {
+                            CollateralManager.setRaw(item.values.collaterals);
                         }
                     }
-                });
-            }
+
+                    appCalculate();
+                },
+                onSave: () => {
+                    if (!AppState.lastRes.P) return;
+                    try {
+                        const isAdvanced = document.getElementById('advanced-toggle')?.checked || false;
+                        const entry = {
+                            id: 'calc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+                            date: new Date().toISOString(),
+                            activeKey: AppState.activeKey,
+                            values: {
+                                amount: formInputs.amount.value,
+                                rate: formInputs.rate.value,
+                                period: formInputs.period.value,
+                                installment: formInputs.installment.value,
+                                freq: document.getElementById('installment-freq')?.value || '1',
+                                startDate: dateInputs.startNative?.value || '',
+                                loanType: AppState.loanType,
+                                collaterals: typeof CollateralManager !== 'undefined' ? CollateralManager.getRaw() : [],
+                                isAdvanced: isAdvanced,
+                                firstInstDate: dateInputs.firstNative?.value || '',
+                                adminFees: document.getElementById('admin-fees')?.value || '',
+                                stampRate: document.getElementById('stamp-rate')?.value || ''
+                            },
+                            res: AppState.lastRes
+                        };
+                        HistoryManager.save(entry);
+                        showToast(t(AppState.lang, 'saveSuccess'));
+                    } catch (e) {
+                        showToast(t(AppState.lang, 'storageFull'), 'error');
+                    }
+                }
+            });
         }
-
-        // Save Button
-        const saveBtn = document.getElementById('save-button');
-        if (saveBtn) saveBtn.addEventListener('click', () => {
-            if (typeof haptic !== 'undefined') haptic('medium');
-            if (!AppState.lastRes.P) return;
-            try {
-                const history = JSON.parse(localStorage.getItem('loanHistory') || '[]');
-                const isAdvanced = document.getElementById('advanced-toggle').checked;
-                const entry = {
-                    id: 'calc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-                    date: new Date().toISOString(),
-                    activeKey: AppState.activeKey,
-                    values: {
-                        amount: formInputs.amount.value,
-                        rate: formInputs.rate.value,
-                        period: formInputs.period.value,
-                        installment: formInputs.installment.value,
-                        freq: document.getElementById('installment-freq')?.value || '1',
-                        startDate: dateInputs.startNative.value,
-                        loanType: AppState.loanType,
-                        collaterals: collaterals,
-                        // Advanced options
-                        isAdvanced: isAdvanced,
-                        firstInstDate: dateInputs.firstNative?.value || '',
-                        adminFees: document.getElementById('admin-fees')?.value || '',
-                        stampRate: document.getElementById('stamp-rate')?.value || ''
-                    },
-                    res: AppState.lastRes
-                };
-                history.unshift(entry);
-                if (history.length > 20) history.pop();
-                localStorage.setItem('loanHistory', JSON.stringify(history));
-                showToast(t(AppState.lang, 'saveSuccess'));
-            } catch (e) { showToast(t(AppState.lang, 'storageFull'), 'error'); }
-        });
 
         // About Modal
         const aboutModal = document.getElementById('about-modal');
@@ -2979,18 +2343,7 @@
         }
     }
 
-    // Note: buildPrintReportHtmlDocument, printReport, and exportExcel are implemented in js/export.js
-    function printReport() {
-        if (typeof window.printReport === 'function') {
-            window.printReport();
-        }
-    }
-
-    function exportExcel() {
-        if (typeof window.exportExcel === 'function') {
-            window.exportExcel();
-        }
-    }
+    // Note: buildPrintReportHtmlDocument, printReport, and exportExcel are implemented in js/export.js (ExportManager)
 
     // --- Toast Logic ---
     // Note: showToast() and hideToast() are defined in ui.js and globally available
@@ -3014,95 +2367,7 @@
     }
 
     // --- Install & Keyboard ---
-    let deferredPrompt = null; // Shared across floating + about-modal install buttons
-
-    // Capture beforeinstallprompt IMMEDIATELY (before window.load)
-    // so the event is never missed regardless of timing.
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        // DOM might not be ready yet — guard the querySelector
-        const instBtn = document.getElementById('install-button');
-        if (instBtn) instBtn.classList.remove('hidden');
-    });
-
-    /** Mark the app as installed and hide both install buttons */
-    function markAppInstalled() {
-        deferredPrompt = null;
-        localStorage.setItem('pwaInstalled', '1');
-        const instBtn = document.getElementById('install-button');
-        const aboutInstBtn = document.getElementById('about-install-btn');
-        if (instBtn) instBtn.classList.add('hidden');
-        if (aboutInstBtn) aboutInstBtn.classList.add('hidden');
-    }
-
-    function setupInstallListeners() {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-        const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const wasInstalled = localStorage.getItem('pwaInstalled') === '1';
-
-        // If beforeinstallprompt already fired before load, show the floating button now
-        const instBtn = document.getElementById('install-button');
-        if (instBtn && deferredPrompt) instBtn.classList.remove('hidden');
-
-        // Floating install button click handler
-        if (instBtn) instBtn.addEventListener('click', async () => {
-            if (typeof haptic !== 'undefined') haptic('medium');
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            await deferredPrompt.userChoice;
-            markAppInstalled();
-        });
-
-        // --- About modal install button ---
-        // Show only if: not standalone AND not already installed AND not remembered as installed
-        const aboutInstBtn = document.getElementById('about-install-btn');
-        if (aboutInstBtn && !isStandalone && !wasInstalled) {
-            aboutInstBtn.classList.remove('hidden');
-
-            aboutInstBtn.addEventListener('click', async () => {
-                if (typeof haptic !== 'undefined') haptic('medium');
-
-                // 1. If we have a deferred prompt, use it directly
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    await deferredPrompt.userChoice;
-                    markAppInstalled();
-                    return;
-                }
-
-                // 2. iOS → show the iOS install instructions banner
-                if (isIos) {
-                    const iosMsg = document.getElementById('ios-install-message');
-                    if (iosMsg) iosMsg.classList.remove('hidden');
-                    // Close the about modal so the user can see the banner
-                    const aboutModal = document.getElementById('about-modal');
-                    if (aboutModal && !aboutModal.classList.contains('pointer-events-none')) {
-                        toggleModal(aboutModal);
-                    }
-                    return;
-                }
-
-                // 3. Other browsers → show manual hint toast
-                showToast(t(AppState.lang, 'installManualHint'));
-            });
-        }
-
-        // --- iOS auto-banner (existing behavior) ---
-        if (isIos && !isStandalone) {
-            const iosMsg = document.getElementById('ios-install-message');
-            if (iosMsg) iosMsg.classList.remove('hidden');
-            const closeIos = document.getElementById('close-ios-msg');
-            if (closeIos) closeIos.addEventListener('click', () => { if (typeof haptic !== 'undefined') haptic('light'); iosMsg.classList.add('hidden'); });
-        }
-
-        // --- Safety net: hide install buttons on appinstalled / standalone change ---
-        window.addEventListener('appinstalled', () => markAppInstalled());
-
-        window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
-            if (e.matches) markAppInstalled();
-        });
-    }
+    // Note: PWA install listeners & prompt capture are maintained in js/pwa-install.js
 
     function setupMobileKeyboard() {
         CORE_KEYS.forEach(key => { if (formInputs[key]) formInputs[key].setAttribute('enterkeyhint', 'go'); });
@@ -3164,5 +2429,41 @@
             if (coreInputsFilled()) { e.preventDefault(); el.blur(); appCalculate(); }
         }
     }
+
+    // --- Unified Developer Facade & Diagnostics ---
+    window.LoanCalc = Object.freeze({
+        get version() {
+            return typeof APP_VERSION !== 'undefined' ? APP_VERSION : '';
+        },
+        getState() {
+            return Object.assign({}, AppState);
+        },
+        getCollaterals() {
+            return window.getCollaterals ? window.getCollaterals() : [];
+        },
+        calculate: () => appCalculate(),
+        logic: {
+            calculateLoan: (typeof calculateLoan === 'function') ? calculateLoan : null,
+            calculateAmortizationSchedule: (typeof calculateAmortizationSchedule === 'function') ? calculateAmortizationSchedule : null,
+            format: (typeof fmt === 'function') ? fmt : null
+        },
+        ui: {
+            showSchedule: (typeof showScheduleUI === 'function') ? showScheduleUI : null,
+            toggleModal: (typeof toggleModal === 'function') ? toggleModal : null,
+            showToast: (typeof showToast === 'function') ? showToast : null
+        },
+        diagnostics() {
+            return {
+                version: typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'unknown',
+                lang: document.documentElement.lang,
+                dir: document.documentElement.dir,
+                theme: document.documentElement.getAttribute('data-theme'),
+                activeKey: AppState.activeKey,
+                loanType: AppState.loanType,
+                hasCollaterals: (typeof CollateralManager !== 'undefined' ? CollateralManager.get().length : 0),
+                serviceWorkerActive: !!(navigator.serviceWorker && navigator.serviceWorker.controller)
+            };
+        }
+    });
 
 })(); // End IIFE

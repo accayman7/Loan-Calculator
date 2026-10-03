@@ -1,16 +1,18 @@
 // js/earlysettlement.js - Early Settlement Calculator
-// PROTECTED: Do NOT modify unless explicitly requested.
 // Extracted from app.js for isolation — all early settlement UI logic lives here.
 
-/* ================= EARLY SETTLEMENT MODULE ================= */
+(function () {
+    'use strict';
 
-/**
- * Module-level references set during init.
- * These bridge the app.js IIFE scope to this global module.
- */
-let _esAppState = null;
-let _esFormInputs = null;
-let _esFormatDate = null;
+    /* ================= EARLY SETTLEMENT MODULE ================= */
+
+    /**
+     * Module-level references set during init.
+     * These bridge the app.js IIFE scope to this module.
+     */
+    let _esAppState = null;
+    let _esFormInputs = null;
+    let _esFormatDate = null;
 
 /**
  * Helper to get the active loan period (start date and maturity date).
@@ -424,3 +426,19 @@ function resetEarlySettlement() {
     document.getElementById('early-settlement-fee').value = '';
     document.getElementById('settlement-results')?.classList.add('hidden');
 }
+
+    // Public API exposure
+    window.syncEarlySettlementConstraints = syncEarlySettlementConstraints;
+    window.initEarlySettlement = initEarlySettlement;
+    window.updateEarlySettlement = updateEarlySettlement;
+    window.updateSubsidiaryErrors = updateSubsidiaryErrors;
+    window.resetEarlySettlement = resetEarlySettlement;
+
+    window.EarlySettlementManager = {
+        init: initEarlySettlement,
+        update: updateEarlySettlement,
+        syncConstraints: syncEarlySettlementConstraints,
+        updateSubsidiaryErrors: updateSubsidiaryErrors,
+        reset: resetEarlySettlement
+    };
+})();

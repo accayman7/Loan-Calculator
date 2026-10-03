@@ -3,6 +3,34 @@
 
 <head>
     <meta charset="UTF-8">
+    <script>
+        // Inline script to prevent flash of wrong theme, layout direction, or unwanted scroll restoration
+        (function () {
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+            window.scrollTo(0, 0);
+            window.addEventListener('beforeunload', function () {
+                window.scrollTo(0, 0);
+            });
+            window.addEventListener('pageshow', function () {
+                window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            });
+
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const isDark = savedTheme === 'dark' || (savedTheme === 'system' && sysDark);
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            const savedLang = localStorage.getItem('language') || (navigator.language.startsWith('ar') ? 'ar' : 'en');
+            document.documentElement.lang = savedLang;
+            document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
+        })();
+    </script>
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="description"
@@ -26,38 +54,91 @@
     <link rel="stylesheet" href="./tailwind.css">
     <link rel="stylesheet" href="./app.css">
 
-    <!-- App scripts - executes in order -->
-    <!-- Core Scripts -->
-    <script src="./js/version.js"></script>
+    <!-- App scripts -->
+    <!-- Translations loaded synchronously so dictionary is available immediately -->
     <script src="./js/translations.js"></script>
-    <script src="./js/logic.js"></script>
-    <script src="./js/ui.js"></script>
-    <script src="./js/dateinput.js"></script>
-    <script src="./js/datepicker.js"></script>
-    <script src="./js/earlysettlement.js"></script>
-    <script src="./js/selfsufficient.js"></script>
-    <script src="./js/export.js"></script>
-    <script src="./js/app.js"></script>
-
     <script>
-        // Inline script to prevent flash of wrong theme
+        // Real-time pre-paint translation: intercepts DOM elements as they are created during HTML streaming parse,
+        // localizing them BEFORE the browser can ever layout or paint a single frame. Zero FOUC, zero flash!
         (function () {
-            const savedTheme = localStorage.getItem('theme') || 'system';
-            const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            const isDark = savedTheme === 'dark' || (savedTheme === 'system' && sysDark);
-            if (isDark) {
-                document.documentElement.classList.add('dark');
-                document.getElementById('meta-theme-color')?.setAttribute('content', '#020617');
-            } else {
-                document.documentElement.classList.remove('dark');
-                document.getElementById('meta-theme-color')?.setAttribute('content', '#f9fafb');
-            }
             const savedLang = localStorage.getItem('language') || (navigator.language.startsWith('ar') ? 'ar' : 'en');
-            document.documentElement.lang = savedLang;
-            document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
+            if (savedLang === 'ar' && typeof window.txt !== 'undefined' && window.txt.ar) {
+                const ar = window.txt.ar;
+                function translateNode(el) {
+                    if (!el || el.nodeType !== 1) return;
+                    const k = el.getAttribute('data-lang-key');
+                    if (k && ar[k]) {
+                        if (el.id === 'date-label') {
+                            el.textContent = ar.bookingDateLabel;
+                        } else if (k === 'iosMsg') {
+                            const shareIcon = '<svg class="w-5 h-5 inline text-blue-400 mx-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>';
+                            el.innerHTML = (ar.iosInstallBody || '') + ' ' + shareIcon + ' ' + (ar.iosInstallFoot || '');
+                        } else if (k === 'scheduleButton') {
+                            el.textContent = ar.scheduleButton;
+                        } else {
+                            el.textContent = ar[k];
+                        }
+                    }
+                    const kt = el.getAttribute('data-lang-title');
+                    if (kt && ar[kt]) el.title = ar[kt];
+                    const ka = el.getAttribute('data-lang-aria-label');
+                    if (ka && ar[ka]) el.setAttribute('aria-label', ar[ka]);
+                    const kto = el.getAttribute('data-lang-tooltip');
+                    if (kto && ar[kto]) {
+                        el.dataset.tooltip = ar[kto];
+                        if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+                        if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+                    }
+                    if (el.tagName === 'INPUT' && el.id) {
+                        const isReadOnly = el.hasAttribute('readonly');
+                        if (isReadOnly && ar.willBeCalculated) el.placeholder = ar.willBeCalculated;
+                        else if (!isReadOnly && ar.inputPlaceholder && !el.placeholder.includes('/')) el.placeholder = ar.inputPlaceholder;
+                    }
+                }
+                function scanAndTranslate(root) {
+                    translateNode(root);
+                    if (root.querySelectorAll) {
+                        const list = root.querySelectorAll('[data-lang-key], [data-lang-title], [data-lang-aria-label], [data-lang-tooltip], input');
+                        for (let i = 0; i < list.length; i++) translateNode(list[i]);
+                    }
+                }
+                const observer = new MutationObserver(mutations => {
+                    for (let i = 0; i < mutations.length; i++) {
+                        const nodes = mutations[i].addedNodes;
+                        for (let j = 0; j < nodes.length; j++) {
+                            scanAndTranslate(nodes[j]);
+                        }
+                    }
+                });
+                observer.observe(document.documentElement, { childList: true, subtree: true });
+                window.addEventListener('DOMContentLoaded', () => {
+                    observer.disconnect();
+                    document.body.classList.add('lang-ready');
+                    if (ar.appTitle) document.title = ar.appTitle;
+                }, { once: true });
+            } else {
+                window.addEventListener('DOMContentLoaded', () => {
+                    document.body.classList.add('lang-ready');
+                }, { once: true });
+            }
         })();
     </script>
+    <!-- Deferred Core Scripts -->
+    <script src="./js/version.js" defer></script>
+    <script src="./js/logic.js" defer></script>
+    <script src="./js/modals.js" defer></script>
+    <script src="./js/chart.js" defer></script>
+    <script src="./js/formatters.js" defer></script>
+    <script src="./js/ui.js" defer></script>
+    <script src="./js/dateinput.js" defer></script>
+    <script src="./js/datepicker.js" defer></script>
+    <script src="./js/collaterals.js" defer></script>
+    <script src="./js/earlysettlement.js" defer></script>
+    <script src="./js/selfsufficient.js" defer></script>
+    <script src="./js/history.js" defer></script>
+    <script src="./js/export.js" defer></script>
+    <script src="./js/pwa-install.js" defer></script>
+    <script src="./js/app.js" defer></script>
 </head>
 
 <body class="flex flex-col min-h-screen preload select-none">
@@ -106,7 +187,7 @@
                         class="hidden px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded text-xs font-medium flex-shrink-0"
                         data-lang-key="offlineMode">Offline</span>
                 </div>
-                <div class="flex items-center space-x-2 flex-shrink-0">
+                <div class="flex items-center gap-2 flex-shrink-0">
 
                     <button id="about-btn" class="btn-icon" title="About App" data-lang-title="aboutBtn"
                         aria-label="About App" data-lang-aria-label="aboutBtn">
@@ -415,7 +496,7 @@
                                         aria-label="Calculate Loan Amount" data-lang-aria-label="calcLoanAmount">
                                 </div>
                                 <input type="text" inputmode="decimal" id="loan-amount" data-key="amount"
-                                    class="text-input select-text" autocomplete="off" autocorrect="off"
+                                    class="text-input select-text" placeholder="Enter value" autocomplete="off" autocorrect="off"
                                     autocapitalize="off" spellcheck="false">
                             </div>
                             <!-- Option C: Quick-Fill Helper Chip -->
@@ -448,7 +529,7 @@
                                         aria-label="Calculate Interest Rate" data-lang-aria-label="calcInterestRate">
                                 </div>
                                 <input type="text" inputmode="decimal" id="interest-rate" data-key="rate"
-                                    class="text-input select-text" autocomplete="off" autocorrect="off"
+                                    class="text-input select-text" placeholder="Enter value" autocomplete="off" autocorrect="off"
                                     autocapitalize="off" spellcheck="false">
                             </div>
                             <p class="error-text hidden" id="error-rate" role="alert" aria-live="polite" data-lang-key="invalidRate">Please enter a valid rate.</p>
@@ -523,7 +604,7 @@
                                         aria-label="Calculate Period" data-lang-aria-label="calcPeriod">
                                 </div>
                                 <input type="text" inputmode="numeric" pattern="[0-9]*" id="loan-period"
-                                    data-key="period" class="text-input select-text" autocomplete="off"
+                                    data-key="period" class="text-input select-text" placeholder="Enter value" autocomplete="off"
                                     autocorrect="off" autocapitalize="off" spellcheck="false">
                             </div>
                             <p class="error-text hidden" id="error-period" role="alert" aria-live="polite" data-lang-key="invalidPeriod">Please enter a valid period.</p>
@@ -544,7 +625,7 @@
                                         title="Calculate this field" aria-label="Calculate Monthly Installment" data-lang-aria-label="calcInstallment">
                                 </div>
                                 <input type="text" inputmode="decimal" id="monthly-installment" data-key="installment"
-                                    class="text-input select-text" readonly autocomplete="off">
+                                    class="text-input select-text" readonly placeholder="Will be calculated" autocomplete="off">
                             </div>
                             <p class="error-text hidden" id="error-installment" role="alert" aria-live="polite" data-lang-key="invalidValue">Invalid value.</p>
                         </div>
@@ -639,7 +720,7 @@
                                 </label>
                                 <div class="input-group">
                                     <input type="text" inputmode="decimal" id="admin-fees"
-                                        class="text-input select-text" data-placeholder-key="inputPlaceholder"
+                                        class="text-input select-text" placeholder="Enter value" data-placeholder-key="inputPlaceholder"
                                         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                 </div>
                             </div>
@@ -655,7 +736,7 @@
                                 </label>
                                 <div class="input-group">
                                     <input type="text" inputmode="decimal" id="stamp-rate" value="0.2"
-                                        class="text-input select-text" data-placeholder-key="inputPlaceholder"
+                                        class="text-input select-text" placeholder="Enter value" data-placeholder-key="inputPlaceholder"
                                         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                 </div>
 
@@ -1485,7 +1566,7 @@
             <!-- Scrollable Modal Body -->
             <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4 scrollbar-hide">
                 <div class="flex flex-col items-center justify-center">
-                    <img src="./icon.png" alt="App Icon" class="w-16 h-16 rounded-2xl shadow-md mb-2">
+                    <img src="./icon.png" alt="App Icon" width="64" height="64" class="w-16 h-16 rounded-2xl shadow-md mb-2">
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white" data-lang-key="appTitle">Loan Calculator
                     </h3>
                     <p id="app-version-display" class="text-xs text-gray-400 mt-0.5">&nbsp;</p>
@@ -1811,7 +1892,7 @@
                 addSnow('#about-modal .modal-container', 'snow-container-about', 30, 15, 30);
             })();
     </script>
-    --- END TEMP Script --- -->
+    -->
 </body>
 
 </html>

@@ -15,14 +15,19 @@ const PRE_CACHE = [
   './js/version.js',
   './js/translations.js',
   './js/logic.js',
+  './js/modals.js',
+  './js/chart.js',
+  './js/formatters.js',
   './js/ui.js',
   './js/dateinput.js',
   './js/datepicker.js',
+  './js/collaterals.js',
   './js/earlysettlement.js',
   './js/selfsufficient.js',
+  './js/history.js',
   './js/export.js',
-  './js/app.js',
-  './xlsx.mini.min.js'
+  './js/pwa-install.js',
+  './js/app.js'
 ];
 
 // Install Event: Cache core files (best-effort - missing files won't break install)
@@ -46,21 +51,23 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event: Clean up old caches
+// Activate Event: Clean up old caches and claim clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keyList) => {
-      return Promise.all(
-        keyList.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('[SW] Removing old cache:', key);
-            return caches.delete(key);
-          }
-        })
-      );
-    })
+    Promise.all([
+      caches.keys().then((keyList) => {
+        return Promise.all(
+          keyList.map((key) => {
+            if (key !== CACHE_NAME) {
+              console.log('[SW] Removing old cache:', key);
+              return caches.delete(key);
+            }
+          })
+        );
+      }),
+      self.clients.claim()
+    ])
   );
-  return self.clients.claim();
 });
 
 // Fetch Event: Local-Only Enforcement + Cache-First for performance
@@ -88,18 +95,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cached version immediately, then update cache in background
-        event.waitUntil(
-          fetch(event.request).then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse.clone());
-              });
-            }
-          }).catch(() => {
-            // Network failed, that's fine - we have cache
-          })
-        );
         return cachedResponse;
       }
 

@@ -1,19 +1,21 @@
 // js/selfsufficient.js - Self-Sufficient TD Doubling Mode
-// PROTECTED: Do NOT modify unless explicitly requested.
 // Extracted from app.js for isolation — all self-sufficient UI logic lives here.
 
-/* ================= SELF-SUFFICIENT MODULE ================= */
+(function () {
+    'use strict';
 
-/**
- * Module-level references set during init.
- * These bridge the app.js IIFE scope to this global module.
- */
-let _ssAppState = null;
-let _ssDateInputs = null;
-let _ssFormInputs = null;
-let _ssAppCalculate = null;
-let _ssLastSolution = null;
-let _ssLastInputs = null;
+    /* ================= SELF-SUFFICIENT MODULE ================= */
+
+    /**
+     * Module-level references set during init.
+     * These bridge the app.js IIFE scope to this module.
+     */
+    let _ssAppState = null;
+    let _ssDateInputs = null;
+    let _ssFormInputs = null;
+    let _ssAppCalculate = null;
+    let _ssLastSolution = null;
+    let _ssLastInputs = null;
 
 /**
  * Compute the CD interest accrual start date from a booking date.
@@ -365,21 +367,21 @@ function renderSsCd1List(newIdToAnimate = null) {
             <!-- Row 1: Core Financial Values with Dedicated Field Labels -->
             <div class="grid grid-cols-12 gap-2 items-end">
                 <div class="col-span-5 min-w-0">
-                    <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralNominalLabel">${t(lang, 'collateralNominalLabel')}</label>
+                    <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderNominal" data-lang-title="collateralNominalLabel" title="${t(lang, 'collateralNominalLabel')}">${t(lang, 'colHeaderNominal')}</label>
                     <div class="input-group h-10 px-2 flex items-center">
                         <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-amount autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="100,000" aria-label="${t(lang, 'collateralNominalLabel')}" title="${t(lang, 'collateralNominalLabel')}">
                     </div>
                 </div>
                 <div class="col-span-4 min-w-0">
-                    <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="collateralRedemptionLabel">${t(lang, 'collateralRedemptionLabel')}</label>
+                    <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderRedemption" data-lang-title="collateralRedemptionLabel" title="${t(lang, 'collateralRedemptionLabel')}">${t(lang, 'colHeaderRedemption')}</label>
                     <div class="input-group h-10 px-2 flex items-center">
                         <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-redemption autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="90,000" aria-label="${t(lang, 'collateralRedemptionLabel')}" title="${t(lang, 'collateralRedemptionLabel')}">
                     </div>
                 </div>
                 <div class="col-span-3 min-w-0">
-                    <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderRate">${t(lang, 'colHeaderRate')}</label>
+                    <label class="block text-[10.5px] sm:text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1 whitespace-nowrap truncate" data-lang-key="colHeaderRate" data-lang-title="collateralRateLabel" title="${t(lang, 'collateralRateLabel')}">${t(lang, 'colHeaderRate')}</label>
                     <div class="input-group h-10 px-2 flex items-center">
-                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-rate p-0 text-center" data-id="${cd.id}" placeholder="19.0" aria-label="${t(lang, 'colHeaderRate')}" title="${t(lang, 'colHeaderRate')}">
+                        <input type="text" inputmode="decimal" class="text-input text-xs sm:text-sm font-semibold select-text ss-cd-rate autofit-input p-0 text-center tracking-tight" data-id="${cd.id}" data-autofit="true" data-autofit-max="14" data-autofit-min="10.5" placeholder="19.0" aria-label="${t(lang, 'colHeaderRate')}" title="${t(lang, 'colHeaderRate')}">
                     </div>
                 </div>
             </div>
@@ -491,13 +493,16 @@ function renderSsCd1List(newIdToAnimate = null) {
         }
 
         if (rateInput) {
+            adjustAmountFontSize(rateInput);
             rateInput.addEventListener('input', (e) => {
                 if (typeof validateRateInput === 'function') validateRateInput(e.target);
+                adjustAmountFontSize(e.target);
                 cd.rate = e.target.value;
                 ssAutoFillLoanRate();
             });
             rateInput.addEventListener('blur', (e) => {
                 if (typeof formatRateInputBlur === 'function') formatRateInputBlur(e.target);
+                adjustAmountFontSize(e.target);
                 cd.rate = e.target.value;
                 ssAutoFillLoanRate();
             });
@@ -1864,6 +1869,7 @@ function printSelfSufficientOffer() {
 }
 
 // Expose globals for external module coordination
+window.initSelfSufficient = initSelfSufficient;
 window.renderSsCd1List = renderSsCd1List;
 window.updateSelfSufficient = updateSelfSufficient;
 window.updateTenorAdvisoryAndMatchButton = updateTenorAdvisoryAndMatchButton;
@@ -1873,3 +1879,14 @@ window.ssUpdateLoanEndDateDisplay = ssUpdateLoanEndDateDisplay;
 window.copySelfSufficientOffer = copySelfSufficientOffer;
 window.generateSelfSufficientHtml = generateSelfSufficientHtml;
 window.printSelfSufficientOffer = printSelfSufficientOffer;
+window.resetSelfSufficient = resetSelfSufficient;
+
+window.SelfSufficientManager = {
+    init: initSelfSufficient,
+    update: updateSelfSufficient,
+    reset: resetSelfSufficient,
+    renderCd1List: renderSsCd1List,
+    copyOffer: copySelfSufficientOffer,
+    printOffer: printSelfSufficientOffer
+};
+})();

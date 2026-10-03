@@ -47,7 +47,7 @@ Loan-Calculator/
 
 ## 3. Script Loading Sequence (`index.html`)
 
-Scripts must load and execute in this specific order to satisfy dependency chains:
+Scripts must load and execute in this specific order to satisfy dependency chains (all with `defer`):
 
 1. `js/version.js` — Defines `self.APP_VERSION` for cache and UI.
 2. `js/translations.js` — Provides global `txt` dictionary and `t(lang, key)` localization function.
@@ -55,10 +55,13 @@ Scripts must load and execute in this specific order to satisfy dependency chain
 4. `js/ui.js` — UI state tools, radial chart rendering, theme switching, `ScrollLock`, toast banners.
 5. `js/dateinput.js` — Custom segmented date input logic.
 6. `js/datepicker.js` — Pop-up calendar picker widget.
-7. `js/earlysettlement.js` — Module for loan payoff & accrued interest calculations.
-8. `js/selfsufficient.js` — Module for Certificate of Deposit (CD) investment optimization.
-9. `js/export.js` — Module for Excel generation and print report rendering.
-10. `js/app.js` — Core application bootstrap: initializes state, connects listeners, bridges modules.
+7. `js/collaterals.js` — Multi-collateral cards, CD rows, cashflow warnings & self-covering loan amount.
+8. `js/earlysettlement.js` — Module for loan payoff & accrued interest calculations.
+9. `js/selfsufficient.js` — Module for Certificate of Deposit (CD) investment optimization.
+10. `js/history.js` — LocalStorage persistence, history modal rendering & calculation restore.
+11. `js/export.js` — Module for Excel generation and print report rendering.
+12. `js/app.js` — Core application bootstrap: initializes state, connects listeners, bridges modules.
+
 
 ---
 
@@ -90,6 +93,27 @@ This keeps internal logic isolated while enabling clean access to the reactive `
 - When opening an accordion: set `maxHeight = element.scrollHeight + 'px'`. Once transitioned, set `maxHeight = 'none'`.
 - When closing an accordion: **never** animate from `'none'`. First set `element.style.maxHeight = element.scrollHeight + 'px'`, force reflow (`void element.offsetHeight`), then set `maxHeight = '0px'`.
 
+### 4.5 Developer Facade (`window.LoanCalc`)
+For rapid debugging and onboarding in browser DevTools without breaking vanilla desktop execution:
+```javascript
+// Access state snapshot
+LoanCalc.getState();
+
+// Inspect active environment & diagnostics
+LoanCalc.diagnostics(); // { version, lang, dir, theme, activeKey, loanType, ... }
+
+// Invoke core calculators directly
+LoanCalc.logic.calculateLoan({ amount: 100000, rate: 10, period: 12 }, 'installment', 1);
+
+// Programmatic calculation trigger
+LoanCalc.calculate();
+```
+
+### 4.6 RTL/LTR Architecture & `!important` Policy
+- **Date Inputs Mirroring:** Date inputs (`DD/MM/YYYY`) must maintain Latin character sequence (`direction: ltr`) even when Arabic locale (`dir="rtl"`) is active, but calendar picker icons must mirror to the opposite edge. Specific overrides in `app.css` intentionally use `!important` to supersede Tailwind's physical utility classes (`pr-10`, `left-0`, etc.). **Do not remove these overrides without thoroughly checking Arabic RTL layout.**
+- **Writing New Styles:** Always prefer **CSS Logical Properties** (`padding-inline-start`, `margin-inline-end`, `inset-inline-start`) instead of physical directions (`padding-left`, `margin-right`, `left`). This ensures components automatically mirror for RTL without requiring `!important` overrides.
+- **Print Styles:** Rules in `js/export.js` and `app.css` under `@media print` legitimately use `!important` to force browser print engines to produce clean, high-contrast, black-and-white documents without background interference.
+
 ---
 
 ## 5. Testing & Verification
@@ -100,3 +124,4 @@ The project includes built-in browser-based test harnesses:
 
 To run tests:
 Simply double-click or open `js/logic.test.html` and `js/ui.test.html` in any modern web browser.
+
