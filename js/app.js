@@ -783,17 +783,14 @@
                     overlay.style.cssText = `
                         position: fixed; inset: 0; z-index: ${Z_INDEX.OVERLAY};
                         pointer-events: none; background: ${oldBg};
-                        opacity: 1; transition: opacity 0.5s ease-in-out;
+                        opacity: 1; transition: opacity 0.3s ease-in-out;
                     `;
                     document.body.appendChild(overlay);
                     void overlay.offsetHeight;
-                    document.body.classList.add('preload');
                     AppState.theme = newTheme;
                     localStorage.setItem('theme', AppState.theme);
                     if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, false);
                     updateThemeMenuState(AppState.theme);
-                    void document.body.offsetHeight;
-                    document.body.classList.remove('preload');
                     requestAnimationFrame(() => {
                         overlay.style.opacity = '0';
                         overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
@@ -801,7 +798,6 @@
                     finalize();
                 } else {
                     try {
-                        // Set CSS custom properties for the keyframe animations BEFORE starting
                         const rect = themeBtn.getBoundingClientRect();
                         const x = rect.left + rect.width / 2;
                         const y = rect.top + rect.height / 2;
@@ -813,20 +809,30 @@
                         docEl.style.setProperty('--vt-radius', `${endRadius}px`);
 
                         docEl.classList.add('view-transition-active');
-                        docEl.classList.add('preload');
 
-                        // Minimal callback — CSS keyframes handle the animation automatically
-                        // Pass skipChart=true to avoid DOM churn/reflow during transition snapshot
+                        // Pass skipChart=true to avoid DOM churn during snapshot
+                        // Pass skipMetaTheme=true to synchronize status bar with transition.ready
                         const transition = document.startViewTransition(() => {
                             AppState.theme = newTheme;
                             localStorage.setItem('theme', AppState.theme);
-                            if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, true);
+                            if (typeof applyTheme === 'function') applyTheme(AppState.theme, AppState.lastRes, true, true);
                             updateThemeMenuState(AppState.theme);
-                            void docEl.offsetHeight;
                         });
 
+                        const updateStatusColor = () => {
+                            const metaColor = document.getElementById('meta-theme-color');
+                            if (metaColor) {
+                                metaColor.setAttribute('content', isNewDark ? '#020617' : '#f9fafb');
+                            }
+                        };
+
+                        if (transition && transition.ready) {
+                            transition.ready.then(updateStatusColor).catch(updateStatusColor);
+                        } else {
+                            updateStatusColor();
+                        }
+
                         transition.finished.then(() => {
-                            docEl.classList.remove('preload');
                             docEl.classList.remove('view-transition-active');
                             docEl.style.removeProperty('--vt-x');
                             docEl.style.removeProperty('--vt-y');

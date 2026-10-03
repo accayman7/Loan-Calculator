@@ -226,7 +226,7 @@ function initTheme(lastRes) {
     ensureDropdownFocusStyles();
 }
 
-function applyTheme(themeMode, lastRes, skipChart = false) {
+function applyTheme(themeMode, lastRes, skipChart = false, skipMetaTheme = false) {
     const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const shouldBeDark = themeMode === 'dark' || (themeMode === 'system' && isSystemDark);
 
@@ -234,10 +234,14 @@ function applyTheme(themeMode, lastRes, skipChart = false) {
 
     if (shouldBeDark) {
         document.documentElement.classList.add('dark');
-        document.getElementById('meta-theme-color')?.setAttribute('content', '#020617');
+        if (!skipMetaTheme) {
+            document.getElementById('meta-theme-color')?.setAttribute('content', '#020617');
+        }
     } else {
         document.documentElement.classList.remove('dark');
-        document.getElementById('meta-theme-color')?.setAttribute('content', '#f9fafb');
+        if (!skipMetaTheme) {
+            document.getElementById('meta-theme-color')?.setAttribute('content', '#f9fafb');
+        }
     }
 
     if (!skipChart && lastRes && lastRes.P) {
