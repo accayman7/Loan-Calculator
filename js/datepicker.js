@@ -1,6 +1,7 @@
-// js/datepicker.js - Custom Scroll Wheel Date Picker
-// Replaces native mobile calendar with a touch-friendly wheel picker
-// v2.0 - Major refactoring: AbortController cleanup, accessibility, pointer events
+// js/datepicker.js - Hybrid date picker
+// Mobile: calendar grid by default, tap the month/year header to switch to a scroll wheel.
+// Desktop: calendar popup with typed input.
+// v3.0 - Hybrid mobile picker (builds on v2.0: AbortController cleanup, accessibility, pointer events)
 
 (function () {
     'use strict';
@@ -117,6 +118,8 @@
             clearDate: currentLang === 'ar' ? 'مسح' : 'Clear',
             prevMonth: currentLang === 'ar' ? 'الشهر السابق' : 'Previous month',
             nextMonth: currentLang === 'ar' ? 'الشهر التالي' : 'Next month',
+            switchToWheel: currentLang === 'ar' ? 'اختر الشهر والسنة' : 'Choose month and year',
+            switchToCalendar: currentLang === 'ar' ? 'عرض التقويم' : 'Show calendar',
             invalidDateHint: currentLang === 'ar' ? 'تاريخ غير صحيح. استخدم يوم/شهر/سنة.' : 'Invalid date. Use DD/MM/YYYY.',
             dateRangeHint: currentLang === 'ar' ? 'التاريخ يجب أن يكون بين {min} و {max}.' : 'Date must be between {min} and {max}.'
         };
@@ -279,20 +282,35 @@
             <div class="date-picker-title-bar">
                 <span class="date-picker-title" id="date-picker-title" aria-live="polite"></span>
             </div>
+            <div class="mdp-nav" id="mdp-nav" data-view="calendar" dir="ltr">
+                <button type="button" class="mdp-nav-btn" id="mdp-prev" aria-label="${getTranslation('prevMonth')}">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <button type="button" class="mdp-view-toggle" id="mdp-view-toggle" aria-expanded="false" aria-label="${getTranslation('switchToWheel')}">
+                    <span id="mdp-nav-text"></span>
+                    <svg class="mdp-chevron" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+                </button>
+                <button type="button" class="mdp-nav-btn" id="mdp-next" aria-label="${getTranslation('nextMonth')}">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
             <div class="date-picker-body">
-                <div class="date-picker-highlight" aria-hidden="true"></div>
-                <div class="date-picker-columns ${isRTL ? 'rtl' : 'ltr'}">
-                    <div class="date-picker-column" id="col-dayname" data-type="dayname" tabindex="-1" role="status" aria-label="${getTranslation('lblDayOfWeek')}">
-                        <div class="date-picker-scroll" id="scroll-dayname"></div>
-                    </div>
-                    <div class="date-picker-column" id="col-day" data-type="day" tabindex="0" role="listbox" aria-label="${getTranslation('lblDay')}">
-                        <div class="date-picker-scroll" id="scroll-day"></div>
-                    </div>
-                    <div class="date-picker-column" id="col-month" data-type="month" tabindex="0" role="listbox" aria-label="${getTranslation('lblMonth')}">
-                        <div class="date-picker-scroll" id="scroll-month"></div>
-                    </div>
-                    <div class="date-picker-column" id="col-year" data-type="year" tabindex="0" role="listbox" aria-label="${getTranslation('lblYear')}">
-                        <div class="date-picker-scroll" id="scroll-year"></div>
+                <div class="mdp-calendar-view" id="mdp-calendar-view" dir="ltr">
+                    <div class="mdp-weekdays" id="mdp-weekdays"></div>
+                    <div class="mdp-grid" id="mdp-grid" role="grid"></div>
+                </div>
+                <div class="mdp-wheel-view" id="mdp-wheel-view" hidden>
+                    <div class="date-picker-highlight" aria-hidden="true"></div>
+                    <div class="date-picker-columns ${isRTL ? 'rtl' : 'ltr'}">
+                        <div class="date-picker-column" id="col-day" data-type="day" tabindex="0" role="listbox" aria-label="${getTranslation('lblDay')}">
+                            <div class="date-picker-scroll" id="scroll-day"></div>
+                        </div>
+                        <div class="date-picker-column" id="col-month" data-type="month" tabindex="0" role="listbox" aria-label="${getTranslation('lblMonth')}">
+                            <div class="date-picker-scroll" id="scroll-month"></div>
+                        </div>
+                        <div class="date-picker-column" id="col-year" data-type="year" tabindex="0" role="listbox" aria-label="${getTranslation('lblYear')}">
+                            <div class="date-picker-scroll" id="scroll-year"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -308,6 +326,18 @@
         backdrop.addEventListener('click', (e) => {
             if (e.target === backdrop) closePicker(false);
         });
+
+        // Prevent background scrolling while the mobile modal is open
+        backdrop.addEventListener('touchmove', (e) => {
+            if (e.target === backdrop) {
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
+            const isScrollable = e.target.closest('.date-picker-column');
+            if (!isScrollable && e.cancelable) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         document.getElementById('date-picker-cancel').addEventListener('click', () => closePicker(false));
         document.getElementById('date-picker-confirm').addEventListener('click', () => closePicker(true));
@@ -337,7 +367,9 @@
         // Focus trap: Tab cycles within modal
         if (e.key === 'Tab') {
             const modal = document.getElementById('date-picker-modal');
-            const focusables = modal.querySelectorAll('button, [tabindex="0"]');
+            const focusables = Array.from(modal.querySelectorAll('button, [tabindex="0"]'))
+                .filter(el => !el.disabled && !el.closest('[hidden]'));
+            if (focusables.length === 0) return;
             const first = focusables[0];
             const last = focusables[focusables.length - 1];
 
@@ -501,6 +533,7 @@
         }
 
         function endInteractionAndSnap() {
+            if (signal.aborted) return;
             isInteracting = false;
 
             const h = getItemHeight(columnId);
@@ -699,34 +732,6 @@
     // COLUMN UPDATE FUNCTIONS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function updateDayNameColumn() {
-        const scrollEl = document.getElementById('scroll-dayname');
-        if (!scrollEl) return;
-
-        const dayName = getDayName(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-        scrollEl.innerHTML = '';
-
-        const paddingCount = Math.floor(VISIBLE_ITEMS / 2);
-        for (let i = 0; i < paddingCount; i++) {
-            const padItem = document.createElement('div');
-            padItem.className = 'date-picker-item padding';
-            scrollEl.appendChild(padItem);
-        }
-
-        const itemEl = document.createElement('div');
-        itemEl.className = 'date-picker-item selected-static';
-        itemEl.textContent = dayName;
-        scrollEl.appendChild(itemEl);
-
-        for (let i = 0; i < paddingCount; i++) {
-            const padItem = document.createElement('div');
-            padItem.className = 'date-picker-item padding';
-            scrollEl.appendChild(padItem);
-        }
-
-        scrollEl.parentElement.style.overflow = 'hidden';
-    }
-
     function updateDayColumn() {
         const year = selectedDate.getFullYear();
         const month = selectedDate.getMonth();
@@ -751,7 +756,6 @@
         const scrollEl = document.getElementById('scroll-day');
         populateColumn(scrollEl, days, currentDay - 1, (value) => {
             selectedDate.setDate(value);
-            updateDayNameColumn();
             updateTitle();
         });
     }
@@ -784,7 +788,6 @@
             selectedDate = clampDateToRange(selectedDate);
 
             updateDayColumn();
-            updateDayNameColumn();
             updateTitle();
         });
     }
@@ -817,7 +820,6 @@
             selectedDate = clampDateToRange(selectedDate);
 
             updateDayColumn();
-            updateDayNameColumn();
             updateTitle();
         });
     }
@@ -831,6 +833,7 @@
             const dayName = getDayName(y, selectedDate.getMonth(), selectedDate.getDate());
             titleEl.textContent = `${dayName}, ${d}/${m}/${y}`;
         }
+        updateMobileNavLabel();
     }
 
     function selectToday() {
@@ -838,12 +841,284 @@
         // #3: Clamp to range if needed
         today = clampDateToRange(today);
         selectedDate = today;
+        mobileViewYear = selectedDate.getFullYear();
+        mobileViewMonth = selectedDate.getMonth();
+        mobileActiveCellDate = new Date(selectedDate);
 
-        populateYearColumn();
-        populateMonthColumn();
-        updateDayColumn();
-        updateDayNameColumn();
+        if (mobileView === 'wheel') {
+            populateYearColumn();
+            populateMonthColumn();
+            updateDayColumn();
+        } else {
+            renderMobileCalendar();
+        }
         updateTitle();
+        if (mobileView !== 'wheel') focusActiveMobileTarget();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MOBILE HYBRID PICKER - calendar grid view + wheel view
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    let mobileView = 'calendar';          // 'calendar' | 'wheel'
+    let mobileViewYear = 2026;            // year of the month shown in the grid
+    let mobileViewMonth = 0;              // month shown in the grid
+    let mobileActiveCellDate = null;      // keyboard/roving-focus cell
+    let mobileCalAbort = null;            // AbortController for grid/nav listeners
+
+    function isSameDay(a, b) {
+        return !!a && !!b &&
+            a.getFullYear() === b.getFullYear() &&
+            a.getMonth() === b.getMonth() &&
+            a.getDate() === b.getDate();
+    }
+
+    function renderMobileCalendar(direction = null) {
+        const gridEl = document.getElementById('mdp-grid');
+        const weekdaysEl = document.getElementById('mdp-weekdays');
+        if (!gridEl || !weekdaysEl) return;
+
+        const monthNames = getMonthNames(currentLang);
+        const dayNamesFull = getDayNamesFull(currentLang);
+        const dayNamesShort = getDayNamesShort(currentLang);
+        const firstDayOfWeek = getFirstDayOfWeek(currentLang);
+
+        let weekdaysHTML = '';
+        for (let i = 0; i < 7; i++) {
+            weekdaysHTML += `<div class="mdp-weekday" aria-hidden="true">${dayNamesShort[(firstDayOfWeek + i) % 7]}</div>`;
+        }
+        weekdaysEl.innerHTML = weekdaysHTML;
+
+        const cells = buildCalendarGrid(mobileViewYear, mobileViewMonth, firstDayOfWeek);
+
+        // Ensure exactly one cell is tabbable: the active one, else selected, else first enabled in-month day
+        let tabbableIndex = cells.findIndex(c => isSameDay(c.date, mobileActiveCellDate));
+        if (tabbableIndex === -1) tabbableIndex = cells.findIndex(c => c.isSelected);
+        if (tabbableIndex === -1) tabbableIndex = cells.findIndex(c => c.isInMonth && !c.isDisabled);
+
+        let html = '';
+        cells.forEach((cell, i) => {
+            const classes = ['mdp-day'];
+            if (!cell.isInMonth) classes.push('outside-month');
+            if (cell.isToday) classes.push('today');
+            if (cell.isSelected) classes.push('selected');
+            if (cell.isDisabled) classes.push('disabled');
+            const label = `${dayNamesFull[cell.date.getDay()]}, ${cell.day} ${monthNames[cell.date.getMonth()]} ${cell.date.getFullYear()}`;
+            html += `<div class="${classes.join(' ')}" role="gridcell"
+                data-y="${cell.date.getFullYear()}" data-m="${cell.date.getMonth()}" data-d="${cell.day}"
+                tabindex="${i === tabbableIndex ? '0' : '-1'}"
+                aria-label="${label}"
+                aria-selected="${cell.isSelected}"
+                ${cell.isDisabled ? 'aria-disabled="true"' : ''}>${cell.day}</div>`;
+        });
+        gridEl.innerHTML = html;
+
+        // Subtle slide animation when changing month (CSS honours prefers-reduced-motion)
+        gridEl.classList.remove('mdp-slide-next', 'mdp-slide-prev');
+        if (direction === 'next' || direction === 'prev') {
+            gridEl.offsetWidth; // restart animation
+            gridEl.classList.add(`mdp-slide-${direction}`);
+        }
+
+        updateMobileNavLabel();
+    }
+
+    function updateMobileNavLabel() {
+        const textEl = document.getElementById('mdp-nav-text');
+        const toggleEl = document.getElementById('mdp-view-toggle');
+        const navEl = document.getElementById('mdp-nav');
+        if (!textEl || !toggleEl || !navEl) return;
+
+        const monthNames = getMonthNames(currentLang);
+        const isWheel = mobileView === 'wheel';
+        const y = isWheel ? selectedDate.getFullYear() : mobileViewYear;
+        const m = isWheel ? selectedDate.getMonth() : mobileViewMonth;
+
+        textEl.textContent = `${monthNames[m]} ${y}`;
+        toggleEl.setAttribute('aria-expanded', isWheel ? 'true' : 'false');
+        toggleEl.setAttribute('aria-label', getTranslation(isWheel ? 'switchToCalendar' : 'switchToWheel'));
+        navEl.dataset.view = isWheel ? 'wheel' : 'calendar';
+
+        // Disable arrows at the edges of the allowed range
+        const prevBtn = document.getElementById('mdp-prev');
+        const nextBtn = document.getElementById('mdp-next');
+        if (prevBtn && nextBtn) {
+            const prevEnd = new Date(mobileViewYear, mobileViewMonth, 0);
+            const nextStart = new Date(mobileViewYear, mobileViewMonth + 1, 1);
+            prevBtn.disabled = (mobileViewYear === YEAR_RANGE[0] && mobileViewMonth === 0) ||
+                !!(minDate && prevEnd < minDate);
+            nextBtn.disabled = (mobileViewYear === YEAR_RANGE[1] && mobileViewMonth === 11) ||
+                !!(maxDate && nextStart > maxDate);
+        }
+    }
+
+    function focusActiveMobileTarget() {
+        const target = mobileView === 'wheel'
+            ? document.getElementById('col-day')
+            : document.querySelector('#mdp-grid .mdp-day[tabindex="0"]');
+        if (!target) return;
+        try { target.focus({ preventScroll: true }); } catch (_) { target.focus(); }
+    }
+
+    function shiftMobileMonth(delta) {
+        const next = new Date(mobileViewYear, mobileViewMonth + delta, 1);
+        const y = next.getFullYear();
+        if (y < YEAR_RANGE[0] || y > YEAR_RANGE[1]) return;
+        if (delta < 0 && minDate && new Date(y, next.getMonth() + 1, 0) < minDate) return;
+        if (delta > 0 && maxDate && next > maxDate) return;
+
+        mobileViewYear = y;
+        mobileViewMonth = next.getMonth();
+
+        // Keep roving focus inside the new month
+        const day = Math.min((mobileActiveCellDate || selectedDate).getDate(), getDaysInMonth(mobileViewYear, mobileViewMonth));
+        mobileActiveCellDate = new Date(mobileViewYear, mobileViewMonth, day);
+
+        renderMobileCalendar(delta > 0 ? 'next' : 'prev');
+        if (typeof haptic !== 'undefined') haptic('light');
+    }
+
+    function selectMobileDate(date) {
+        if (!isDateInRange(date.getFullYear(), date.getMonth(), date.getDate())) return;
+
+        const viewStart = new Date(mobileViewYear, mobileViewMonth, 1);
+        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+        const direction = monthStart > viewStart ? 'next' : (monthStart < viewStart ? 'prev' : null);
+
+        selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        mobileActiveCellDate = new Date(selectedDate);
+        mobileViewYear = selectedDate.getFullYear();
+        mobileViewMonth = selectedDate.getMonth();
+
+        renderMobileCalendar(direction);
+        updateTitle();
+        focusActiveMobileTarget();
+        if (typeof haptic !== 'undefined') haptic('light');
+    }
+
+    function moveMobileActive(days, months) {
+        const base = new Date(mobileActiveCellDate || selectedDate);
+        let target;
+        if (months) {
+            target = new Date(base.getFullYear(), base.getMonth() + months, 1);
+            target.setDate(Math.min(base.getDate(), getDaysInMonth(target.getFullYear(), target.getMonth())));
+        } else {
+            target = new Date(base.getFullYear(), base.getMonth(), base.getDate() + days);
+        }
+        target = clampDateToRange(target);
+        const ty = target.getFullYear();
+        if (ty < YEAR_RANGE[0] || ty > YEAR_RANGE[1]) return;
+
+        const viewStart = new Date(mobileViewYear, mobileViewMonth, 1);
+        const targetMonthStart = new Date(ty, target.getMonth(), 1);
+        const direction = targetMonthStart > viewStart ? 'next' : (targetMonthStart < viewStart ? 'prev' : null);
+
+        mobileActiveCellDate = target;
+        mobileViewYear = ty;
+        mobileViewMonth = target.getMonth();
+        renderMobileCalendar(direction);
+        focusActiveMobileTarget();
+    }
+
+    function setMobileView(view, opts = {}) {
+        if (view === mobileView) return;
+        const calEl = document.getElementById('mdp-calendar-view');
+        const wheelEl = document.getElementById('mdp-wheel-view');
+        if (!calEl || !wheelEl) return;
+
+        mobileView = view;
+
+        if (view === 'wheel') {
+            calEl.hidden = true;
+            wheelEl.hidden = false;
+            // Columns measure item height, so they must be built AFTER the wheel is visible
+            populateYearColumn();
+            populateMonthColumn();
+            updateDayColumn();
+        } else {
+            columnAbortControllers.forEach((controller) => controller.abort());
+            columnAbortControllers.clear();
+            columnItemHeights.clear();
+            wheelEl.hidden = true;
+            calEl.hidden = false;
+            mobileViewYear = selectedDate.getFullYear();
+            mobileViewMonth = selectedDate.getMonth();
+            mobileActiveCellDate = new Date(selectedDate);
+            renderMobileCalendar();
+        }
+
+        updateMobileNavLabel();
+        if (!opts.silent && typeof haptic !== 'undefined') haptic('light');
+        if (!opts.noFocus) focusActiveMobileTarget();
+    }
+
+    function attachMobileCalendarListeners(signal) {
+        const gridEl = document.getElementById('mdp-grid');
+        const toggleEl = document.getElementById('mdp-view-toggle');
+        const prevBtn = document.getElementById('mdp-prev');
+        const nextBtn = document.getElementById('mdp-next');
+        if (!gridEl || !toggleEl || !prevBtn || !nextBtn) return;
+
+        toggleEl.addEventListener('click', () => {
+            setMobileView(mobileView === 'wheel' ? 'calendar' : 'wheel');
+        }, { signal });
+
+        prevBtn.addEventListener('click', () => { if (mobileView === 'calendar') shiftMobileMonth(-1); }, { signal });
+        nextBtn.addEventListener('click', () => { if (mobileView === 'calendar') shiftMobileMonth(1); }, { signal });
+
+        // Swipe horizontally to change month. A swipe must not also register as a tap.
+        let swipeStartX = 0, swipeStartY = 0, swipeTracking = false, swallowClick = false;
+
+        gridEl.addEventListener('pointerdown', (e) => {
+            swipeTracking = true;
+            swipeStartX = e.clientX;
+            swipeStartY = e.clientY;
+        }, { signal });
+
+        gridEl.addEventListener('pointerup', (e) => {
+            if (!swipeTracking) return;
+            swipeTracking = false;
+            const dx = e.clientX - swipeStartX;
+            const dy = e.clientY - swipeStartY;
+            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                swallowClick = true;
+                setTimeout(() => { swallowClick = false; }, 0);
+                shiftMobileMonth(dx < 0 ? 1 : -1); // grid is always LTR
+            }
+        }, { signal });
+
+        gridEl.addEventListener('pointercancel', () => { swipeTracking = false; }, { signal });
+
+        gridEl.addEventListener('click', (e) => {
+            if (swallowClick) return;
+            const cell = e.target.closest('.mdp-day');
+            if (!cell || cell.classList.contains('disabled')) return;
+            selectMobileDate(new Date(+cell.dataset.y, +cell.dataset.m, +cell.dataset.d));
+        }, { signal });
+
+        gridEl.addEventListener('keydown', (e) => {
+            const base = mobileActiveCellDate || selectedDate;
+            switch (e.key) {
+                case 'ArrowLeft': moveMobileActive(-1, 0); break;
+                case 'ArrowRight': moveMobileActive(1, 0); break;
+                case 'ArrowUp': moveMobileActive(-7, 0); break;
+                case 'ArrowDown': moveMobileActive(7, 0); break;
+                case 'PageUp': moveMobileActive(0, -1); break;
+                case 'PageDown': moveMobileActive(0, 1); break;
+                case 'Home': moveMobileActive(-base.getDay(), 0); break;
+                case 'End': moveMobileActive(6 - base.getDay(), 0); break;
+                case ' ':
+                    selectMobileDate(base);
+                    break;
+                case 'Enter':
+                    selectMobileDate(base);
+                    closePicker(true);
+                    break;
+                default: return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+        }, { signal });
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1599,10 +1874,10 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // MOBILE WHEEL PICKER - openDatePicker (renamed internally for mode selection)
+    // MOBILE HYBRID PICKER (calendar grid + wheel) - called by openDatePicker
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function openMobileWheelPicker(inputEl, lang, callback, options = {}) {
+    function openMobileHybridPicker(inputEl, lang, callback, options = {}) {
         // Ensure any active text input is blurred so mobile virtual keyboard dismisses
         if (document.activeElement && typeof document.activeElement.blur === 'function' &&
             (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
@@ -1641,30 +1916,31 @@
             document.getElementById('date-picker-cancel').textContent = getTranslation('cancelDate');
             document.getElementById('date-picker-confirm').textContent = getTranslation('confirmDate');
             document.getElementById('date-picker-today').textContent = getTranslation('todayDate');
+            document.getElementById('mdp-prev').setAttribute('aria-label', getTranslation('prevMonth'));
+            document.getElementById('mdp-next').setAttribute('aria-label', getTranslation('nextMonth'));
             const columnsEl = document.querySelector('.date-picker-columns');
             const isRTL = document.documentElement.dir === 'rtl';
             columnsEl.className = `date-picker-columns ${isRTL ? 'rtl' : 'ltr'}`;
         }
 
-        populateYearColumn();
-        populateMonthColumn();
-        updateDayColumn();
-        updateDayNameColumn();
+        // Hybrid picker setup: start on the calendar (or wheel if requested)
+        mobileViewYear = selectedDate.getFullYear();
+        mobileViewMonth = selectedDate.getMonth();
+        mobileActiveCellDate = new Date(selectedDate);
+
+        if (mobileCalAbort) mobileCalAbort.abort();
+        mobileCalAbort = new AbortController();
+        attachMobileCalendarListeners(mobileCalAbort.signal);
+
         updateTitle();
+        mobileView = null; // force setMobileView to apply
+        setMobileView(options.mobileStartView === 'wheel' ? 'wheel' : 'calendar', { silent: true, noFocus: true });
 
         pickerModal.offsetHeight;
         pickerModal.classList.add('visible');
         isPickerOpen = true;
 
-        if (typeof ScrollLock !== 'undefined') ScrollLock.enable();
-        else document.body.classList.add('scroll-lock');
-
-        requestAnimationFrame(() => {
-            const dayCol = document.getElementById('col-day');
-            if (dayCol) {
-                try { dayCol.focus({ preventScroll: true }); } catch (_) { dayCol.focus(); }
-            }
-        });
+        requestAnimationFrame(() => focusActiveMobileTarget());
 
         if (typeof BackHandler !== 'undefined') {
             BackHandler.push('date-picker', () => closePicker(false, true));
@@ -1699,7 +1975,7 @@
         if (useDesktop) {
             openDesktopCalendar(inputEl, lang, callback, options);
         } else {
-            openMobileWheelPicker(inputEl, lang, callback, options);
+            openMobileHybridPicker(inputEl, lang, callback, options);
         }
     }
 
@@ -1709,16 +1985,17 @@
         pickerModal.classList.remove('visible');
         isPickerOpen = false;
 
-        // Restore scrollbar
-        setTimeout(() => {
-            if (typeof ScrollLock !== 'undefined') ScrollLock.disable();
-            else document.body.classList.remove('scroll-lock');
-        }, 300);
-
         // #1: Abort all column controllers to clean up listeners
         columnAbortControllers.forEach((controller) => controller.abort());
         columnAbortControllers.clear();
         columnItemHeights.clear();
+
+        // Hybrid picker: tear down calendar listeners and reset view state
+        if (mobileCalAbort) {
+            mobileCalAbort.abort();
+            mobileCalAbort = null;
+        }
+        mobileView = 'calendar';
 
         if (confirmed && onConfirmCallback) {
             // Fix #4: Final safety clamp on confirm

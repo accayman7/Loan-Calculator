@@ -137,6 +137,9 @@
             // 18. Arabic RTL Collateral Layout & Date Picker Right Alignment Test
             testArabicRTLCollateralAndDatePickerAlignment();
 
+            // 19. Hybrid Mobile Date Picker (calendar + wheel) Test
+            testHybridMobileDatePicker();
+
             displayTestResults();
         }
 
@@ -774,6 +777,110 @@
             UITestRunner.assertEqual(document.activeElement, testBtn, 'Closing date picker returns focus safely to the trigger button');
 
             testContainer.remove();
+        }
+
+        function testHybridMobileDatePicker() {
+            const container = document.createElement('div');
+            const input = document.createElement('input');
+            input.type = 'text';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            container.appendChild(input);
+            container.appendChild(btn);
+            document.body.appendChild(container);
+
+            const q = (sel) => document.querySelector(sel);
+            const dayCell = (n) => Array.from(document.querySelectorAll('#mdp-grid .mdp-day'))
+                .find(c => !c.classList.contains('outside-month') && c.textContent.trim() === String(n));
+            const open = (value, opts, cb) => {
+                input.value = value;
+                openDatePicker(input, 'en', cb || (() => {}), Object.assign({ forceMode: 'mobile', launcher: btn }, opts || {}));
+            };
+
+            // 19.1: Opens on the calendar grid with the wheel hidden
+            let result;
+            open('15/03/2026', {}, (d) => { result = d; });
+            UITestRunner.assertEqual(document.querySelectorAll('#mdp-grid .mdp-day').length, 42, 'Hybrid picker renders a 42-cell calendar grid');
+            UITestRunner.assertTrue(q('#mdp-wheel-view').hidden, 'Wheel view is hidden when picker opens');
+            UITestRunner.assertFalse(q('#mdp-calendar-view').hidden, 'Calendar view is visible when picker opens');
+            UITestRunner.assertTrue(q('#date-picker-title').textContent.includes('15/03/2026'), 'Title shows the date parsed from the input');
+            UITestRunner.assertTrue(dayCell(15).classList.contains('selected'), 'Input date is highlighted in the grid');
+            UITestRunner.assertEqual(q('#mdp-nav-text').textContent, 'March 2026', 'Header shows viewed month and year');
+
+            // 19.2: Tapping a day selects it without closing the picker
+            dayCell(20).click();
+            UITestRunner.assertTrue(isDatePickerOpen(), 'Tapping a day does not close the picker');
+            UITestRunner.assertTrue(q('#date-picker-title').textContent.includes('20/03/2026'), 'Tapping a day updates the title');
+
+            // 19.3: Month navigation
+            q('#mdp-next').click();
+            UITestRunner.assertEqual(q('#mdp-nav-text').textContent, 'April 2026', 'Next arrow moves to the next month');
+            q('#mdp-prev').click();
+            q('#mdp-prev').click();
+            UITestRunner.assertEqual(q('#mdp-nav-text').textContent, 'February 2026', 'Prev arrow moves to the previous month');
+
+            // 19.4: Confirm returns the tapped date, not the browsed month
+            q('#date-picker-confirm').click();
+            UITestRunner.assertTrue(result instanceof Date && result.getFullYear() === 2026 && result.getMonth() === 2 && result.getDate() === 20, 'Confirm returns the selected date (20 Mar 2026)');
+            UITestRunner.assertFalse(isDatePickerOpen(), 'Picker closes on confirm');
+
+            // 19.5: Year wrap Dec -> Jan
+            open('15/12/2026');
+            q('#mdp-next').click();
+            UITestRunner.assertEqual(q('#mdp-nav-text').textContent, 'January 2027', 'Next arrow wraps December to January of next year');
+
+            // 19.6: Switch to wheel and back keeps the selection
+            q('#mdp-view-toggle').click();
+            UITestRunner.assertFalse(q('#mdp-wheel-view').hidden, 'Header tap shows the wheel');
+            UITestRunner.assertTrue(q('#mdp-calendar-view').hidden, 'Header tap hides the calendar');
+            UITestRunner.assertEqual(q('#mdp-view-toggle').getAttribute('aria-expanded'), 'true', 'Toggle reports expanded state in wheel view');
+            UITestRunner.assertTrue(q('#scroll-year').querySelectorAll('[role="option"]').length > 0, 'Wheel columns are populated when wheel is shown');
+            UITestRunner.assertEqual(q('#col-dayname'), null, 'Read-only weekday column has been removed');
+            q('#mdp-view-toggle').click();
+            UITestRunner.assertFalse(q('#mdp-calendar-view').hidden, 'Second header tap returns to the calendar');
+            UITestRunner.assertEqual(q('#mdp-nav-text').textContent, 'December 2026', 'Returning to the calendar shows the selected month');
+            q('#date-picker-cancel').click();
+            UITestRunner.assertFalse(isDatePickerOpen(), 'Cancel closes the picker');
+
+            // 19.7: min/max constraints disable cells and edge arrows
+            open('15/03/2026', { minDate: '10/03/2026', maxDate: '20/03/2026' });
+            UITestRunner.assertTrue(dayCell(5).classList.contains('disabled'), 'Day before minDate is disabled');
+            UITestRunner.assertTrue(dayCell(25).classList.contains('disabled'), 'Day after maxDate is disabled');
+            UITestRunner.assertFalse(dayCell(12).classList.contains('disabled'), 'Day inside range is enabled');
+            UITestRunner.assertTrue(q('#mdp-prev').disabled, 'Prev arrow disabled at minDate month');
+            UITestRunner.assertTrue(q('#mdp-next').disabled, 'Next arrow disabled at maxDate month');
+            dayCell(5).click();
+            UITestRunner.assertTrue(q('#date-picker-title').textContent.includes('15/03/2026'), 'Tapping a disabled day does not change the selection');
+            q('#date-picker-cancel').click();
+
+            // 19.8: Cancel returns null
+            let cancelResult = 'unset';
+            open('15/03/2026', {}, (d) => { cancelResult = d; });
+            q('#date-picker-cancel').click();
+            UITestRunner.assertEqual(cancelResult, null, 'Cancel invokes callback with null');
+
+            // 19.9: Reopening many times does not stack listeners (one tap = one selection render)
+            for (let i = 0; i < 5; i++) {
+                open('15/03/2026');
+                q('#date-picker-cancel').click();
+            }
+            open('15/03/2026');
+            const gridEl = q('#mdp-grid');
+            const observer = new MutationObserver(() => {});
+            observer.observe(gridEl, { childList: true });
+            dayCell(21).click();
+            const records = observer.takeRecords();
+            observer.disconnect();
+            UITestRunner.assertEqual(records.length, 1, 'A single tap re-renders the grid once (no stacked listeners after reopen)');
+            q('#date-picker-cancel').click();
+
+            // 19.10: mobileStartView: 'wheel' opens straight on the wheel
+            open('15/03/2026', { mobileStartView: 'wheel' });
+            UITestRunner.assertFalse(q('#mdp-wheel-view').hidden, 'mobileStartView wheel opens on the wheel');
+            UITestRunner.assertTrue(q('#mdp-calendar-view').hidden, 'Calendar hidden when starting on wheel');
+            q('#date-picker-cancel').click();
+
+            container.remove();
         }
 
         function testLoanTypeSwitchAndFrequencyAccordionSynchronization() {

@@ -181,11 +181,14 @@ function autoFitInputText(input, maxFontSize = null, minFontSize = null) {
     const max = maxFontSize !== null ? maxFontSize : (parseFloat(input.dataset?.autofitMax) || 13);
     const min = minFontSize !== null ? minFontSize : (parseFloat(input.dataset?.autofitMin) || 10);
 
-    // Reset font size to measure at maxFontSize
-    input.style.fontSize = `${max}px`;
-
     const text = input.value || input.placeholder || '';
-    if (!text) return;
+    if (!text) {
+        const defaultSizeStr = `${max}px`;
+        if (input.style.fontSize !== defaultSizeStr) {
+            input.style.fontSize = defaultSizeStr;
+        }
+        return;
+    }
 
     // Calculate available horizontal space inside the input
     const style = window.getComputedStyle(input);
@@ -206,10 +209,12 @@ function autoFitInputText(input, maxFontSize = null, minFontSize = null) {
     ctx.font = `${fontWeight} ${max}px ${fontFamily}`;
 
     const textWidth = ctx.measureText(text).width;
-    if (textWidth > availWidth) {
-        const scale = availWidth / textWidth;
-        const fittedSize = Math.max(min, Math.floor(max * scale * 10) / 10);
-        input.style.fontSize = `${fittedSize}px`;
+    const targetSize = (textWidth > availWidth)
+        ? Math.max(min, Math.floor(max * (availWidth / textWidth) * 10) / 10)
+        : max;
+    const targetSizeStr = `${targetSize}px`;
+    if (input.style.fontSize !== targetSizeStr) {
+        input.style.fontSize = targetSizeStr;
     }
 }
 window.autoFitInputText = autoFitInputText;
