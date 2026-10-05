@@ -153,10 +153,10 @@
         const clean = str.replace(/\u200E/g, '');
         const parts = clean.split('/');
         if (parts.length !== 3) return null;
-        const d = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const y = parseInt(parts[2], 10);
-        if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+        const d = Number.parseInt(parts[0], 10);
+        const m = Number.parseInt(parts[1], 10) - 1;
+        const y = Number.parseInt(parts[2], 10);
+        if (Number.isNaN(d) || Number.isNaN(m) || Number.isNaN(y)) return null;
         if (y < 1000 || y > 9999) return null;
         const date = new Date(y, m, d);
         // Validate no rollover
@@ -916,7 +916,7 @@
         // Subtle slide animation when changing month (CSS honours prefers-reduced-motion)
         gridEl.classList.remove('mdp-slide-next', 'mdp-slide-prev');
         if (direction === 'next' || direction === 'prev') {
-            gridEl.offsetWidth; // restart animation
+            void gridEl.offsetWidth; // restart animation
             gridEl.classList.add(`mdp-slide-${direction}`);
         }
 
@@ -1358,7 +1358,7 @@
             currentView.classList.add(`anim-${direction}-exit`);
 
             // Force reflow
-            nextView.offsetWidth;
+            void nextView.offsetWidth;
 
             // Trigger animation
             requestAnimationFrame(() => {
@@ -1488,11 +1488,11 @@
             const option = e.target.closest('.dcal-dropdown-option');
             if (option) {
                 if (monthDropdown && monthDropdown.contains(option)) {
-                    desktopViewMonth = parseInt(option.dataset.value, 10);
+                    desktopViewMonth = Number.parseInt(option.dataset.value, 10);
                     renderDesktopCalendar('none');
                     closeDropdown(monthDropdown, monthTrigger);
                 } else if (yearDropdown && yearDropdown.contains(option)) {
-                    desktopViewYear = parseInt(option.dataset.value, 10);
+                    desktopViewYear = Number.parseInt(option.dataset.value, 10);
                     renderDesktopCalendar('none');
                     closeDropdown(yearDropdown, yearTrigger);
                 }
@@ -1860,7 +1860,7 @@
         if (typeof ScrollLock !== 'undefined') ScrollLock.enable();
         else document.body.classList.add('scroll-lock');
 
-        desktopModal.offsetHeight;
+        void desktopModal.offsetHeight;
         desktopModal.classList.add('visible');
         isPickerOpen = true;
 
@@ -1898,10 +1898,10 @@
             const rawVal = inputEl.value.replace(/\u200E/g, '');
             const parts = rawVal.split('/');
             if (parts.length === 3) {
-                const d = parseInt(parts[0], 10);
-                const m = parseInt(parts[1], 10) - 1;
-                const y = parseInt(parts[2], 10);
-                if (!isNaN(d) && !isNaN(m) && !isNaN(y) && isValidDate(y, m, d)) {
+                const d = Number.parseInt(parts[0], 10);
+                const m = Number.parseInt(parts[1], 10) - 1;
+                const y = Number.parseInt(parts[2], 10);
+                if (!Number.isNaN(d) && !Number.isNaN(m) && !Number.isNaN(y) && isValidDate(y, m, d)) {
                     parsedDate = new Date(y, m, d);
                 }
             }
@@ -1936,7 +1936,7 @@
         mobileView = null; // force setMobileView to apply
         setMobileView(options.mobileStartView === 'wheel' ? 'wheel' : 'calendar', { silent: true, noFocus: true });
 
-        pickerModal.offsetHeight;
+        void pickerModal.offsetHeight;
         pickerModal.classList.add('visible');
         isPickerOpen = true;
 

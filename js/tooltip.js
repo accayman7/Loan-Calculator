@@ -147,7 +147,7 @@
 
         if (!tipEl.classList.contains('is-open')) {
             if (supportsPopover) {
-                try { tipEl.showPopover(); } catch (_) { /* already open */ }
+                try { tipEl.showPopover(); } catch { /* already open */ }
             }
             tipEl.classList.add('is-open');
             tipEl.classList.remove('is-shown');
@@ -172,7 +172,7 @@
         if (!tipEl) return;
         tipEl.classList.remove('is-shown', 'is-open');
         if (supportsPopover) {
-            try { tipEl.hidePopover(); } catch (_) { /* already hidden */ }
+            try { tipEl.hidePopover(); } catch { /* already hidden */ }
         }
     }
 

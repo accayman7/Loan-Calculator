@@ -312,7 +312,7 @@ async function exportExcel() {
 
         const isAdvanced = document.getElementById('advanced-toggle')?.checked;
         if (isAdvanced) {
-            const adminVal = parseFloat(document.getElementById('admin-fees')?.value) || 0;
+            const adminVal = Number.parseFloat(document.getElementById('admin-fees')?.value) || 0;
             const fees = (res.P * adminVal) / 100;
             const netLoan = res.P - fees;
 
@@ -359,11 +359,11 @@ async function exportExcel() {
             }
 
             // Base row data
-            const rowData = [r.m, dateStr, parseFloat(r.bal.toFixed(2)), parseFloat(r.int.toFixed(2)), parseFloat(r.prin.toFixed(2)), parseFloat(r.rem.toFixed(2))];
+            const rowData = [r.m, dateStr, Number.parseFloat(r.bal.toFixed(2)), Number.parseFloat(r.int.toFixed(2)), Number.parseFloat(r.prin.toFixed(2)), Number.parseFloat(r.rem.toFixed(2))];
 
             // Add stamp column if stamps exist
             if (hasAnyStamps) {
-                rowData.push(r.hasStamp && r.stamp > 0 ? parseFloat(r.stamp.toFixed(2)) : '');
+                rowData.push(r.hasStamp && r.stamp > 0 ? Number.parseFloat(r.stamp.toFixed(2)) : '');
             }
 
             return rowData;

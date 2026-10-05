@@ -332,9 +332,9 @@ function validateDateInputAndSync(input, nativeInput, errorCallback, silent = fa
         return false;
     }
 
-    const d = parseInt(segments.day, 10);
-    const m = parseInt(segments.month, 10);
-    const y = parseInt(segments.year, 10);
+    const d = Number.parseInt(segments.day, 10);
+    const m = Number.parseInt(segments.month, 10);
+    const y = Number.parseInt(segments.year, 10);
 
     const lang = document.documentElement.lang || 'en';
 
@@ -390,9 +390,9 @@ function handleDateArrowKey(e, input, nativeInput) {
     if (!iso) {
         const segments = dateParseSegments(input.value);
         if (segments.day.length === 2 && segments.month.length === 2 && segments.year.length === 4) {
-            const d = parseInt(segments.day, 10);
-            const m = parseInt(segments.month, 10);
-            const y = parseInt(segments.year, 10);
+            const d = Number.parseInt(segments.day, 10);
+            const m = Number.parseInt(segments.month, 10);
+            const y = Number.parseInt(segments.year, 10);
             if (dateIsValid(d, m, y)) {
                 iso = dateToISO(d, m, y);
                 input.dataset.iso = iso;

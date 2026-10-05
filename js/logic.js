@@ -196,16 +196,16 @@ function solveRateNewton(P, N, M, freq = 1) {
         if (i <= 0.0000001) i = 0.0000001;
         let f = M * (1 - Math.pow(1 + i, -N)) / i - P;
         let df = (M / i) * (N * Math.pow(1 + i, -N - 1) / (1 + i) - (1 - Math.pow(1 + i, -N)) / i);
-        if (!isFinite(f) || !isFinite(df) || df === 0) break;
+        if (!Number.isFinite(f) || !Number.isFinite(df) || df === 0) break;
         let newI = i - f / df;
         if (Math.abs(newI - i) < 0.0000001) {
             let res = newI * annualMultiplier;
-            return (isFinite(res) && res > 0) ? res : null;
+            return (Number.isFinite(res) && res > 0) ? res : null;
         }
         i = newI;
     }
     let res = i * annualMultiplier;
-    return (isFinite(res) && res > 0) ? res : null;
+    return (Number.isFinite(res) && res > 0) ? res : null;
 }
 
 /**

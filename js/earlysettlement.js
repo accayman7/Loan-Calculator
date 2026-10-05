@@ -48,7 +48,7 @@ function getLoanPeriod() {
 }
 
 function dateToISOString(d) {
-    if (!d || !(d instanceof Date) || isNaN(d.getTime())) return '';
+    if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return '';
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
