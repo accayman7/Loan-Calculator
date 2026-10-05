@@ -321,7 +321,7 @@ function updateLangUI(lang) {
         radio.title = t(lang, 'calcField');
     });
 
-    // Info icon tooltips (custom CSS tooltip uses data-tooltip)
+    // Info icon tooltips (js/tooltip.js reads data-tooltip and live-updates if visible)
     document.querySelectorAll('[data-lang-tooltip]').forEach(el => {
         const key = el.dataset.langTooltip;
         el.dataset.tooltip = t(lang, key);

@@ -222,6 +222,9 @@ input:-webkit-autofill:active {
     text-overflow: clip !important;
     padding-left: 0.35rem !important;
     padding-right: 2.25rem !important;
+    /* Autofit shrinks font-size (14px vs 16px elsewhere), which would shrink the input.
+       Lock height to the standard .text-input height so all fields line up. */
+    min-height: 2.5rem;
 }
 
 html[dir="rtl"] #start-date-display,
@@ -317,177 +320,111 @@ nav>div {
     background-color: rgba(255, 255, 255, 0.35);
 }
 
-/* Custom CSS Tooltip */
-.info-icon {
-    position: relative;
-}
-
-.info-icon::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #1f2937;
-    color: #fff;
+/* Custom Tooltip (rendered by js/tooltip.js)
+   A single bubble appended to <body> and placed in the browser top layer (Popover API),
+   positioned from the icon's on-screen rect and clamped to the viewport. It can never be
+   clipped by card overflow, covered by stacking contexts, or pushed off-screen in LTR/RTL.
+   Do NOT reintroduce ::before/::after tooltips on .info-icon. */
+.app-tooltip {
+    position: fixed;
+    inset: auto;
+    top: 0;
+    left: 0;
+    margin: 0;
+    border: 0;
+    box-sizing: border-box;
+    width: max-content;
+    max-width: min(280px, calc(100vw - 16px));
     padding: 0.5rem 0.75rem;
+    --tip-bg: #1f2937;
+    --tip-border: transparent;
+    background-color: var(--tip-bg);
+    color: #fff;
     border-radius: 0.5rem;
+    font-family: inherit;
     font-size: 0.75rem;
     font-weight: 400;
+    line-height: 1.45;
     text-transform: none;
+    letter-spacing: normal;
+    text-align: start;
     white-space: normal;
-    width: max-content;
-    max-width: min(220px, calc(100vw - 32px));
-    line-height: 1.4;
-    text-align: center;
-    z-index: 9999;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.15s ease, visibility 0.15s ease;
-    pointer-events: none;
+    overflow-wrap: anywhere;
+    overflow: visible;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-/* Tooltip arrow */
-.info-icon::before {
-    content: '';
-    position: absolute;
-    bottom: calc(100% + 2px);
-    left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: #1f2937;
-    z-index: 9999;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.15s ease, visibility 0.15s ease;
+    z-index: 2147483647;
     pointer-events: none;
+    display: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.info-icon:hover::after,
-.info-icon:hover::before,
-.info-icon:focus::after,
-.info-icon:focus::before,
-.info-icon:focus-visible::after,
-.info-icon:focus-visible::before {
+.app-tooltip.is-open {
+    display: block;
+}
+
+.app-tooltip[data-placement="bottom"] {
+    transform: translateY(-4px);
+}
+
+.app-tooltip.is-shown {
     opacity: 1;
-    visibility: visible;
+    transform: none;
 }
 
-/* Right-aligned tooltips - anchor from right edge */
-.info-icon.tooltip-end::after,
-.text-end .info-icon::after {
-    left: auto;
-    right: 0;
-    max-width: min(220px, calc(100vw - 32px));
-    transform: translateX(0);
+/* Arrow = rotated square sharing the bubble's background + border, so the outline
+   continues seamlessly around the pointer (a CSS border-triangle can't be outlined). */
+.app-tooltip-text {
+    position: relative;
+    z-index: 1;
 }
 
-.info-icon.tooltip-end::before,
-.text-end .info-icon::before {
-    left: auto;
-    right: 8px;
-    transform: translateX(0);
+.app-tooltip-arrow {
+    position: absolute;
+    left: var(--arrow-x, 50%);
+    width: 10px;
+    height: 10px;
+    background-color: var(--tip-bg);
+    border: 1px solid transparent;
+    box-sizing: border-box;
 }
 
-/* Left-aligned tooltips - anchor from left edge (expands inward/right in LTR) */
-.info-icon.tooltip-start::after {
-    left: 0;
-    right: auto;
-    max-width: min(220px, calc(100vw - 32px));
-    transform: translateX(0);
+.app-tooltip[data-placement="top"] .app-tooltip-arrow {
+    top: 100%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    border-right-color: var(--tip-border);
+    border-bottom-color: var(--tip-border);
 }
 
-.info-icon.tooltip-start::before {
-    left: 8px;
-    right: auto;
-    transform: translateX(0);
+.app-tooltip[data-placement="bottom"] .app-tooltip-arrow {
+    bottom: 100%;
+    transform: translate(-50%, 50%) rotate(45deg);
+    border-left-color: var(--tip-border);
+    border-top-color: var(--tip-border);
 }
 
-/* Tooltips in Summary Card right column (Flat Rate icon is before the text) */
-.summary-grid .text-end .info-icon::after {
-    left: auto;
-    right: -4.5rem;
-    max-width: min(210px, 65vw);
-    transform: translateX(0);
+.dark .app-tooltip {
+    --tip-bg: #0f172a;
+    --tip-border: #334155;
+    box-shadow: 0 0 0 1px var(--tip-border), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-.summary-grid .text-end .info-icon::before {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+@media (prefers-reduced-motion: reduce) {
+    .app-tooltip {
+        transition: none;
+    }
 }
 
-/* Left-aligned tooltips - shift right */
-.summary-grid>div:first-child .info-icon::after {
-    left: 0;
-    max-width: min(210px, 65vw);
-    transform: translateX(0);
+/* Touch devices: iOS only dispatches delegated clicks on "clickable" elements */
+[data-tooltip] {
+    -webkit-tap-highlight-color: transparent;
 }
 
-.summary-grid>div:first-child .info-icon::before {
-    left: 8px;
-    transform: translateX(0);
-}
-
-/* RTL support for tooltips */
-[dir="rtl"] .info-icon::after {
-    text-align: right;
-}
-
-[dir="rtl"] .info-icon.tooltip-end::after,
-[dir="rtl"] .text-end .info-icon::after {
-    left: 0;
-    right: auto;
-    transform: translateX(0);
-}
-
-[dir="rtl"] .info-icon.tooltip-end::before,
-[dir="rtl"] .text-end .info-icon::before {
-    left: 8px;
-    right: auto;
-    transform: translateX(0);
-}
-
-/* RTL Left-aligned tooltips - anchor from right edge in RTL */
-[dir="rtl"] .info-icon.tooltip-start::after {
-    left: auto;
-    right: 0;
-    max-width: min(220px, calc(100vw - 32px));
-    transform: translateX(0);
-}
-
-[dir="rtl"] .info-icon.tooltip-start::before {
-    left: auto;
-    right: 8px;
-    transform: translateX(0);
-}
-
-/* RTL summary card right column tooltip */
-[dir="rtl"] .summary-grid .text-end .info-icon::after {
-    left: -4.5rem;
-    right: auto;
-    max-width: min(210px, 65vw);
-    transform: translateX(0);
-}
-
-[dir="rtl"] .summary-grid .text-end .info-icon::before {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-}
-
-[dir="rtl"] .summary-grid>div:first-child .info-icon::after {
-    left: auto;
-    right: 0;
-    max-width: min(210px, 65vw);
-    transform: translateX(0);
-}
-
-[dir="rtl"] .summary-grid>div:first-child .info-icon::before {
-    left: auto;
-    right: 8px;
-    transform: translateX(0);
+@media (hover: none) {
+    [data-tooltip] {
+        cursor: pointer;
+    }
 }
 
 /* Ensure parent containers don't clip tooltips */

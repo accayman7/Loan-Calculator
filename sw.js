@@ -19,6 +19,7 @@ const PRE_CACHE = [
   './js/chart.js',
   './js/formatters.js',
   './js/ui.js',
+  './js/tooltip.js',
   './js/dateinput.js',
   './js/datepicker.js',
   './js/collaterals.js',
