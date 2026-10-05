@@ -222,9 +222,10 @@ input:-webkit-autofill:active {
     text-overflow: clip !important;
     padding-left: 0.35rem !important;
     padding-right: 2.25rem !important;
-    /* Autofit shrinks font-size (14px vs 16px elsewhere), which would shrink the input.
-       Lock height to the standard .text-input height so all fields line up. */
-    min-height: 2.5rem;
+    /* Let the parent .input-group.h-10 control height.
+       Do NOT set min-height here – it inflates date fields
+       taller than sibling number inputs. */
+    box-sizing: border-box;
 }
 
 html[dir="rtl"] #start-date-display,
