@@ -711,7 +711,7 @@
     }
 
     function animateToggleBounce(toggleElement) {
-        const knob = toggleElement?.parentElement?.querySelector('div');
+        const knob = toggleElement?.parentElement?.querySelector('.m3-switch-track, div');
         if (knob) {
             knob.classList.remove('animate-toggle-bounce');
             void knob.offsetWidth; // Force reflow

@@ -324,7 +324,7 @@
                 if (trigger && typeof trigger.focus === 'function' && document.contains(trigger)) {
                     try { trigger.focus({ preventScroll: true }); } catch (_) {}
                 }
-            }, 300);
+            }, 400);
         }
     }
 

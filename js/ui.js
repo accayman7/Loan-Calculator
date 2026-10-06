@@ -514,7 +514,7 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
         if (hasAnyStamps) {
             if (r.hasStamp && r.stamp > 0) {
                 stampCell = `<td class="hidden sm:table-cell px-1 py-2 text-right font-medium text-purple-600 dark:text-purple-400 text-xs">${fmt(r.stamp)}</td>`;
-                rowClass = 'stamp-row cursor-pointer transition-colors bg-purple-100/50 dark:bg-purple-900/40 hover:bg-purple-200/50 dark:hover:bg-purple-800/60';
+                rowClass = 'stamp-row cursor-pointer';
                 dataAttr = `data-stamp="${fmt(r.stamp)}"`;
             } else {
                 stampCell = `<td class="hidden sm:table-cell px-1 py-2 text-right text-gray-300 dark:text-gray-600 text-xs">-</td>`;

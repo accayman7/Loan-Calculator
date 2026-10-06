@@ -645,10 +645,17 @@
                                     </svg>
                                     <span data-lang-key="advancedToggle">Advanced Options</span>
                                 </span>
-                                <div class="relative">
-                                    <input type="checkbox" id="advanced-toggle" class="sr-only peer">
-                                    <div
-                                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600">
+                                <div class="m3-switch-wrapper" dir="ltr">
+                                    <input type="checkbox" id="advanced-toggle" class="sr-only m3-switch-input">
+                                    <div class="m3-switch-track m3-switch-purple">
+                                        <div class="m3-switch-thumb">
+                                            <svg class="m3-switch-icon-off" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                                <rect x="3" y="7" width="10" height="2" rx="1" />
+                                            </svg>
+                                            <svg class="m3-switch-icon-on" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
+                                            </svg>
+                                        </div>
                                     </div>
                                 </div>
                             </label>
@@ -799,10 +806,17 @@
                             </svg>
                             <span data-lang-key="earlySettlementToggle">Early Settlement Calculator</span>
                         </span>
-                        <div class="relative flex-shrink-0">
-                            <input type="checkbox" id="early-settlement-toggle" class="sr-only peer">
-                            <div
-                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500">
+                        <div class="m3-switch-wrapper" dir="ltr">
+                            <input type="checkbox" id="early-settlement-toggle" class="sr-only m3-switch-input">
+                            <div class="m3-switch-track m3-switch-amber">
+                                <div class="m3-switch-thumb">
+                                    <svg class="m3-switch-icon-off" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                        <rect x="3" y="7" width="10" height="2" rx="1" />
+                                    </svg>
+                                    <svg class="m3-switch-icon-on" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
                     </label>
@@ -945,10 +959,17 @@
                             </svg>
                             <span data-lang-key="selfSufficientMode">Self-Sufficient Mode</span>
                         </span>
-                        <div class="relative flex-shrink-0">
-                            <input type="checkbox" id="self-sufficient-toggle" class="sr-only peer">
-                            <div
-                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600">
+                        <div class="m3-switch-wrapper" dir="ltr">
+                            <input type="checkbox" id="self-sufficient-toggle" class="sr-only m3-switch-input">
+                            <div class="m3-switch-track m3-switch-green">
+                                <div class="m3-switch-thumb">
+                                    <svg class="m3-switch-icon-off" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                        <rect x="3" y="7" width="10" height="2" rx="1" />
+                                    </svg>
+                                    <svg class="m3-switch-icon-on" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
                     </label>
@@ -1540,7 +1561,7 @@
         <div
             class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
         </div>
-        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[85vh] md:max-h-[88vh] transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
+        <div class="modal-container bg-white dark:bg-gray-800 w-full md:w-11/12 md:max-w-md mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[85vh] md:max-h-[88vh] transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-700 pb-safe"
             style="max-height: 85vh; max-height: 85dvh; padding-bottom: env(safe-area-inset-bottom);">
             <!-- Mobile Drag Handle: Placed in its own flow row above header, never overlaps -->
             <div class="modal-drag-handle md:hidden" aria-hidden="true">
@@ -1548,13 +1569,13 @@
             </div>
 
             <!-- Pinned Header: Title & Close Button (Always on the right in both RTL and LTR) -->
-            <div class="px-5 py-2 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
+            <div class="px-5 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between flex-shrink-0" dir="ltr">
                 <div class="w-8 flex-shrink-0"></div>
                 <p id="about-modal-title"
                     class="text-xl font-bold text-gray-800 dark:text-gray-100 text-center flex-1"
                     data-lang-key="aboutTitle">About</p>
                 <button type="button" aria-label="Close"
-                    class="modal-close p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400 flex items-center justify-center flex-shrink-0"
+                    class="modal-close p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 dark:text-gray-400 flex items-center justify-center flex-shrink-0"
                     id="close-about">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -1671,7 +1692,7 @@
         <div
             class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
         </div>
-        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe h-[85vh] md:h-auto md:max-h-[88vh] flex flex-col">
+        <div class="modal-container bg-white dark:bg-gray-800 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-hidden transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-700 pb-safe h-[85vh] md:h-auto md:max-h-[88vh] flex flex-col">
             
             <!-- Mobile Drag Handle: Placed in its own flow row above header, never overlaps -->
             <div class="modal-drag-handle md:hidden" aria-hidden="true">
@@ -1679,14 +1700,14 @@
             </div>
 
             <!-- Modal Header (Always on the right in both RTL and LTR) -->
-            <div class="px-5 pt-2 pb-3 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-shrink-0" dir="ltr">
+            <div class="px-5 pt-2 pb-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between flex-shrink-0" dir="ltr">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">✨</span>
                     <h3 id="whats-new-modal-title" class="text-base sm:text-lg font-bold text-gray-900 dark:text-white" data-lang-key="whatsNewModalTitle">
                         What's New & App Guide
                     </h3>
                 </div>
-                <button type="button" id="close-whats-new" class="modal-close p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400" aria-label="Close">
+                <button type="button" id="close-whats-new" class="modal-close p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 dark:text-gray-400" aria-label="Close">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
@@ -1827,17 +1848,21 @@
         <div
             class="modal-overlay fixed inset-0 bg-gray-900/50 backdrop-blur-md opacity-0 transition-opacity duration-300 ease-out">
         </div>
-        <div class="modal-container bg-white dark:bg-gray-900 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto scrollbar-hide transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-800 pb-safe"
+        <div class="modal-container bg-white dark:bg-gray-800 w-full md:w-11/12 md:max-w-lg mx-auto rounded-t-2xl rounded-b-none md:rounded-2xl shadow-2xl z-50 overflow-y-auto scrollbar-hide transform transition-all duration-300 ease-out translate-y-full md:translate-y-0 md:opacity-0 md:scale-95 border-t md:border border-gray-200 dark:border-gray-700 pb-safe"
             style="max-height: 80vh; padding-bottom: env(safe-area-inset-bottom);">
-            <div class="modal-content py-6 text-left px-6">
+            <!-- Mobile Drag Handle: Placed in its own flow row above header, never overlaps -->
+            <div class="modal-drag-handle md:hidden" aria-hidden="true">
+                <div class="modal-drag-bar"></div>
+            </div>
+
+            <div class="modal-content pt-2 pb-6 text-left px-6">
                 <div
-                    class="relative flex items-center justify-center pb-3 mb-2 border-b border-gray-100 dark:border-gray-800">
-                    <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full absolute -top-2 md:hidden"></div>
+                    class="relative flex items-center justify-center pb-3 mb-2 border-b border-gray-100 dark:border-gray-700">
                     <p id="history-modal-title" class="text-xl font-bold text-gray-800 dark:text-gray-100"
                         data-lang-key="historyTitle">
                         Calculation History</p>
                     <button type="button" aria-label="Close"
-                        class="absolute right-0 top-1 modal-close cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                        class="absolute right-0 top-1 modal-close cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
                         id="close-history">
                         <svg class="fill-current text-gray-800 dark:text-gray-100" xmlns="http://www.w3.org/2000/svg"
                             width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

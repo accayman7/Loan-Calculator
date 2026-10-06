@@ -112,7 +112,7 @@
             const itemId = item.id || `legacy_${safeIndex}`;
 
             return `
-            <div class="history-card bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-[0.98]" data-id="${escapeFn(itemId)}" data-index="${safeIndex}">
+            <div class="history-card bg-gray-50 dark:bg-gray-700/60 p-3 rounded-lg border border-gray-100 dark:border-gray-600/70 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-[0.98]" data-id="${escapeFn(itemId)}" data-index="${safeIndex}">
                 <div class="flex justify-between items-start mb-2">
                     <p class="text-xs text-gray-400">${escapeFn(date)}</p>
                     <button type="button" class="delete-btn p-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors" data-id="${escapeFn(itemId)}" data-index="${safeIndex}" title="${escapeFn(transFn(lang, 'deleteBtn'))}">
