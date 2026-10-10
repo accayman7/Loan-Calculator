@@ -256,7 +256,10 @@ function setupOrientationListener() {
     orientationListenerAttached = true;
 
     const updateOrientation = () => {
-        const isLandscape = window.matchMedia('(orientation: landscape)').matches || 
+        const screenIsLandscape = (screen.orientation && typeof screen.orientation.type === 'string')
+            ? screen.orientation.type.startsWith('landscape')
+            : false;
+        const isLandscape = screenIsLandscape || window.matchMedia('(orientation: landscape)').matches || 
             (window.innerWidth > window.innerHeight && window.innerWidth >= 480);
         const orientation = isLandscape ? 'landscape' : 'portrait';
         document.documentElement.setAttribute('data-orientation', orientation);
@@ -270,6 +273,17 @@ function setupOrientationListener() {
     };
 
     updateOrientation();
+
+    // Unlock runtime orientation lock if present
+    if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+        try {
+            screen.orientation.unlock().catch(() => {});
+        } catch (_) {}
+    }
+
+    if (screen.orientation && typeof screen.orientation.addEventListener === 'function') {
+        screen.orientation.addEventListener('change', updateOrientation);
+    }
 
     const orientationQuery = window.matchMedia('(orientation: landscape)');
     if (typeof orientationQuery.addEventListener === 'function') {

@@ -639,6 +639,21 @@ html[data-orientation="landscape"] #schedule-container table td:last-child {
     overscroll-behavior-y: contain !important;
 }
 
+/* Check for Updates button styling in About modal */
+#force-update-btn {
+    border: 1px solid #e5e7eb !important;
+}
+
+.dark #force-update-btn {
+    border: 1px solid #374151 !important;
+    background-color: rgba(31, 41, 55, 0.85) !important;
+}
+
+.dark #force-update-btn:hover {
+    border-color: #4b5563 !important;
+    background-color: rgba(55, 65, 81, 0.95) !important;
+}
+
 /* Stamp Row Highlight in Amortization Schedule */
 .stamp-row {
     background-color: #f3e8ff !important; /* purple-100 */
