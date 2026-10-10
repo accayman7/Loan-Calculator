@@ -387,7 +387,7 @@
 
         updateCollateralWarnings();
         updateCollateralCashflow();
-        updateSelfCoveringChip();
+        updateMaxLoanChip();
     }
 
     function updateCollateralWarnings() {
@@ -557,9 +557,9 @@
         return pInt > 0 ? pInt : 0;
     }
 
-    function updateSelfCoveringChip() {
-        const chipContainer = document.getElementById('self-covering-chip-container');
-        const chipVal = document.getElementById('self-covering-chip-val');
+    function updateMaxLoanChip() {
+        const chipContainer = document.getElementById('max-loan-chip-container') || document.getElementById('self-covering-chip-container');
+        const chipVal = document.getElementById('max-loan-chip-val') || document.getElementById('self-covering-chip-val');
         if (!chipContainer || !chipVal) return;
 
         if (_options.getLoanType() !== 'secured') {
@@ -567,12 +567,35 @@
             return;
         }
 
-        const p = calculateSelfCoveringLoanAmount();
-        if (p > 0) {
-            chipVal.textContent = p.toLocaleString('en-US') + ' EGP';
+        const { maxLoan } = getCollateralSummary(collaterals);
+        if (maxLoan > 0) {
+            chipVal.textContent = Math.floor(maxLoan).toLocaleString('en-US') + ' ' + (_options.getLang() === 'ar' ? 'ج.م' : 'EGP');
             chipContainer.classList.remove('hidden');
         } else {
             chipContainer.classList.add('hidden');
+        }
+    }
+
+    function applyMaxLoanAmount() {
+        const { maxLoan } = getCollateralSummary(collaterals);
+        const formInputs = _options.getFormInputs();
+        if (maxLoan <= 0 || !formInputs.amount) return;
+
+        if (typeof haptic !== 'undefined') haptic('medium');
+
+        const pVal = Math.floor(maxLoan);
+        formInputs.amount.value = pVal.toLocaleString('en-US');
+        formInputs.amount.dispatchEvent(new Event('input', { bubbles: true }));
+        if (typeof _options.validateInput === 'function') _options.validateInput('amount');
+
+        const instRadio = document.querySelector('input[name="calc-target"][value="installment"]');
+        if (instRadio && !instRadio.checked) {
+            instRadio.checked = true;
+            instRadio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        if (typeof _options.onRecalcRequired === 'function') {
+            _options.onRecalcRequired();
         }
     }
 
@@ -635,9 +658,9 @@
             applySelfBtn.addEventListener('click', () => applySelfCoveringLoanAmount());
         }
 
-        const selfChip = document.getElementById('self-covering-chip');
-        if (selfChip) {
-            selfChip.addEventListener('click', () => applySelfCoveringLoanAmount());
+        const maxChip = document.getElementById('max-loan-chip') || document.getElementById('self-covering-chip');
+        if (maxChip) {
+            maxChip.addEventListener('click', () => applyMaxLoanAmount());
         }
     }
 
@@ -658,7 +681,9 @@
         recalc: recalcCollateralMetrics,
         updateWarnings: updateCollateralWarnings,
         updateCashflow: updateCollateralCashflow,
-        updateSelfCoveringChip: updateSelfCoveringChip,
+        updateMaxLoanChip: updateMaxLoanChip,
+        updateSelfCoveringChip: updateMaxLoanChip,
+        applyMaxLoanAmount: applyMaxLoanAmount,
         applySelfCoveringLoanAmount: applySelfCoveringLoanAmount,
         init: initCollaterals
     };
@@ -670,6 +695,8 @@
     window.recalcCollateralMetrics = recalcCollateralMetrics;
     window.updateCollateralWarnings = updateCollateralWarnings;
     window.updateCollateralCashflow = updateCollateralCashflow;
-    window.updateSelfCoveringChip = updateSelfCoveringChip;
+    window.updateMaxLoanChip = updateMaxLoanChip;
+    window.updateSelfCoveringChip = updateMaxLoanChip;
+    window.applyMaxLoanAmount = applyMaxLoanAmount;
     window.applySelfCoveringLoanAmount = applySelfCoveringLoanAmount;
 })();

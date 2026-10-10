@@ -263,6 +263,7 @@ function calculateLoan(inputs, activeKey, freq) {
     const M = safeParseFloat(inputs.installment);
 
     let resP = P, resR = R, resN = N, resM = M, valid = false;
+    let exactN = null, isFractional = false, equalM = null, targetM = null, diffM = 0;
 
     try {
         if (activeKey !== 'period' && (isNaN(N) || N > MAX_MONTHS)) {
@@ -279,7 +280,17 @@ function calculateLoan(inputs, activeKey, freq) {
         else if (activeKey === 'amount') {
             if (M > 0 && R >= 0 && N > 0) {
                 const i = R / 100 * (freq / 12);
-                resP = i === 0 ? M * N : M * (Math.pow(1 + i, N) - 1) / (i * Math.pow(1 + i, N));
+                const exactP = i === 0 ? M * N : M * (Math.pow(1 + i, N) - 1) / (i * Math.pow(1 + i, N));
+                // Banking rule: Loan amounts must be whole Egyptian pounds (round down / floor)
+                // Guard against IEEE-754 precision issues (e.g. 99999.9999999999 -> 100000)
+                const roundedCentsP = Math.round(exactP * 100) / 100;
+                resP = Math.floor(roundedCentsP);
+                if (resP <= 0) resP = 1;
+
+                // Re-derive the exact equal installment for the committed whole-pound principal
+                resM = i === 0 ? round2(resP / N) : round2(resP * i * Math.pow(1 + i, N) / (Math.pow(1 + i, N) - 1));
+                targetM = M;
+                diffM = round2(resM - targetM);
                 valid = true;
             }
         }
@@ -288,14 +299,23 @@ function calculateLoan(inputs, activeKey, freq) {
                 const i = R / 100 * (freq / 12);
                 // Handle 0% rate case: simple division instead of log formula
                 if (i === 0) {
-                    resN = Math.ceil((P / M) - 0.001);
-                    if (resN <= 0) resN = 1;
-                    if (resN <= MAX_MONTHS) valid = true;
-                } else if (M > P * i) {
-                    let exactN = Math.log(M / (M - P * i)) / Math.log(1 + i);
+                    exactN = P / M;
                     resN = Math.ceil(exactN - 0.001);
                     if (resN <= 0) resN = 1;
-                    if (resN <= MAX_MONTHS) valid = true;
+                    if (resN <= MAX_MONTHS) {
+                        valid = true;
+                        isFractional = Math.abs(resN - exactN) > 0.005;
+                        equalM = round2(P / resN);
+                    }
+                } else if (M > P * i) {
+                    exactN = Math.log(M / (M - P * i)) / Math.log(1 + i);
+                    resN = Math.ceil(exactN - 0.001);
+                    if (resN <= 0) resN = 1;
+                    if (resN <= MAX_MONTHS) {
+                        valid = true;
+                        isFractional = Math.abs(resN - exactN) > 0.005;
+                        equalM = round2(P * i * Math.pow(1 + i, resN) / (Math.pow(1 + i, resN) - 1));
+                    }
                     else valid = false;
                 }
             }
@@ -306,6 +326,8 @@ function calculateLoan(inputs, activeKey, freq) {
                 if (M * N === P) {
                     resR = 0;
                     resM = M; // Installment stays as entered
+                    targetM = M;
+                    diffM = 0;
                     valid = true;
                 } else {
                     // M * N > P: use Newton-Raphson solver with Bisection fallback
@@ -314,13 +336,17 @@ function calculateLoan(inputs, activeKey, freq) {
                         resR = solveRateBisection(P, N, M, freq);
                     }
 
-                    // Re-derive installment from the calculated rate for schedule consistency
-                    // This ensures the schedule uses values that are mathematically consistent
-                    // with the derived rate, eliminating rounding discrepancies
-                    const derivedI = resR / 100 * (freq / 12);
-                    if (derivedI > 0) {
-                        resM = round2(P * derivedI * Math.pow(1 + derivedI, N) / (Math.pow(1 + derivedI, N) - 1));
+                    // Commit the 2-decimal rounded rate
+                    const exactR = resR;
+                    resR = round2(exactR);
+
+                    // Re-derive installment from the committed 2-decimal rate for schedule consistency
+                    const committedI = resR / 100 * (freq / 12);
+                    if (committedI > 0) {
+                        resM = round2(P * committedI * Math.pow(1 + committedI, N) / (Math.pow(1 + committedI, N) - 1));
                     }
+                    targetM = M;
+                    diffM = round2(resM - targetM);
 
                     valid = true;
                 }
@@ -332,7 +358,7 @@ function calculateLoan(inputs, activeKey, freq) {
 
     if (!isFinite(resP) || !isFinite(resR) || !isFinite(resN) || !isFinite(resM) || resN > MAX_MONTHS) valid = false;
 
-    return { valid, P: resP, R: resR, N: resN, M: resM };
+    return { valid, P: resP, R: resR, N: resN, M: resM, exactN, isFractional, equalM, targetM, diffM };
 }
 
 /**
@@ -493,6 +519,7 @@ function generateSchedule(loanData, dates, stampRate = 0, freq = 1) {
         schedule.push({
             m,
             rawDate: currentDate,
+            inst: toCurrency(prinInt + inteInt),
             bal: toCurrency(openingBalInt),
             int: toCurrency(inteInt),
             prin: toCurrency(prinInt),
@@ -504,10 +531,14 @@ function generateSchedule(loanData, dates, stampRate = 0, freq = 1) {
         if (balInt <= 0) break;
     }
 
+    const finalRow = schedule.length > 0 ? schedule[schedule.length - 1] : null;
+    const finalPayment = finalRow ? finalRow.inst : toCurrency(MInt);
+
     return {
         schedule,
         totalActualInterest: toCurrency(totalActualInterestInt),
         m1_Payment: toCurrency(m1_PaymentInt),
+        finalPayment: finalPayment,
         totalStamp: toCurrency(totalStampInt)
     };
 }

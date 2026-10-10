@@ -415,6 +415,8 @@ function testCalculateLoanPeriod() {
     const result = calculateLoan({ amount: '100000', rate: '10', installment: '10000' }, 'period');
     TestRunner.assertTrue(result.valid, 'Period calculation is valid');
     TestRunner.assertEqual(result.N, 11, 'Period = 11 months');
+    TestRunner.assertTrue(result.isFractional, 'Period calculation detects fractional period');
+    TestRunner.assertTrue(result.equalM > 0, 'equalM is calculated for period');
 }
 
 function testCalculateLoanRate() {
@@ -557,6 +559,8 @@ function testGenerateSchedule() {
 
     // Total interest should be positive
     TestRunner.assertTrue(result.totalActualInterest > 0, 'Total interest > 0');
+    TestRunner.assertTrue(result.schedule[0].inst > 0, 'Row has inst property');
+    TestRunner.assertTrue(result.finalPayment > 0, 'generateSchedule returns finalPayment');
 }
 
 function testGenerateScheduleAdvanced() {

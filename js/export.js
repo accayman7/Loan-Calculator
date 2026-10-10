@@ -138,7 +138,23 @@ function buildPrintReportHtmlDocument(doc, { summaryClone, scheduleClone, discla
             text-align: center !important; 
         }
         tbody td { border-bottom: 1px solid #e5e7eb !important; padding: 6px 8px !important; text-align: center !important; }
-        .hidden { display: table-cell !important; }
+        table th.hidden, table td.hidden { display: table-cell !important; }
+        .info-icon,
+        #period-reconcile-card,
+        #target-reconcile-card,
+        #summary-final-inst-note,
+        #calculation-fingerprint,
+        .sched-detail-row,
+        button {
+            display: none !important;
+        }
+        .summary-collapse-wrapper:not(.expanded) {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
         #close-schedule-btn, #copy-summary-btn { display: none !important; }
         [data-stamp-col] { color: #7c3aed !important; }
         .bg-purple-50, .bg-purple-100\\/50 { background-color: #faf5ff !important; }
@@ -150,6 +166,19 @@ function buildPrintReportHtmlDocument(doc, { summaryClone, scheduleClone, discla
 
     const body = doc.body;
     body.className = 'lang-ready';
+
+    // Clean up summaryClone and scheduleClone for a clean, professional printed document
+    summaryClone.querySelectorAll('.info-icon').forEach(el => el.remove());
+    summaryClone.querySelectorAll('.summary-collapse-wrapper:not(.expanded)').forEach(el => el.remove());
+    summaryClone.querySelectorAll('button').forEach(el => el.remove());
+    summaryClone.querySelector('#period-reconcile-card')?.remove();
+    summaryClone.querySelector('#target-reconcile-card')?.remove();
+    summaryClone.querySelector('#summary-final-inst-note')?.remove();
+    summaryClone.querySelector('#calculation-fingerprint')?.remove();
+
+    scheduleClone.querySelectorAll('.info-icon').forEach(el => el.remove());
+    scheduleClone.querySelectorAll('.sched-detail-row').forEach(el => el.remove());
+    scheduleClone.querySelectorAll('button').forEach(el => el.remove());
 
     const container = doc.createElement('div');
     container.className = 'print-container';
@@ -176,11 +205,6 @@ function buildPrintReportHtmlDocument(doc, { summaryClone, scheduleClone, discla
     container.appendChild(footer);
 
     body.appendChild(container);
-
-    // Print Trigger
-    const script = doc.createElement('script');
-    script.textContent = 'setTimeout(() => { window.focus(); window.print(); }, 500);';
-    body.appendChild(script);
 }
 
 /**
@@ -207,8 +231,6 @@ function printReport() {
     };
 
     setPdfLoading(true);
-    showToast(t(appState.lang, 'exportPdfStarting'));
-    announceExportStatus(t(appState.lang, 'exportPdfStarting'));
 
     try {
         const doc = frame.contentWindow.document;
@@ -242,12 +264,21 @@ function printReport() {
             lang: appState.lang
         });
 
-        // Restore button after print has been handed to browser print dialog
+        // Show success toast before opening print dialog so it is clearly visible as dialog opens
+        showToast(t(appState.lang, 'exportPdfSuccess'), "success");
+        announceExportStatus(t(appState.lang, 'exportPdfSuccess'));
+
+        // Allow UI to repaint toast and restore button state before browser modal print dialog pauses JS execution
         setTimeout(() => {
             setPdfLoading(false);
-            showToast(t(appState.lang, 'exportPdfSuccess'), "success");
-            announceExportStatus(t(appState.lang, 'exportPdfSuccess'));
-        }, 1200);
+            try {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            } catch (printErr) {
+                console.error("Print dialog error:", printErr);
+                showToast(t(appState.lang, 'exportPdfError'), "error");
+            }
+        }, 250);
     } catch (e) {
         console.error(e);
         showToast(t(appState.lang, 'exportPdfError'), "error");
@@ -342,8 +373,8 @@ async function exportExcel() {
 
         // Build headers - add Stamp column if stamps exist
         const headers = hasAnyStamps
-            ? [t(l, 'colMonth'), t(l, 'colDate'), t(l, 'colBalance'), t(l, 'colInterest'), t(l, 'colPrincipal'), t(l, 'colRemaining'), t(l, 'totalStampLabel')]
-            : [t(l, 'colMonth'), t(l, 'colDate'), t(l, 'colBalance'), t(l, 'colInterest'), t(l, 'colPrincipal'), t(l, 'colRemaining')];
+            ? [t(l, 'colMonth'), t(l, 'colDate'), t(l, 'colInstallment'), t(l, 'colBalance'), t(l, 'colInterest'), t(l, 'colPrincipal'), t(l, 'colRemaining'), t(l, 'totalStampLabel')]
+            : [t(l, 'colMonth'), t(l, 'colDate'), t(l, 'colInstallment'), t(l, 'colBalance'), t(l, 'colInterest'), t(l, 'colPrincipal'), t(l, 'colRemaining')];
 
         const scheduleRows = appState.schedule.map(r => {
             const locale = isRTL ? 'ar-EG-u-nu-latn' : 'en-US';
@@ -358,8 +389,10 @@ async function exportExcel() {
                 dateStr = r.rawDate.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
             }
 
+            const instVal = r.inst !== undefined ? r.inst : (r.prin + r.int);
+
             // Base row data
-            const rowData = [r.m, dateStr, Number.parseFloat(r.bal.toFixed(2)), Number.parseFloat(r.int.toFixed(2)), Number.parseFloat(r.prin.toFixed(2)), Number.parseFloat(r.rem.toFixed(2))];
+            const rowData = [r.m, dateStr, Number.parseFloat(instVal.toFixed(2)), Number.parseFloat(r.bal.toFixed(2)), Number.parseFloat(r.int.toFixed(2)), Number.parseFloat(r.prin.toFixed(2)), Number.parseFloat(r.rem.toFixed(2))];
 
             // Add stamp column if stamps exist
             if (hasAnyStamps) {

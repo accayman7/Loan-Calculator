@@ -220,10 +220,82 @@ function ensureDropdownFocusStyles() {
     });
 }
 
+let systemThemeListenerAttached = false;
+function setupSystemThemeListener() {
+    if (systemThemeListenerAttached) return;
+    systemThemeListenerAttached = true;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = () => {
+        const currentTheme = localStorage.getItem('theme') || 'system';
+        if (currentTheme === 'system') {
+            const lastRes = typeof AppState !== 'undefined' ? AppState.lastRes : null;
+            applyTheme('system', lastRes);
+            if (typeof updateThemeMenuState === 'function') {
+                updateThemeMenuState('system');
+            }
+        }
+    };
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', handleSystemThemeChange);
+    } else if (typeof mediaQuery.addListener === 'function') {
+        mediaQuery.addListener(handleSystemThemeChange);
+    }
+
+    // Re-sync on app resume / window focus if system theme was changed in OS settings
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) handleSystemThemeChange();
+    });
+    window.addEventListener('focus', handleSystemThemeChange);
+}
+
+let orientationListenerAttached = false;
+function setupOrientationListener() {
+    if (orientationListenerAttached) return;
+    orientationListenerAttached = true;
+
+    const updateOrientation = () => {
+        const isLandscape = window.matchMedia('(orientation: landscape)').matches || 
+            (window.innerWidth > window.innerHeight && window.innerWidth >= 480);
+        const orientation = isLandscape ? 'landscape' : 'portrait';
+        document.documentElement.setAttribute('data-orientation', orientation);
+        document.documentElement.classList.toggle('landscape', isLandscape);
+        document.documentElement.classList.toggle('portrait', !isLandscape);
+
+        // Redraw chart if active to adapt to new orientation canvas width
+        if (typeof AppState !== 'undefined' && AppState.lastRes && AppState.lastRes.P && typeof drawChart === 'function') {
+            drawChart(AppState.lastRes.P, AppState.lastRes.TI, document.documentElement.lang, false);
+        }
+    };
+
+    updateOrientation();
+
+    const orientationQuery = window.matchMedia('(orientation: landscape)');
+    if (typeof orientationQuery.addEventListener === 'function') {
+        orientationQuery.addEventListener('change', updateOrientation);
+    } else if (typeof orientationQuery.addListener === 'function') {
+        orientationQuery.addListener(updateOrientation);
+    }
+
+    window.addEventListener('orientationchange', () => {
+        setTimeout(updateOrientation, 50);
+        setTimeout(updateOrientation, 250);
+    }, { passive: true });
+
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(updateOrientation, 100);
+    }, { passive: true });
+}
+
 function initTheme(lastRes) {
     const savedTheme = localStorage.getItem('theme') || 'system';
     applyTheme(savedTheme, lastRes);
     ensureDropdownFocusStyles();
+    setupSystemThemeListener();
+    setupOrientationListener();
 }
 
 function applyTheme(themeMode, lastRes, skipChart = false, skipMetaTheme = false) {
@@ -476,7 +548,7 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
             stampHeader.setAttribute('scope', 'col');
             stampHeader.setAttribute('data-lang-key', 'colStamp');
             stampHeader.setAttribute('data-stamp-col', 'true');
-            stampHeader.className = 'hidden sm:table-cell px-1 py-3 text-end text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400';
+            stampHeader.className = 'hidden sm:table-cell px-1 py-3 text-end text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 whitespace-nowrap';
             stampHeader.textContent = t(language, 'colStamp');
             dateCol.after(stampHeader);
         }
@@ -510,26 +582,27 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
         let dataAttr = '';
 
         // Generate stamp cell content (only if stamps exist in schedule)
+        const hasStampThisRow = r.hasStamp && r.stamp > 0;
         let stampCell = '';
         if (hasAnyStamps) {
-            if (r.hasStamp && r.stamp > 0) {
-                stampCell = `<td class="hidden sm:table-cell px-1 py-2 text-right font-medium text-purple-600 dark:text-purple-400 text-xs">${fmt(r.stamp)}</td>`;
+            if (hasStampThisRow) {
+                stampCell = `<td class="hidden sm:table-cell px-1 py-2 text-end font-medium text-purple-600 dark:text-purple-400 text-xs">${fmt(r.stamp)}</td>`;
                 rowClass = 'stamp-row cursor-pointer';
                 dataAttr = `data-stamp="${fmt(r.stamp)}"`;
             } else {
-                stampCell = `<td class="hidden sm:table-cell px-1 py-2 text-right text-gray-300 dark:text-gray-600 text-xs">-</td>`;
+                stampCell = `<td class="hidden sm:table-cell px-1 py-2 text-end text-gray-300 dark:text-gray-600 text-xs">-</td>`;
             }
         }
 
         rows.push(`
         <tr class="${rowClass}" ${dataAttr}>
             <td class="px-0.5 sm:px-1 py-2 text-center text-gray-500 dark:text-gray-400 whitespace-nowrap">${r.m}</td>
-            <td class="px-0.5 sm:px-1 py-2 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap" dir="ltr">${dateStr}</td>
+            <td class="px-0.5 sm:px-1 py-2 text-end text-gray-500 dark:text-gray-400 whitespace-nowrap" dir="ltr">${dateStr}</td>
             ${stampCell}
-            <td class="hidden sm:table-cell px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${fmt(r.bal)}</td>
-            <td class="px-0.5 sm:px-1 py-2 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap">${fmt(r.int)}</td>
-            <td class="px-0.5 sm:px-1 py-2 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap">${fmt(r.prin)}</td>
-            <td class="px-0.5 sm:px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap ltr:pr-4 rtl:pl-4">${fmt(r.rem)}</td>
+            <td class="hidden sm:table-cell px-1 py-2 text-end font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">${fmt(r.bal)}</td>
+            <td class="px-0.5 sm:px-1 py-2 text-end text-gray-500 dark:text-gray-400 whitespace-nowrap">${fmt(r.int)}</td>
+            <td class="px-0.5 sm:px-1 py-2 text-end text-gray-500 dark:text-gray-400 whitespace-nowrap">${fmt(r.prin)}</td>
+            <td class="px-0.5 sm:px-1 py-2 text-end font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap ltr:pr-2 sm:ltr:pr-4 rtl:pl-2 sm:rtl:pl-4">${fmt(r.rem)}</td>
         </tr>`);
     }
 
@@ -542,10 +615,9 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
             const row = e.target.closest('tr[data-stamp]');
             if (!row || !schedBody.contains(row)) return;
 
-            // Only show tooltip on mobile (when stamp column is hidden via 'hidden sm:table-cell')
-            // Tailwind 'sm' breakpoint is 640px
-            if (window.matchMedia('(min-width: 640px)').matches) {
-                return; // Desktop view - stamp column is visible, no tooltip needed
+            // Only show tooltip on mobile portrait when stamp column is hidden
+            if (window.matchMedia('(min-width: 640px)').matches || window.matchMedia('(orientation: landscape)').matches || document.documentElement.getAttribute('data-orientation') === 'landscape') {
+                return;
             }
 
             // Remove any existing tooltip

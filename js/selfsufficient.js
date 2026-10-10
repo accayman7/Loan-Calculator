@@ -1871,21 +1871,27 @@ function printSelfSufficientOffer() {
         simpleAlt, netBenefit, effectiveRate, curr
     });
 
-        // Trigger print from inside iframe context to prevent freezing parent window JS event loop
-        const printScript = doc.createElement('script');
-        printScript.textContent = 'setTimeout(() => { window.focus(); window.print(); }, 400);';
-        body.appendChild(printScript);
+        // Show success toast before launching print dialog so it is visible as dialog opens
+        if (typeof showToast === 'function') {
+            showToast(isAr ? 'تم تجهيز العرض للطباعة.' : 'Client offer ready for print.', 'success');
+        }
+        if (typeof announceExportStatus === 'function') {
+            announceExportStatus(isAr ? 'تم تجهيز العرض للطباعة.' : 'Client offer ready for print.');
+        }
 
-        // Restore button after print has been handed to browser print dialog (identical to loan summary print)
+        // Allow UI to repaint toast and restore button state before browser modal print dialog pauses JS execution
         setTimeout(() => {
             setSsPrintLoading(false);
-            if (typeof showToast === 'function') {
-                showToast(isAr ? 'تم تجهيز العرض للطباعة.' : 'Client offer ready for print.', 'success');
+            try {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            } catch (err) {
+                console.error('Print dialog error:', err);
+                if (typeof showToast === 'function') {
+                    showToast(t(lang, 'exportPdfError'), 'error');
+                }
             }
-            if (typeof announceExportStatus === 'function') {
-                announceExportStatus(isAr ? 'تم تجهيز العرض للطباعة.' : 'Client offer ready for print.');
-            }
-        }, 1200);
+        }, 250);
     } catch (e) {
         console.error('Error generating print offer:', e);
         setSsPrintLoading(false);

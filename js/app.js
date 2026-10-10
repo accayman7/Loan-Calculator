@@ -413,6 +413,17 @@
             const wRate = document.getElementById('warning-loan-rate');
             if (wAmount) wAmount.classList.add('hidden');
             if (wRate) wRate.classList.add('hidden');
+
+            const maxLoanChipContainer = document.getElementById('max-loan-chip-container');
+            if (maxLoanChipContainer) maxLoanChipContainer.classList.add('hidden');
+            const selfCoveringChipContainer = document.getElementById('self-covering-chip-container');
+            if (selfCoveringChipContainer) selfCoveringChipContainer.classList.add('hidden');
+
+            if (typeof updateMaxLoanChip === 'function') {
+                updateMaxLoanChip();
+            } else if (typeof CollateralManager !== 'undefined' && CollateralManager.updateMaxLoanChip) {
+                CollateralManager.updateMaxLoanChip();
+            }
         }
     }
     window.setLoanType = setLoanType;
@@ -422,7 +433,9 @@
     const recalcCollateralMetrics = (auto) => (typeof CollateralManager !== 'undefined') && CollateralManager.recalc(auto);
     const updateCollateralWarnings = () => (typeof CollateralManager !== 'undefined') && CollateralManager.updateWarnings();
     const updateCollateralCashflow = () => (typeof CollateralManager !== 'undefined') && CollateralManager.updateCashflow();
-    const updateSelfCoveringChip = () => (typeof CollateralManager !== 'undefined') && CollateralManager.updateSelfCoveringChip();
+    const updateMaxLoanChip = () => (typeof CollateralManager !== 'undefined') && (CollateralManager.updateMaxLoanChip ? CollateralManager.updateMaxLoanChip() : CollateralManager.updateSelfCoveringChip());
+    const updateSelfCoveringChip = updateMaxLoanChip;
+    const applyMaxLoanAmount = () => (typeof CollateralManager !== 'undefined') && CollateralManager.applyMaxLoanAmount();
     const applySelfCoveringLoanAmount = () => (typeof CollateralManager !== 'undefined') && CollateralManager.applySelfCoveringLoanAmount();
 
 
@@ -934,12 +947,18 @@
             unsecuredBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
                 setLoanType('unsecured');
+                if (typeof coreInputsFilled === 'function' && coreInputsFilled()) {
+                    appCalculate();
+                }
             });
         }
         if (securedBtn) {
             securedBtn.addEventListener('click', () => {
                 if (typeof haptic !== 'undefined') haptic('light');
                 setLoanType('secured');
+                if (typeof coreInputsFilled === 'function' && coreInputsFilled()) {
+                    appCalculate();
+                }
             });
         }
 
@@ -1519,6 +1538,10 @@
                     text += `${instLabel}: ${displayFmt(res.M)}\n`;
                 }
 
+                if (res.finalPayment && Math.abs(res.finalPayment - res.M) >= 0.01) {
+                    text += `${t(AppState.lang, 'finalInstAmountLabel')}: ${displayFmt(res.finalPayment)}\n`;
+                }
+
                 text += `-------------------\n`;
                 text += `${t(AppState.lang, 'totalInterestLabel')}: ${displayFmt(res.TI)}\n`;
                 text += `${t(AppState.lang, 'totalSumLabel')}: ${displayFmt(res.P + res.TI)}\n`;
@@ -1544,6 +1567,83 @@
     }
 
     // --- Core Logic Wrappers ---
+
+    function updateSummaryDynamicTexts(lang) {
+        if (!AppState.lastRes || !AppState.lastRes.P) return;
+        const res = AppState.lastRes;
+        const M = res.M;
+        const N = res.N;
+        const finalPayment = res.finalPayment !== undefined ? res.finalPayment : M;
+        const finalDiff = Math.round((finalPayment - M) * 100) / 100;
+
+        const finalInstContainer = document.getElementById('summary-final-inst-container');
+        const finalInstEl = document.getElementById('summary-final-inst');
+        const finalInstNote = document.getElementById('summary-final-inst-note');
+
+        if (finalInstContainer && finalInstEl) {
+            if (Math.abs(finalDiff) >= 0.01) {
+                finalInstContainer.classList.remove('hidden');
+                finalInstEl.textContent = displayFmt(finalPayment);
+                if (finalInstNote) {
+                    if (Math.abs(finalDiff) <= 1.00) {
+                        const diffStr = (finalDiff > 0 ? '+' : '') + finalDiff.toFixed(2);
+                        finalInstNote.textContent = t(lang, 'roundingNotice').replace('{diff}', `${diffStr} ${lang === 'ar' ? 'ج.م' : 'EGP'}`);
+                        finalInstNote.classList.remove('hidden');
+                    } else {
+                        finalInstNote.textContent = '';
+                        finalInstNote.classList.add('hidden');
+                    }
+                }
+            } else {
+                finalInstContainer.classList.add('hidden');
+            }
+        }
+
+        const periodReconcileCard = document.getElementById('period-reconcile-card');
+        const periodReconcileText = document.getElementById('period-reconcile-text');
+        const periodEqualizeBtnText = document.getElementById('period-equalize-btn-text');
+        if (periodReconcileCard && periodReconcileText && periodEqualizeBtnText) {
+            if (AppState.activeKey === 'period' && res.isFractional && res.equalM) {
+                periodReconcileCard.classList.remove('hidden');
+                const regularCount = Math.max(1, N - 1);
+                periodReconcileText.textContent = t(lang, 'partialInstNotice')
+                    .replace('{count}', regularCount)
+                    .replace('{regular}', displayFmt(M))
+                    .replace('{final}', displayFmt(finalPayment));
+
+                periodEqualizeBtnText.textContent = t(lang, 'switchToEqualBtn')
+                    .replace('{count}', N)
+                    .replace('{amount}', displayFmt(res.equalM));
+            } else {
+                periodReconcileCard.classList.add('hidden');
+            }
+        }
+
+        const targetReconcileCard = document.getElementById('target-reconcile-card');
+        const targetReconcileText = document.getElementById('target-reconcile-text');
+        if (targetReconcileCard && targetReconcileText) {
+            const hasDiff = res.targetM !== undefined && res.diffM !== undefined && Math.abs(res.diffM) >= 0.01;
+            if (hasDiff && (AppState.activeKey === 'rate' || AppState.activeKey === 'amount')) {
+                targetReconcileCard.classList.remove('hidden');
+                const diffStr = (res.diffM > 0 ? '+' : '') + res.diffM.toFixed(2) + ' ' + (lang === 'ar' ? 'ج.م' : 'EGP');
+                if (AppState.activeKey === 'rate') {
+                    targetReconcileText.textContent = t(lang, 'targetReconcileRate')
+                        .replace('{rate}', res.R.toFixed(2))
+                        .replace('{installment}', displayFmt(res.M))
+                        .replace('{diff}', diffStr)
+                        .replace('{target}', displayFmt(res.targetM));
+                } else {
+                    targetReconcileText.textContent = t(lang, 'targetReconcileAmount')
+                        .replace('{amount}', Math.round(res.P).toLocaleString('en-US'))
+                        .replace('{installment}', displayFmt(res.M))
+                        .replace('{diff}', diffStr)
+                        .replace('{target}', displayFmt(res.targetM));
+                }
+            } else {
+                targetReconcileCard.classList.add('hidden');
+            }
+        }
+    }
 
     function setLang(l) {
         AppState.lang = l;
@@ -1594,6 +1694,7 @@
             const isAdvancedMode = document.getElementById('advanced-toggle')?.checked || false;
             if (typeof showScheduleUI === 'function') showScheduleUI(AppState.schedule, AppState.lang, false, isAdvancedMode);
             if (typeof drawChart === 'function') drawChart(AppState.lastRes.P, AppState.lastRes.TI, AppState.lang);
+            updateSummaryDynamicTexts(l);
         }
     }
 
@@ -1775,7 +1876,7 @@
             if (AppState.activeKey === 'period') formInputs.period.value = N;
             else if (AppState.activeKey === 'installment') formInputs.installment.value = displayFmt(M);
             else if (AppState.activeKey === 'rate') formInputs.rate.value = R.toFixed(2);
-            else if (AppState.activeKey === 'amount') formInputs.amount.value = displayFmt(P);
+            else if (AppState.activeKey === 'amount') formInputs.amount.value = Math.round(P).toLocaleString('en-US');
 
             let bookingDate = new Date();
             if (dateInputs.startNative.value) {
@@ -1820,6 +1921,12 @@
                 TI: totalActualInterest,
                 startDate: dateInputs.startNative.value,
                 m1_Payment: schedResult.m1_Payment,
+                finalPayment: schedResult.finalPayment,
+                equalM: calcResult.equalM,
+                isFractional: calcResult.isFractional,
+                exactN: calcResult.exactN,
+                targetM: calcResult.targetM,
+                diffM: calcResult.diffM,
                 totalStamp: totalStamp,
                 freq: freq
             };
@@ -1884,6 +1991,28 @@
                 stdInstLabel.textContent = freq === 3
                     ? t(AppState.lang, 'quarterlyInstallmentLabel')
                     : t(AppState.lang, 'monthlyInstallmentLabel');
+            }
+
+            // Handle Final Installment Disclosure & Period Equalization Banner
+            updateSummaryDynamicTexts(AppState.lang);
+
+            const periodEqualizeBtn = document.getElementById('period-equalize-btn');
+            if (periodEqualizeBtn && !periodEqualizeBtn._boundClick) {
+                periodEqualizeBtn._boundClick = true;
+                periodEqualizeBtn.addEventListener('click', () => {
+                    const instRadio = document.querySelector('input[name="calc-target"][value="installment"]');
+                    if (instRadio) {
+                        instRadio.checked = true;
+                        AppState.activeKey = 'installment';
+                        if (typeof updateInputState === 'function') {
+                            updateInputState(inputGroups, formInputs, errorLabels, AppState.activeKey, AppState.lang);
+                        }
+                    }
+                    if (AppState.lastRes && AppState.lastRes.equalM) {
+                        formInputs.installment.value = displayFmt(AppState.lastRes.equalM);
+                    }
+                    appCalculate();
+                });
             }
 
             updateSelfSufficient(false);
@@ -2035,10 +2164,16 @@
 
         ['summary-rate', 'summary-principal', 'total-interest', 'total-sum', 'summary-period', 'summary-first-date'].forEach(id => document.getElementById(id).textContent = '-');
         document.querySelectorAll('.flat-rate-display').forEach(el => el.textContent = '-');
-        ['summary-first-inst', 'summary-regular-inst', 'summary-std-inst', 'summary-admin-fees', 'summary-net-loan', 'summary-total-stamp'].forEach(id => {
+        ['summary-first-inst', 'summary-regular-inst', 'summary-std-inst', 'summary-admin-fees', 'summary-net-loan', 'summary-total-stamp', 'summary-final-inst'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = '-';
         });
+        const finalContainer = document.getElementById('summary-final-inst-container');
+        if (finalContainer) finalContainer.classList.add('hidden');
+        const reconcileCard = document.getElementById('period-reconcile-card');
+        if (reconcileCard) reconcileCard.classList.add('hidden');
+        const targetReconcile = document.getElementById('target-reconcile-card');
+        if (targetReconcile) targetReconcile.classList.add('hidden');
 
         Object.values(errorLabels).forEach(e => e.classList.add('hidden'));
         Object.values(inputGroups).forEach(g => g.classList.remove('error-state'));
@@ -2220,6 +2355,8 @@
 
             const switchWhatsNewTab = (tab) => {
                 if (typeof haptic !== 'undefined') haptic('light');
+                const modalBody = document.getElementById('whats-new-modal-body');
+                if (modalBody) modalBody.scrollTop = 0;
                 if (tab === 'whats-new') {
                     if (tabBtnWhatsNew) tabBtnWhatsNew.className = 'py-2 px-3 text-xs font-bold rounded-lg transition-all text-center bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-xs';
                     if (tabBtnAppFeatures) tabBtnAppFeatures.className = 'py-2 px-3 text-xs font-semibold rounded-lg transition-all text-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';

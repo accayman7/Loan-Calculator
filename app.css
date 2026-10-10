@@ -282,12 +282,15 @@ nav>div {
 .dark .freq-option:active {
     background: rgba(99, 102, 241, 0.25);
 }
+.freq-option {
+    border: none !important;
+}
 .dark #freq-dropdown {
     background: var(--card-bg, #1f2937);
     border-color: var(--card-border, #374151);
 }
 .dark .freq-option {
-    border-color: var(--card-border, #374151);
+    border: none !important;
 }
 .dark .freq-check {
     border-color: #4b5563;
@@ -296,6 +299,53 @@ nav>div {
 .input-group.error-state {
     border-color: #ef4444 !important;
     box-shadow: 0 0 0 1px #ef4444;
+}
+
+/* Quick-fill Max Loan Helper Chip */
+.max-loan-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+}
+
+.max-loan-chip:hover {
+    background-color: #e0e7ff;
+    border-color: #a5b4fc;
+    color: #312e81;
+}
+
+.max-loan-chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+}
+
+.dark .max-loan-chip,
+html.dark .max-loan-chip {
+    background-color: rgba(99, 102, 241, 0.2) !important;
+    border: 1px solid rgba(165, 180, 252, 0.45) !important;
+    color: #e0e7ff !important;
+}
+
+.dark .max-loan-chip:hover,
+html.dark .max-loan-chip:hover {
+    background-color: rgba(99, 102, 241, 0.35) !important;
+    border-color: rgba(199, 210, 254, 0.65) !important;
+    color: #ffffff !important;
+}
+
+.max-loan-chip #max-loan-chip-val {
+    font-weight: 700;
+    color: inherit;
 }
 
 .info-icon {
@@ -466,6 +516,12 @@ nav>div {
 }
 
 /* Amortization schedule table spacing and alignment */
+#schedule-container table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
 #schedule-container table th,
 #schedule-container table td {
     padding-left: 0.25rem !important;
@@ -513,15 +569,33 @@ html[dir="rtl"] #schedule-container table th {
         letter-spacing: 0.015em;
     }
 }
-@media (min-width: 640px) {
+@media (min-width: 640px), (orientation: landscape) {
     #schedule-container table th {
         font-size: 0.75rem;
         letter-spacing: 0.025em;
     }
+    #schedule-container table th:last-child,
+    #schedule-container table td:last-child {
+        padding-inline-end: 1.25rem !important;
+    }
+    #schedule-container table th.sm\:table-cell,
+    #schedule-container table td.sm\:table-cell {
+        display: table-cell !important;
+    }
 }
 
-/* Mobile font optimization for schedule numbers to prevent wrapping/overflow */
-@media (max-width: 639px) {
+html[data-orientation="landscape"] #schedule-container table th.sm\:table-cell,
+html[data-orientation="landscape"] #schedule-container table td.sm\:table-cell {
+    display: table-cell !important;
+}
+
+html[data-orientation="landscape"] #schedule-container table th:last-child,
+html[data-orientation="landscape"] #schedule-container table td:last-child {
+    padding-inline-end: 1.25rem !important;
+}
+
+/* Mobile font optimization for schedule numbers to fit cleanly in portrait */
+@media (max-width: 639px) and (orientation: portrait) {
     #schedule-container table {
         table-layout: auto;
         width: 100%;
@@ -535,12 +609,34 @@ html[dir="rtl"] #schedule-container table th {
     }
 }
 
-@media (min-width: 640px) {
-    /* Amortization schedule Remaining column buffer padding on desktop (LTR right / RTL left) */
-    #schedule-container table th:last-child,
-    #schedule-container table td:last-child {
-        padding-inline-end: 1.25rem !important;
+/* Fixed Height & Smooth Scroll for What's New & App Guide Modal */
+#whats-new-modal .modal-container {
+    height: 82vh !important;
+    height: 82dvh !important;
+    max-height: 85vh !important;
+    max-height: 85dvh !important;
+}
+
+@media (min-width: 768px) {
+    #whats-new-modal .modal-container {
+        height: 560px !important;
+        max-height: 560px !important;
     }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+    #whats-new-modal .modal-container {
+        height: 92vh !important;
+        height: 92dvh !important;
+        max-height: 92vh !important;
+    }
+}
+
+#whats-new-modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
 }
 
 /* Stamp Row Highlight in Amortization Schedule */
@@ -1023,6 +1119,10 @@ html[data-theme="dark"] #message-box.toast-success {
 }
 
 @media (min-width: 1024px) {
+    main {
+        padding-top: 1rem !important; /* 16px: perfectly matches sticky top clearance (64px navbar + 16px = 80px) */
+    }
+
     #summary-column {
         top: 5rem !important; /* 80px: 64px fixed navbar + 16px comfortable clearance */
     }
@@ -3258,4 +3358,40 @@ html.dark .donut-legend-item:hover {
     .summary-collapse-wrapper.expanded {
         transition: none !important;
     }
+}
+
+/* Calculation History Modal Cards */
+.history-card {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.history-card:hover {
+    border-color: #818cf8;
+    background-color: #f5f3ff;
+}
+
+.dark .history-card {
+    background-color: #374151 !important; /* elevated card above dark:bg-gray-800 modal */
+    border-color: #4b5563 !important;     /* gray-600 */
+}
+
+.dark .history-card:hover {
+    border-color: #6366f1 !important;     /* indigo-500 */
+    background-color: #1f2937 !important; /* gray-800 */
+}
+
+.dark .history-card .delete-btn {
+    background-color: rgba(185, 28, 28, 0.25) !important;
+    color: #fca5a5 !important;
+}
+
+.dark .history-card .delete-btn:hover {
+    background-color: rgba(185, 28, 28, 0.5) !important;
+    color: #ffffff !important;
+}
+
+#history-modal .modal-content {
+    padding-bottom: 1.5rem !important;
 }
