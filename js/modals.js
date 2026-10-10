@@ -136,9 +136,9 @@
 
     /* ================= IN-APP MODAL HANDLER ================= */
     /**
-     * Manages in-app modal state and Escape key dismissal.
-     * Operates purely in-memory without mutating browser history (history.pushState),
-     * ensuring Chrome and Android OS never trigger the Predictive Back page-slide gesture.
+     * Manages in-app overlay state, Android back gesture/button, and Escape key dismissal.
+     * Uses the standard CloseWatcher API to intercept Android back gestures cleanly
+     * without history mutations (pushState) and without triggering predictive back exit glitches.
      */
     const BackHandler = (() => {
         // Stack of currently open modal identifiers
@@ -147,10 +147,30 @@
         // Map of modal IDs to their close functions
         const closeHandlers = {};
 
+        // Map of modal IDs to their active CloseWatcher instances
+        const closeWatchers = {};
+
         function push(modalId, closeHandler) {
             if (modalStack.includes(modalId)) return; // Already tracked
             modalStack.push(modalId);
             closeHandlers[modalId] = closeHandler;
+
+            // Register native CloseWatcher for Android back gesture and Esc key
+            if (typeof window !== 'undefined' && 'CloseWatcher' in window) {
+                try {
+                    const watcher = new CloseWatcher();
+                    watcher.onclose = () => {
+                        delete closeWatchers[modalId];
+                        const handler = closeHandlers[modalId];
+                        if (typeof handler === 'function') {
+                            handler();
+                        }
+                    };
+                    closeWatchers[modalId] = watcher;
+                } catch (err) {
+                    console.warn('[BackHandler] Could not create CloseWatcher:', err);
+                }
+            }
         }
 
         function pop(modalId) {
@@ -158,6 +178,14 @@
             if (index === -1) return; // Not tracked
             modalStack.splice(index, 1);
             delete closeHandlers[modalId];
+
+            // Destroy active CloseWatcher if closed via UI (e.g. 'X' button or backdrop)
+            if (closeWatchers[modalId]) {
+                try {
+                    closeWatchers[modalId].destroy();
+                } catch (_) {}
+                delete closeWatchers[modalId];
+            }
         }
 
         function isOpen(modalId) {
@@ -176,10 +204,9 @@
         }
 
         function init() {
-            // Document-level Escape key listener for keyboard dismissal
+            // Fallback Escape key listener for environments without CloseWatcher
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    // If a modal was open and closed, stop propagation
+                if (e.key === 'Escape' && !('CloseWatcher' in window)) {
                     if (closeTopModal()) {
                         e.stopPropagation();
                     }
