@@ -11,6 +11,7 @@
         { id: 1, amount: '', redemption: '', rate: '', period: '' }
     ];
     let nextCollateralId = 2;
+    let collateralAccrualBasis = 'monthly'; // 'monthly' | 'quarterly'
 
     let _options = {
         getLang: () => document.documentElement.lang || 'en',
@@ -18,7 +19,8 @@
         getFormInputs: () => ({}),
         getLastResult: () => ({}),
         onRecalcRequired: () => {},
-        validateInput: (key) => {}
+        validateInput: (key) => {},
+        onBasisChanged: (basis) => {}
     };
 
     /**
@@ -55,7 +57,8 @@
         return collaterals.map(c => ({
             amount: (typeof safeParseFloat === 'function' ? safeParseFloat(c.amount) : parseFloat(c.amount)) || 0,
             redemption: (typeof safeParseFloat === 'function' ? safeParseFloat(c.redemption) : parseFloat(c.redemption)) || 0,
-            rate: (typeof safeParseFloat === 'function' ? safeParseFloat(c.rate) : parseFloat(c.rate)) || 0
+            rate: (typeof safeParseFloat === 'function' ? safeParseFloat(c.rate) : parseFloat(c.rate)) || 0,
+            accrualBasis: collateralAccrualBasis
         }));
     }
 
@@ -145,6 +148,7 @@
                         </div>
                     </div>
                 </div>
+                <p id="col-redemption-visible-error-${col.id}" class="text-[11px] font-medium text-red-500 dark:text-red-400 hidden pt-0.5 leading-snug"></p>
                 <span id="col-amount-error-${col.id}" class="sr-only" role="alert"></span>
                 <span id="col-redemption-error-${col.id}" class="sr-only" role="alert"></span>
                 <span id="col-rate-error-${col.id}" class="sr-only" role="alert"></span>
@@ -174,14 +178,20 @@
                 const red = typeof safeParseFloat === 'function' ? safeParseFloat(redemptionInput?.value) : parseFloat(redemptionInput?.value);
                 const grp = redemptionInput?.parentElement;
                 const errEl = row.querySelector(`#col-redemption-error-${col.id}`);
+                const visErrEl = row.querySelector(`#col-redemption-visible-error-${col.id}`);
+                const msg = typeof t === 'function' ? t(lang, 'errorRedemptionExceedsNominal') : 'Redemption value cannot exceed nominal value';
                 if (!isNaN(a) && a > 0 && !isNaN(red) && red > a) {
                     if (grp) grp.classList.add('error-state');
                     if (redemptionInput) {
                         redemptionInput.setAttribute('aria-invalid', 'true');
                         redemptionInput.setAttribute('aria-describedby', `col-redemption-error-${col.id}`);
-                        redemptionInput.title = typeof t === 'function' ? t(lang, 'errorRedemptionExceedsNominal') : '';
+                        redemptionInput.title = msg;
                     }
-                    if (errEl) errEl.textContent = `${colItemName}: ${typeof t === 'function' ? t(lang, 'errorRedemptionExceedsNominal') : ''}`;
+                    if (errEl) errEl.textContent = `${colItemName}: ${msg}`;
+                    if (visErrEl) {
+                        visErrEl.textContent = msg;
+                        visErrEl.classList.remove('hidden');
+                    }
                 } else {
                     if (grp) grp.classList.remove('error-state');
                     if (redemptionInput) {
@@ -190,6 +200,10 @@
                         redemptionInput.title = `${typeof t === 'function' ? t(lang, 'collateralRedemptionLabel') : ''} (${colItemName})`;
                     }
                     if (errEl) errEl.textContent = '';
+                    if (visErrEl) {
+                        visErrEl.textContent = '';
+                        visErrEl.classList.add('hidden');
+                    }
                 }
             };
 
@@ -306,9 +320,11 @@
     function getCollateralSummary(colList) {
         let totalCollateral = 0;
         let maxRate = 0;
-        let totalMonthlyCdReturn = 0;
+        let totalPeriodicCdReturn = 0;
         let hasCollateral = false;
         let totalMaxLoan = 0;
+
+        const divisor = collateralAccrualBasis === 'quarterly' ? 400 : 1200;
 
         if (Array.isArray(colList)) {
             colList.forEach(c => {
@@ -328,7 +344,8 @@
                     maxRate = r;
                 }
                 if (a > 0 && r > 0) {
-                    totalMonthlyCdReturn += (a * r) / 1200;
+                    // Periodic return: monthly = (a * r) / 1200; quarterly = (a * r) / 400 = (a * r%) / 4
+                    totalPeriodicCdReturn += (a * r) / divisor;
                 }
             });
         }
@@ -340,7 +357,9 @@
         return {
             totalCollateral,
             maxRate,
-            totalMonthlyCdReturn,
+            totalMonthlyCdReturn: totalPeriodicCdReturn, // maintain property name for backward compatibility
+            totalPeriodicCdReturn,
+            accrualBasis: collateralAccrualBasis,
             hasCollateral,
             maxLoan,
             minRate
@@ -441,21 +460,21 @@
             return;
         }
 
-        const { totalMonthlyCdReturn, hasCollateral } = getCollateralSummary(collaterals);
+        const { totalPeriodicCdReturn, hasCollateral, accrualBasis } = getCollateralSummary(collaterals);
         const formInputs = _options.getFormInputs();
         const lastRes = _options.getLastResult();
         const lang = _options.getLang();
 
         const lastM = lastRes?.M || (typeof safeParseFloat === 'function' ? safeParseFloat(formInputs.installment?.value) : parseFloat(formInputs.installment?.value)) || 0;
-        const freq = lastRes?.freq || (document.getElementById('installment-freq')?.value === '3' ? 3 : 1);
-        const monthlyInstallment = freq === 3 ? (lastM / 3) : lastM;
+        const isQuarterly = accrualBasis === 'quarterly';
+        const periodicInstallment = lastM; // Installment is already per-period (monthly or quarterly)
 
-        if (!hasCollateral || monthlyInstallment <= 0) {
+        if (!hasCollateral || periodicInstallment <= 0) {
             card.classList.add('hidden');
             return;
         }
 
-        let netDiff = totalMonthlyCdReturn - monthlyInstallment;
+        let netDiff = totalPeriodicCdReturn - periodicInstallment;
         if (Math.abs(netDiff) < 0.005) {
             netDiff = 0;
         }
@@ -468,8 +487,23 @@
         const diffBoxEl = document.getElementById('cashflow-diff-box');
         const explainEl = document.getElementById('cashflow-explain');
 
-        if (cdReturnEl) cdReturnEl.textContent = '+' + displayFmt(totalMonthlyCdReturn);
-        if (loanInstEl) loanInstEl.textContent = '-' + displayFmt(monthlyInstallment);
+        // Dynamic labels based on monthly vs quarterly basis
+        const cdLabelEl = document.getElementById('cashflow-cd-return-label');
+        const loanInstLabelEl = document.getElementById('cashflow-loan-inst-label');
+
+        if (cdLabelEl && typeof t === 'function') {
+            const cdKey = isQuarterly ? 'cdQuarterlyReturnLabel' : 'cdMonthlyReturnLabel';
+            cdLabelEl.textContent = t(lang, cdKey);
+            cdLabelEl.setAttribute('data-lang-key', cdKey);
+        }
+        if (loanInstLabelEl && typeof t === 'function') {
+            const loanKey = isQuarterly ? 'loanInstallmentQuarterlyLabel' : 'loanInstallmentMonthlyLabel';
+            loanInstLabelEl.textContent = t(lang, loanKey);
+            loanInstLabelEl.setAttribute('data-lang-key', loanKey);
+        }
+
+        if (cdReturnEl) cdReturnEl.textContent = '+' + displayFmt(totalPeriodicCdReturn);
+        if (loanInstEl) loanInstEl.textContent = '-' + displayFmt(periodicInstallment);
         if (netDiffEl) {
             netDiffEl.textContent = (isSurplus ? '+' : '') + displayFmt(netDiff);
             netDiffEl.className = isSurplus
@@ -517,22 +551,18 @@
     function calculateSelfCoveringLoanAmount() {
         if (_options.getLoanType() !== 'secured') return 0;
 
-        let totalMonthlyCdReturn = 0;
-        collaterals.forEach(c => {
-            const a = (typeof safeParseFloat === 'function' ? safeParseFloat(c.amount) : parseFloat(c.amount)) || 0;
-            const r = (typeof safeParseFloat === 'function' ? safeParseFloat(c.rate) : parseFloat(c.rate)) || 0;
-            if (a > 0 && r > 0) totalMonthlyCdReturn += (a * r) / 1200;
-        });
-        if (totalMonthlyCdReturn <= 0) return 0;
+        const { totalPeriodicCdReturn } = getCollateralSummary(collaterals);
+        if (totalPeriodicCdReturn <= 0) return 0;
 
         const formInputs = _options.getFormInputs();
         const rateVal = typeof safeParseFloat === 'function' ? safeParseFloat(formInputs.rate?.value) : parseFloat(formInputs.rate?.value);
         const periodVal = parseInt(formInputs.period?.value, 10);
-        const freqVal = document.getElementById('installment-freq')?.value === '3' ? 3 : 1;
+        const freqVal = collateralAccrualBasis === 'quarterly' ? 3 : 1;
 
         if (isNaN(rateVal) || rateVal < 0 || isNaN(periodVal) || periodVal <= 0) return 0;
 
-        const mTarget = totalMonthlyCdReturn * freqVal;
+        // Target periodic installment equals total periodic CD return
+        const mTarget = totalPeriodicCdReturn;
         const i = (rateVal / 100) * (freqVal / 12);
 
         const pExact = (i === 0)
@@ -550,7 +580,7 @@
             return typeof round2 === 'function' ? round2(rawM) : Math.round(rawM * 100) / 100;
         };
 
-        while (pInt > 0 && ((getM(pInt) / freqVal) - totalMonthlyCdReturn > 0.0049)) {
+        while (pInt > 0 && (getM(pInt) - totalPeriodicCdReturn > 0.0049)) {
             pInt--;
         }
 
@@ -662,12 +692,94 @@
         if (maxChip) {
             maxChip.addEventListener('click', () => applyMaxLoanAmount());
         }
+
+        // Global Collateral Interest Accrual Basis Buttons
+        const monthlyBasisBtn = document.getElementById('col-basis-monthly-btn');
+        const quarterlyBasisBtn = document.getElementById('col-basis-quarterly-btn');
+
+        const updateBasisButtonsUI = (basis) => {
+            if (monthlyBasisBtn && quarterlyBasisBtn) {
+                if (basis === 'quarterly') {
+                    quarterlyBasisBtn.className = 'col-basis-btn py-1 px-2.5 rounded-md text-[11px] sm:text-xs font-bold transition-all shadow-xs bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
+                    monthlyBasisBtn.className = 'col-basis-btn py-1 px-2.5 rounded-md text-[11px] sm:text-xs font-semibold transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+                } else {
+                    monthlyBasisBtn.className = 'col-basis-btn py-1 px-2.5 rounded-md text-[11px] sm:text-xs font-bold transition-all shadow-xs bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
+                    quarterlyBasisBtn.className = 'col-basis-btn py-1 px-2.5 rounded-md text-[11px] sm:text-xs font-semibold transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+                }
+            }
+        };
+
+        const setAccrualBasis = (basis, triggerCallback = true) => {
+            if (basis !== 'quarterly' && basis !== 'monthly') basis = 'monthly';
+            if (collateralAccrualBasis === basis) return;
+            collateralAccrualBasis = basis;
+            updateBasisButtonsUI(collateralAccrualBasis);
+            recalcCollateralMetrics();
+            if (triggerCallback && typeof _options.onBasisChanged === 'function') {
+                _options.onBasisChanged(collateralAccrualBasis);
+            }
+        };
+
+        if (monthlyBasisBtn) {
+            monthlyBasisBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                setAccrualBasis('monthly');
+            });
+        }
+        if (quarterlyBasisBtn) {
+            quarterlyBasisBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('light');
+                setAccrualBasis('quarterly');
+            });
+        }
+
+        updateBasisButtonsUI(collateralAccrualBasis);
+    }
+
+    function setAccrualBasisExternal(basis) {
+        if (basis !== 'quarterly' && basis !== 'monthly') basis = 'monthly';
+        collateralAccrualBasis = basis;
+        const monthlyBasisBtn = document.getElementById('col-basis-monthly-btn');
+        const quarterlyBasisBtn = document.getElementById('col-basis-quarterly-btn');
+        if (monthlyBasisBtn && quarterlyBasisBtn) {
+            if (basis === 'quarterly') {
+                quarterlyBasisBtn.className = 'col-basis-btn py-1 px-2.5 rounded-md text-[11px] sm:text-xs font-bold transition-all shadow-xs bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
+                monthlyBasisBtn.className = 'col-basis-btn py-1 px-2.5 rounded-md text-[11px] sm:text-xs font-semibold transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+            } else {
+                monthlyBasisBtn.className = 'col-basis-btn py-1 px-2.5 rounded-md text-[11px] sm:text-xs font-bold transition-all shadow-xs bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
+                quarterlyBasisBtn.className = 'col-basis-btn py-1 px-2.5 rounded-md text-[11px] sm:text-xs font-semibold transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+            }
+        }
+        recalcCollateralMetrics();
+        if (typeof _options.onBasisChanged === 'function') {
+            _options.onBasisChanged(collateralAccrualBasis);
+        }
+    }
+
+    function hasCollateralRedemptionErrors() {
+        return collaterals.some(c => {
+            const a = typeof safeParseFloat === 'function' ? safeParseFloat(c.amount) : parseFloat(c.amount);
+            const red = typeof safeParseFloat === 'function' ? safeParseFloat(c.redemption) : parseFloat(c.redemption);
+            return !isNaN(a) && a > 0 && !isNaN(red) && red > a;
+        });
+    }
+
+    function resetCollateralsState() {
+        collaterals = [{ id: 1, amount: '', redemption: '', rate: '', period: '' }];
+        nextCollateralId = 2;
+        setAccrualBasisExternal('monthly');
+        renderCollaterals();
+        recalcCollateralMetrics(false);
     }
 
     // Export module to global scope
     window.CollateralManager = {
         get: getCollaterals,
         getRaw: () => collaterals,
+        getAccrualBasis: () => collateralAccrualBasis,
+        setAccrualBasis: setAccrualBasisExternal,
+        hasRedemptionErrors: hasCollateralRedemptionErrors,
+        reset: resetCollateralsState,
         setRaw: (newList) => {
             if (Array.isArray(newList)) {
                 collaterals = newList;
@@ -699,4 +811,6 @@
     window.updateSelfCoveringChip = updateMaxLoanChip;
     window.applyMaxLoanAmount = applyMaxLoanAmount;
     window.applySelfCoveringLoanAmount = applySelfCoveringLoanAmount;
+    window.getCollateralAccrualBasis = () => collateralAccrualBasis;
+    window.setCollateralAccrualBasis = setAccrualBasisExternal;
 })();

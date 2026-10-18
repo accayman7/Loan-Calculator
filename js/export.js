@@ -36,6 +36,18 @@ function announceExportStatus(msg) {
 }
 
 /**
+ * Yields execution back to the browser's main thread to prevent INP stalls
+ * and allow UI components (spinners, toasts) to paint before heavy operations.
+ * @returns {Promise<void>}
+ */
+function yieldToMain() {
+    if (typeof window !== 'undefined' && 'scheduler' in window && typeof window.scheduler.yield === 'function') {
+        return window.scheduler.yield();
+    }
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+/**
  * Lazy load XLSX library on first use
  * @returns {Promise} Resolves when XLSX is loaded
  */
@@ -208,13 +220,69 @@ function buildPrintReportHtmlDocument(doc, { summaryClone, scheduleClone, discla
 }
 
 /**
+ * Executes print with Android WebView bridge fallback.
+ * Inside native Android WebViews, iframe.contentWindow.print() often fails silently.
+ * This bridge projects the styled printable HTML into #android-native-print-host
+ * and invokes top-level window.print(), cleaning up on afterprint.
+ * @param {HTMLIFrameElement} printFrame - The print iframe
+ * @param {Document} printDoc - The prepared iframe document
+ */
+function triggerPrintWithAndroidFallback(printFrame, printDoc) {
+    const isAndroidWebView = /wv|Android.*Version\/[0-9]+\.[0-9]+|Capacitor/i.test(navigator.userAgent);
+
+    const executeAndroidPrint = () => {
+        let printHost = document.getElementById('android-native-print-host');
+        if (!printHost) {
+            printHost = document.createElement('div');
+            printHost.id = 'android-native-print-host';
+            document.body.appendChild(printHost);
+        }
+
+        const stylesHtml = Array.from(printDoc.head.querySelectorAll('style, link[rel="stylesheet"]'))
+            .map(el => el.outerHTML)
+            .join('\n');
+
+        printHost.innerHTML = stylesHtml + printDoc.body.innerHTML;
+        document.body.classList.add('is-printing-android');
+
+        const cleanup = () => {
+            document.body.classList.remove('is-printing-android');
+            if (printHost) printHost.innerHTML = '';
+            window.removeEventListener('afterprint', cleanup);
+        };
+
+        window.addEventListener('afterprint', cleanup);
+        window.print();
+        setTimeout(cleanup, 2500);
+    };
+
+    if (isAndroidWebView) {
+        executeAndroidPrint();
+    } else {
+        try {
+            printFrame.contentWindow.focus();
+            printFrame.contentWindow.print();
+        } catch (printErr) {
+            console.warn("Iframe print failed, falling back to Android/native print bridge:", printErr);
+            executeAndroidPrint();
+        }
+    }
+}
+
+/**
  * Handle print action for loan schedule and summary report
  */
-function printReport() {
+async function printReport() {
     const appState = _exportAppState || (typeof AppState !== 'undefined' ? AppState : null);
     if (!appState || !appState.schedule || appState.schedule.length === 0) return;
     const frame = document.getElementById('print-frame');
     if (!frame) return;
+
+    // Flush any pending schedule chunk renders before cloning DOM
+    const schedBody = document.getElementById('schedule-body');
+    if (schedBody && typeof schedBody._flushChunking === 'function') {
+        schedBody._flushChunking();
+    }
 
     const pdfBtn = document.getElementById('export-pdf-button');
     const spinner = pdfBtn?.querySelector('.export-spinner');
@@ -231,6 +299,7 @@ function printReport() {
     };
 
     setPdfLoading(true);
+    await yieldToMain();
 
     try {
         const doc = frame.contentWindow.document;
@@ -272,8 +341,7 @@ function printReport() {
         setTimeout(() => {
             setPdfLoading(false);
             try {
-                frame.contentWindow.focus();
-                frame.contentWindow.print();
+                triggerPrintWithAndroidFallback(frame, doc);
             } catch (printErr) {
                 console.error("Print dialog error:", printErr);
                 showToast(t(appState.lang, 'exportPdfError'), "error");
@@ -311,6 +379,7 @@ async function exportExcel() {
     setXlsxLoading(true);
     showToast(t(appState.lang, 'exportXlsxStarting'));
     announceExportStatus(t(appState.lang, 'exportXlsxStarting'));
+    await yieldToMain();
     const startTime = Date.now();
     const MIN_LOADING_TIME = 600; // ms: ensures animation is smooth and perceptible
 

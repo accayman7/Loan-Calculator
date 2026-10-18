@@ -10,6 +10,7 @@ const PRE_CACHE = [
   './index.html',
   './manifest.json',
   './icon.png',
+  './icon.ico',
   './tailwind.css',
   './app.css',
   './js/version.js',
@@ -28,7 +29,8 @@ const PRE_CACHE = [
   './js/history.js',
   './js/export.js',
   './js/pwa-install.js',
-  './js/app.js'
+  './js/app.js',
+  './xlsx.mini.min.js'
 ];
 
 // Install Event: Cache core files (best-effort - missing files won't break install)

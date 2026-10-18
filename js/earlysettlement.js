@@ -190,6 +190,18 @@ function initEarlySettlement(appState, formInputs, animateToggleBounce, formatDa
                 if (earlySettlementToggle?.checked) updateEarlySettlement(true);
             });
         }
+
+        // Section Reset Button
+        const esResetBtn = document.getElementById('early-settlement-reset-btn');
+        if (esResetBtn) {
+            esResetBtn.addEventListener('click', () => {
+                if (typeof haptic !== 'undefined') haptic('medium');
+                resetEarlySettlement(true);
+                if (typeof showToast === 'function' && _esAppState) {
+                    showToast(t(_esAppState.lang, 'toastSectionReset'));
+                }
+            });
+        }
     }
 
     // --- Settlement fee input handler - with max 100% validation ---
@@ -226,7 +238,7 @@ function updateEarlySettlement(showError = false) {
     // 1. Check if we have a valid main loan calculation (schedule exists)
     if (!_esAppState.schedule || _esAppState.schedule.length === 0) {
         resultsPanel.classList.add('opacity-0', 'max-h-0');
-        resultsPanel.classList.remove('opacity-100', 'max-h-96');
+        resultsPanel.classList.remove('opacity-100', 'max-h-96', 'hidden');
         if (errorEl && showError) {
             // Show specific 'Loan not calculated' error
             errorEl.textContent = t(_esAppState.lang, 'errorLoanNotCalculated');
@@ -240,7 +252,7 @@ function updateEarlySettlement(showError = false) {
     const feeVal = settlementFeeInput?.value.trim();
     if (!settlementDateNative?.value || feeVal === '' || feeVal === undefined) {
         resultsPanel.classList.add('opacity-0', 'max-h-0');
-        resultsPanel.classList.remove('opacity-100', 'max-h-96');
+        resultsPanel.classList.remove('opacity-100', 'max-h-96', 'hidden');
         if (errorEl && showError) {
             // Show standard 'Check inputs' error
             errorEl.textContent = t(_esAppState.lang, 'errorCheckInputs');
@@ -264,7 +276,7 @@ function updateEarlySettlement(showError = false) {
 
         if (sNum < m1Num) {
             resultsPanel.classList.add('opacity-0', 'max-h-0');
-            resultsPanel.classList.remove('opacity-100', 'max-h-96');
+            resultsPanel.classList.remove('opacity-100', 'max-h-96', 'hidden');
             if (errorEl && showError) {
                 errorEl.textContent = t(_esAppState.lang, 'errorSettlementPreM1Prohibited');
                 errorEl.classList.remove('hidden');
@@ -274,7 +286,7 @@ function updateEarlySettlement(showError = false) {
 
         if (sNum >= endNum) {
             resultsPanel.classList.add('opacity-0', 'max-h-0');
-            resultsPanel.classList.remove('opacity-100', 'max-h-96');
+            resultsPanel.classList.remove('opacity-100', 'max-h-96', 'hidden');
             if (errorEl && showError) {
                 errorEl.textContent = t(_esAppState.lang, 'errorSettlementDateOutOfRange');
                 errorEl.classList.remove('hidden');
@@ -303,7 +315,7 @@ function updateEarlySettlement(showError = false) {
 
     if (!result.valid) {
         resultsPanel.classList.add('opacity-0', 'max-h-0');
-        resultsPanel.classList.remove('opacity-100', 'max-h-96');
+        resultsPanel.classList.remove('opacity-100', 'max-h-96', 'hidden');
         if (errorEl && showError) {
             const errKey = result.error === 'pre_m1_prohibited' ? 'errorSettlementPreM1Prohibited' : 'errorSettlementDateOutOfRange';
             errorEl.textContent = t(_esAppState.lang, errKey);
@@ -313,7 +325,7 @@ function updateEarlySettlement(showError = false) {
     }
 
     // Update UI - animate in
-    resultsPanel.classList.remove('opacity-0', 'max-h-0');
+    resultsPanel.classList.remove('opacity-0', 'max-h-0', 'hidden');
     resultsPanel.classList.add('opacity-100', 'max-h-96');
 
     // Last paid installment
@@ -389,7 +401,7 @@ function updateSubsidiaryErrors() {
     if (esToggle && esToggle.checked) {
         if (esResults) {
             esResults.classList.add('opacity-0', 'max-h-0');
-            esResults.classList.remove('opacity-100', 'max-h-96');
+            esResults.classList.remove('opacity-100', 'max-h-96', 'hidden');
         }
         if (esError) esError.classList.remove('hidden');
     } else {
@@ -415,16 +427,105 @@ function updateSubsidiaryErrors() {
 
 /**
  * Reset early settlement fields and UI to default state.
- * Called from resetApp in app.js.
+ * Called from resetApp in app.js or from the section reset button.
+ *
+ * @param {boolean} [keepExpanded=false] - If true, keeps the toggle open while clearing fields
  */
-function resetEarlySettlement() {
+function resetEarlySettlement(keepExpanded = false) {
     const earlySettlementToggle = document.getElementById('early-settlement-toggle');
-    if (earlySettlementToggle) {
+    if (!keepExpanded && earlySettlementToggle && earlySettlementToggle.checked) {
         earlySettlementToggle.checked = false;
         earlySettlementToggle.dispatchEvent(new Event('change'));
     }
-    document.getElementById('early-settlement-fee').value = '';
-    document.getElementById('settlement-results')?.classList.add('hidden');
+
+    const feeInput = document.getElementById('early-settlement-fee');
+    if (feeInput) {
+        feeInput.value = '';
+        feeInput.parentElement?.classList.remove('error-state');
+    }
+
+    // Re-seed settlement date to today (or valid min/max range if loan schedule exists)
+    const settlementDateDisplay = document.getElementById('settlement-date-display');
+    const settlementDateNative = document.getElementById('settlement-date-native');
+    if (settlementDateDisplay && settlementDateNative) {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        settlementDateNative.value = `${y}-${m}-${d}`;
+        settlementDateDisplay.value = typeof _esFormatDate === 'function' ? _esFormatDate(today) : `${d}/${m}/${y}`;
+        settlementDateDisplay.classList.remove('text-red-500');
+        delete settlementDateDisplay.dataset.errorKey;
+        settlementDateNative.removeAttribute('min');
+        settlementDateNative.removeAttribute('max');
+        syncEarlySettlementConstraints();
+    }
+
+    const resultsPanel = document.getElementById('settlement-results');
+    if (resultsPanel) {
+        resultsPanel.classList.add('opacity-0', 'max-h-0');
+        resultsPanel.classList.remove('opacity-100', 'max-h-96', 'hidden');
+    }
+
+    const errorEl = document.getElementById('error-early-settlement');
+    if (errorEl) errorEl.classList.add('hidden');
+
+    ['settlement-last-paid', 'settlement-principal', 'settlement-fee',
+        'settlement-interest', 'settlement-before-stamp', 'settlement-stamp-on-total',
+        'settlement-total'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '-';
+        });
+    const daysEl = document.getElementById('settlement-days');
+    if (daysEl) daysEl.textContent = `(0 ${t(_esAppState?.lang || 'en', 'days')})`;
+    const stampRow = document.getElementById('settlement-stamp-total-row');
+    if (stampRow) stampRow.classList.add('hidden');
+}
+
+function getEarlySettlementState() {
+    const toggle = document.getElementById('early-settlement-toggle');
+    const feeInput = document.getElementById('early-settlement-fee');
+    const dateNative = document.getElementById('settlement-date-native');
+    return {
+        enabled: !!(toggle && toggle.checked),
+        fee: feeInput ? feeInput.value : '',
+        dateISO: dateNative ? dateNative.value : ''
+    };
+}
+
+function setEarlySettlementState(state) {
+    if (!state) {
+        resetEarlySettlement(false);
+        return;
+    }
+    const toggle = document.getElementById('early-settlement-toggle');
+    const feeInput = document.getElementById('early-settlement-fee');
+    const dateNative = document.getElementById('settlement-date-native');
+    const dateDisplay = document.getElementById('settlement-date-display');
+
+    if (feeInput) feeInput.value = state.fee || '';
+    if (state.dateISO && dateNative) {
+        dateNative.value = state.dateISO;
+        const parsed = _esParseDate(state.dateISO);
+        if (parsed && dateDisplay) {
+            dateDisplay.value = typeof _esFormatDate === 'function' ? _esFormatDate(parsed) : state.dateISO;
+            dateDisplay.classList.remove('text-red-500');
+        }
+    }
+
+    if (toggle) {
+        const shouldCheck = !!state.enabled;
+        if (toggle.checked !== shouldCheck) {
+            toggle.checked = shouldCheck;
+            toggle.dispatchEvent(new Event('change'));
+        }
+    }
+    if (state.enabled && (state.fee || state.dateISO)) {
+        updateEarlySettlement(false);
+    } else if (!state.enabled) {
+        document.getElementById('early-settlement-result-box')?.classList.add('hidden');
+        document.getElementById('early-settlement-error')?.classList.add('hidden');
+    }
 }
 
     // Public API exposure
@@ -433,12 +534,16 @@ function resetEarlySettlement() {
     window.updateEarlySettlement = updateEarlySettlement;
     window.updateSubsidiaryErrors = updateSubsidiaryErrors;
     window.resetEarlySettlement = resetEarlySettlement;
+    window.getEarlySettlementState = getEarlySettlementState;
+    window.setEarlySettlementState = setEarlySettlementState;
 
     window.EarlySettlementManager = {
         init: initEarlySettlement,
         update: updateEarlySettlement,
         syncConstraints: syncEarlySettlementConstraints,
         updateSubsidiaryErrors: updateSubsidiaryErrors,
-        reset: resetEarlySettlement
+        reset: resetEarlySettlement,
+        getState: getEarlySettlementState,
+        setState: setEarlySettlementState
     };
 })();

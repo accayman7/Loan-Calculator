@@ -620,7 +620,56 @@ function showScheduleUI(scheduleData, language, autoOpen, isAdvanced = false) {
         </tr>`);
     }
 
-    schedBody.innerHTML = rows.join('');
+    // Cancel any previous pending chunk rendering
+    if (schedBody._chunkRaf) {
+        cancelAnimationFrame(schedBody._chunkRaf);
+        schedBody._chunkRaf = null;
+    }
+
+    const CHUNK_SIZE = 40;
+    if (rows.length <= CHUNK_SIZE) {
+        schedBody.innerHTML = rows.join('');
+        schedBody._flushChunking = null;
+    } else {
+        // Fast synchronous initial chunk for immediate paint without main-thread blocking (INP optimization)
+        schedBody.innerHTML = rows.slice(0, CHUNK_SIZE).join('');
+        let currentIdx = CHUNK_SIZE;
+
+        const appendNextChunk = () => {
+            if (currentIdx >= rows.length) {
+                schedBody._chunkRaf = null;
+                schedBody._flushChunking = null;
+                return;
+            }
+            const chunkEnd = Math.min(currentIdx + CHUNK_SIZE, rows.length);
+            const chunkHtml = rows.slice(currentIdx, chunkEnd).join('');
+            schedBody.insertAdjacentHTML('beforeend', chunkHtml);
+            currentIdx = chunkEnd;
+
+            if (currentIdx < rows.length) {
+                schedBody._chunkRaf = requestAnimationFrame(appendNextChunk);
+            } else {
+                schedBody._chunkRaf = null;
+                schedBody._flushChunking = null;
+            }
+        };
+
+        // Flush remaining rows synchronously (e.g. before PDF/print export)
+        schedBody._flushChunking = () => {
+            if (schedBody._chunkRaf) {
+                cancelAnimationFrame(schedBody._chunkRaf);
+                schedBody._chunkRaf = null;
+            }
+            if (currentIdx < rows.length) {
+                const remainingHtml = rows.slice(currentIdx).join('');
+                schedBody.insertAdjacentHTML('beforeend', remainingHtml);
+                currentIdx = rows.length;
+            }
+            schedBody._flushChunking = null;
+        };
+
+        schedBody._chunkRaf = requestAnimationFrame(appendNextChunk);
+    }
 
     // Delegated click handler for stamp rows (mobile tooltip - only when stamp column is hidden)
     if (!schedBody._stampListenerAttached) {

@@ -1864,7 +1864,13 @@
         desktopModal.classList.add('visible');
         isPickerOpen = true;
 
-        requestAnimationFrame(() => inputField.focus());
+        requestAnimationFrame(() => {
+            try {
+                inputField.focus({ preventScroll: true });
+            } catch (_) {
+                inputField.focus();
+            }
+        });
 
         if (typeof BackHandler !== 'undefined') {
             BackHandler.push('date-picker', () => closeDesktopCalendar(false));

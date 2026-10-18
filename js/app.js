@@ -217,6 +217,7 @@
     let collateralAnimTimer = null;
 
     function setLoanType(type, options = {}) {
+        const prevType = AppState.loanType;
         AppState.loanType = type;
         const unsecuredBtn = document.getElementById('loan-type-unsecured-btn');
         const securedBtn = document.getElementById('loan-type-secured-btn');
@@ -299,12 +300,44 @@
                     }, 350);
                 }
             }
+
+            // Sync frequency with collateral basis
+            const curBasis = typeof CollateralManager !== 'undefined' && CollateralManager.getAccrualBasis ? CollateralManager.getAccrualBasis() : 'monthly';
+            const targetFreq = curBasis === 'quarterly' ? '3' : '1';
+            if (freqSel && freqSel.value !== targetFreq) {
+                if (options.skipConversion) freqSel._skipPeriodConversion = true;
+                freqSel.value = targetFreq;
+                freqSel.dispatchEvent(new Event('change'));
+                if (options.skipConversion) freqSel._skipPeriodConversion = false;
+            }
+
             if (adminFeesInput) {
                 adminFeesInput.value = '1';
             }
             renderCollaterals();
+
+            // Enforce minimum rate requirement (max CD rate + 2%) when switching to Secured tab
+            if (!options.skipConversion && typeof CollateralManager !== 'undefined' && CollateralManager.getSummary) {
+                const summary = CollateralManager.getSummary();
+                if (summary && summary.hasRate && summary.minRate > 0 && AppState.activeKey !== 'rate' && formInputs.rate) {
+                    const curRate = safeParseFloat(formInputs.rate.value);
+                    if (isNaN(curRate) || curRate < summary.minRate) {
+                        formInputs.rate.value = summary.minRate.toFixed(2);
+                    }
+                }
+            }
+
+            recalcCollateralMetrics(false);
+            updateCollateralWarnings();
             updateCollateralCashflow();
             updateSelfCoveringChip();
+
+            if (!options.immediate && !options.skipRecalc && prevType !== type) {
+                CORE_KEYS.forEach(k => validateInput(k, false));
+                if (coreInputsFilled()) {
+                    appCalculate();
+                }
+            }
         } else {
             if (unsecuredBtn) {
                 unsecuredBtn.className = 'loan-type-btn py-2 px-3 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300';
@@ -403,8 +436,10 @@
             }
 
             if (freqSel && freqSel.value !== '1') {
+                if (options.skipConversion) freqSel._skipPeriodConversion = true;
                 freqSel.value = '1';
                 freqSel.dispatchEvent(new Event('change'));
+                if (options.skipConversion) freqSel._skipPeriodConversion = false;
             }
             if (adminFeesInput) {
                 adminFeesInput.value = '3';
@@ -423,6 +458,13 @@
                 updateMaxLoanChip();
             } else if (typeof CollateralManager !== 'undefined' && CollateralManager.updateMaxLoanChip) {
                 CollateralManager.updateMaxLoanChip();
+            }
+
+            if (!options.immediate && !options.skipRecalc && prevType !== type) {
+                CORE_KEYS.forEach(k => validateInput(k, false));
+                if (coreInputsFilled()) {
+                    appCalculate();
+                }
             }
         }
     }
@@ -970,7 +1012,15 @@
                 getFormInputs: () => formInputs,
                 getLastResult: () => AppState.lastRes,
                 onRecalcRequired: () => { if (coreInputsFilled()) appCalculate(); },
-                validateInput: (key) => validateInput(key)
+                validateInput: (key) => validateInput(key),
+                onBasisChanged: (basis) => {
+                    const freqSel = document.getElementById('installment-freq');
+                    const targetFreq = basis === 'quarterly' ? '3' : '1';
+                    if (freqSel && freqSel.value !== targetFreq) {
+                        freqSel.value = targetFreq;
+                        freqSel.dispatchEvent(new Event('change'));
+                    }
+                }
             });
         }
 
@@ -1232,8 +1282,10 @@
 
     function setupFrequencyListeners() {
         const freqSelect = document.getElementById('installment-freq');
+        const freqTriggerText = document.getElementById('freq-trigger-text');
         if (freqSelect) {
             let _savedFirstInstDate = { native: '', display: '' }; // saved monthly date
+            let _lastFreq = parseInt(freqSelect.value) || 1;
 
             const updateFreqLabels = () => {
                 const f = parseInt(freqSelect.value) || 1;
@@ -1255,6 +1307,16 @@
                 });
             };
 
+            const updateFreqBadgeText = () => {
+                const val = freqSelect.value;
+                if (freqTriggerText) {
+                    const isQ = val === '3';
+                    const key = isQ ? 'freqQuarterly' : 'freqMonthly';
+                    freqTriggerText.textContent = t(AppState.lang, key);
+                    freqTriggerText.setAttribute('data-lang-key', key);
+                }
+            };
+
             const syncQuarterlyDate = () => {
                 // Calculate the quarterly first installment date from the booking date
                 let bookingDate = new Date();
@@ -1272,6 +1334,20 @@
 
             freqSelect.addEventListener('change', () => {
                 const f = parseInt(freqSelect.value) || 1;
+
+                // Convert existing period value proportionally when switching between Monthly (1) and Quarterly (3)
+                if (!freqSelect._skipPeriodConversion && _lastFreq !== f && formInputs.period && formInputs.period.value.trim() !== '') {
+                    const pVal = safeParseFloat(formInputs.period.value);
+                    if (!isNaN(pVal) && pVal > 0) {
+                        if (_lastFreq === 1 && f === 3) {
+                            formInputs.period.value = String(Math.max(1, Math.round(pVal / 3)));
+                        } else if (_lastFreq === 3 && f === 1) {
+                            formInputs.period.value = String(Math.round(pVal * 3));
+                        }
+                    }
+                }
+                _lastFreq = f;
+
                 if (f === 3) {
                     // Save current monthly date before overwriting
                     _savedFirstInstDate.native = dateInputs.firstNative?.value || '';
@@ -1283,6 +1359,7 @@
                     if (dateInputs.firstDisplay) dateInputs.firstDisplay.value = _savedFirstInstDate.display;
                 }
                 updateFreqLabels();
+                updateFreqBadgeText();
 
                 // Update summary card labels immediately
                 const stdInstLabel = document.querySelector('#std-installments-view [data-lang-key="monthlyInstallmentLabel"]');
@@ -1298,7 +1375,8 @@
                         : t(AppState.lang, 'regularInstLabel');
                 }
 
-                if (coreInputsFilled()) {
+                validateInput('period', false);
+                if (!freqSelect._skipPeriodConversion && coreInputsFilled()) {
                     appCalculate();
                 }
             });
@@ -1320,121 +1398,12 @@
 
             // Set initial labels
             updateFreqLabels();
+            updateFreqBadgeText();
 
             // Refresh labels when language or UI updates wipe out the dynamic text
-            window.addEventListener('languageUpdated', updateFreqLabels);
-        }
-
-        // Custom frequency dropdown behavior
-        const freqTrigger = document.getElementById('freq-trigger');
-        const freqDropdown = document.getElementById('freq-dropdown');
-        const freqChevron = document.getElementById('freq-chevron');
-        const freqTriggerText = document.getElementById('freq-trigger-text');
-        if (freqTrigger && freqDropdown) {
-            const freqOptions = freqDropdown.querySelectorAll('.freq-option');
-            const primaryColor = 'var(--primary-color, #6366f1)';
-
-            const freqOptionNodes = Array.from(freqOptions).map(opt => ({
-                opt,
-                val: opt.dataset.value,
-                check: opt.querySelector('.freq-check'),
-                dot: opt.querySelector('.freq-check span')
-            }));
-
-            const updateFreqRadios = (selectedVal) => {
-                freqOptionNodes.forEach(({ opt, val, check, dot }) => {
-                    if (val === selectedVal) {
-                        if (check) check.style.borderColor = primaryColor;
-                        if (dot) dot.style.background = primaryColor;
-                        opt.setAttribute('aria-selected', 'true');
-                    } else {
-                        if (check) check.style.borderColor = '#d1d5db';
-                        if (dot) dot.style.background = 'transparent';
-                        opt.setAttribute('aria-selected', 'false');
-                    }
-                });
-            };
-
-            const openFreqDropdown = () => {
-                openMenu(freqDropdown);
-                if (freqChevron) freqChevron.style.transform = 'rotate(180deg)';
-            };
-
-            const closeFreqDropdown = () => {
-                closeMenu(freqDropdown);
-                if (freqChevron) freqChevron.style.transform = 'rotate(0deg)';
-            };
-
-            const isFreqOpen = () => isMenuOpen(freqDropdown);
-
-            freqTrigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (typeof haptic !== 'undefined') haptic('light');
-                if (isFreqOpen()) {
-                    closeFreqDropdown();
-                } else {
-                    updateFreqRadios(freqSelect.value);
-                    openFreqDropdown();
-                }
-            });
-
-            freqOptions.forEach(opt => {
-                opt.addEventListener('click', () => {
-                    const val = opt.dataset.value;
-                    if (typeof haptic !== 'undefined') haptic('medium');
-                    
-                    // Update trigger text and its lang key immediately for responsiveness
-                    const label = opt.querySelector('.freq-option-label');
-                    if (freqTriggerText && label) {
-                        freqTriggerText.textContent = label.textContent;
-                        freqTriggerText.setAttribute('data-lang-key', val === '3' ? 'freqQuarterly' : 'freqMonthly');
-                    }
-                    updateFreqRadios(val);
-                    
-                    // Start closing animation immediately
-                    closeFreqDropdown();
-                    
-                    if (freqSelect.value !== val) {
-                        freqSelect.value = val;
-                        freqSelect.dispatchEvent(new Event('change'));
-                    }
-                });
-            });
-
-            // Close on outside click
-            document.addEventListener('click', (e) => {
-                if (isFreqOpen() && !freqTrigger.contains(e.target) && !freqDropdown.contains(e.target)) {
-                    closeFreqDropdown();
-                }
-            });
-
-            // Keyboard Navigation for listbox
-            setupDropdownKeyboardNav({
-                triggerEl: freqTrigger,
-                menuEl: freqDropdown,
-                getOptions: () => Array.from(freqDropdown.querySelectorAll('.freq-option')),
-                isOpen: () => isFreqOpen(),
-                open: () => {
-                    updateFreqRadios(freqSelect.value);
-                    openFreqDropdown();
-                },
-                close: () => closeFreqDropdown(),
-                onSelect: (opt) => opt.click()
-            });
-
-            // Sync trigger text when select changes programmatically (e.g. restore from history)
-            const origDispatch = freqSelect.dispatchEvent.bind(freqSelect);
-            freqSelect.addEventListener('change', () => {
-                const val = freqSelect.value;
-                const matchOpt = freqDropdown.querySelector(`.freq-option[data-value="${val}"]`);
-                if (matchOpt && freqTriggerText) {
-                    const label = matchOpt.querySelector('.freq-option-label');
-                    if (label) {
-                        freqTriggerText.textContent = label.textContent;
-                        freqTriggerText.setAttribute('data-lang-key', val === '3' ? 'freqQuarterly' : 'freqMonthly');
-                    }
-                }
-                updateFreqRadios(val);
+            window.addEventListener('languageUpdated', () => {
+                updateFreqLabels();
+                updateFreqBadgeText();
             });
         }
     }
@@ -1449,6 +1418,12 @@
 
         const resetBtn = document.getElementById('reset-button');
         if (resetBtn) resetBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('medium');
+            resetLoanDetails(false);
+        });
+
+        const globalResetBtn = document.getElementById('global-reset-btn');
+        if (globalResetBtn) globalResetBtn.addEventListener('click', () => {
             if (typeof haptic !== 'undefined') haptic('heavy');
             resetApp();
         });
@@ -1839,6 +1814,20 @@
             return;
         }
 
+        // Block calculation in Secured mode if any collateral has Redemption Value > Nominal Value
+        if (AppState.loanType === 'secured' && typeof CollateralManager !== 'undefined' && CollateralManager.hasRedemptionErrors && CollateralManager.hasRedemptionErrors()) {
+            showToast(t(AppState.lang, 'errorRedemptionExceedsNominal'), 'error');
+            if (typeof haptic !== 'undefined') haptic('error');
+            document.querySelectorAll('#collaterals-list .error-state').forEach(el => {
+                const grp = el.closest('.input-group') || el;
+                grp.classList.remove('animate-shake');
+                void grp.offsetWidth;
+                grp.classList.add('animate-shake');
+            });
+            updateSubsidiaryErrors();
+            return;
+        }
+
         if (typeof calculateLoan !== 'function' || typeof generateSchedule !== 'function') {
             console.error("Logic functions missing");
             return;
@@ -2127,47 +2116,26 @@
     // updateEarlySettlement, updateSubsidiaryErrors, updateSelfSufficient
     // are now global functions in earlysettlement.js and selfsufficient.js
 
-    function resetApp() {
-        Object.values(formInputs).forEach(i => i.value = '');
+    /**
+     * Clears main loan calculation state, summary display, chart, and schedule UI.
+     */
+    function clearMainCalculationResults() {
+        AppState.lastRes = {};
+        AppState.schedule = [];
 
-        const today = new Date();
-        const ty = today.getFullYear();
-        const tm = String(today.getMonth() + 1).padStart(2, '0');
-        const td = String(today.getDate()).padStart(2, '0');
-        dateInputs.startNative.value = `${ty}-${tm}-${td}`;
-        dateInputs.startNative.dispatchEvent(new Event('change'));
-
-        document.getElementById('advanced-toggle').checked = false;
-        document.getElementById('advanced-toggle').dispatchEvent(new Event('change'));
-
-        updateSummaryView(false);
-
-        // Reset Loan Type to unsecured and Admin Fees to 3%
-        setLoanType('unsecured');
-        collaterals = [{ id: 1, amount: '', redemption: '', rate: '', period: '' }];
-        nextCollateralId = 2;
-        renderCollaterals();
-
-        // Reset stamp rate
-        const stampRateInput = document.getElementById('stamp-rate');
-        if (stampRateInput) stampRateInput.value = '0.2';
-
-        // Reset subsidiary modules
-        if (typeof resetSelfSufficient === 'function') resetSelfSufficient();
-        if (typeof resetEarlySettlement === 'function') resetEarlySettlement();
-
-        // RESET RADIO BUTTON STATE
-        AppState.activeKey = 'installment';
-        const defaultRadio = document.querySelector('input[name="calc-target"][value="installment"]');
-        if (defaultRadio) defaultRadio.checked = true;
-        if (typeof updateInputState === 'function') updateInputState(inputGroups, formInputs, errorLabels, AppState.activeKey, AppState.lang);
-
-        ['summary-rate', 'summary-principal', 'total-interest', 'total-sum', 'summary-period', 'summary-first-date'].forEach(id => document.getElementById(id).textContent = '-');
+        ['summary-rate', 'summary-principal', 'total-interest', 'total-sum', 'summary-period', 'summary-first-date'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '-';
+        });
         document.querySelectorAll('.flat-rate-display').forEach(el => el.textContent = '-');
         ['summary-first-inst', 'summary-regular-inst', 'summary-std-inst', 'summary-admin-fees', 'summary-net-loan', 'summary-total-stamp', 'summary-final-inst'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = '-';
         });
+        const adminFeesLabel = document.getElementById('summary-admin-fees-label');
+        if (adminFeesLabel) {
+            adminFeesLabel.textContent = t(AppState.lang, 'adminFeesLabel').replace(/ \(\d+\.?\d*%\)$/, '').replace(' (%)', '');
+        }
         const finalContainer = document.getElementById('summary-final-inst-container');
         if (finalContainer) finalContainer.classList.add('hidden');
         const reconcileCard = document.getElementById('period-reconcile-card');
@@ -2175,32 +2143,31 @@
         const targetReconcile = document.getElementById('target-reconcile-card');
         if (targetReconcile) targetReconcile.classList.add('hidden');
 
-        Object.values(errorLabels).forEach(e => e.classList.add('hidden'));
-        Object.values(inputGroups).forEach(g => g.classList.remove('error-state'));
-
-        const wAmount = document.getElementById('warning-loan-amount');
-        const wRate = document.getElementById('warning-loan-rate');
-        if (wAmount) wAmount.classList.add('hidden');
-        if (wRate) wRate.classList.add('hidden');
-
+        const chartEmptyState = document.getElementById('chart-empty-state');
         const chartWrapper = document.getElementById('chart-collapsible-wrapper');
-        if (chartWrapper && chartWrapper.classList.contains('expanded')) {
-            chartWrapper.classList.remove('expanded');
-            // Allow smooth 500ms collapse transition before destroying chart instance
-            setTimeout(() => {
-                if (chartWrapper && !chartWrapper.classList.contains('expanded')) {
-                    if (typeof chartInst !== 'undefined' && chartInst) {
-                        chartInst.destroy();
-                        chartInst = null;
-                    }
-                }
-            }, 500);
-        } else {
+        const destroyActiveChart = () => {
+            if (typeof ChartEngine !== 'undefined' && ChartEngine.getInstance) {
+                const inst = ChartEngine.getInstance();
+                if (inst && typeof inst.destroy === 'function') inst.destroy();
+            }
             if (typeof chartInst !== 'undefined' && chartInst) {
                 chartInst.destroy();
                 chartInst = null;
             }
+            if (chartEmptyState) chartEmptyState.classList.remove('hidden');
+        };
+
+        if (chartWrapper && chartWrapper.classList.contains('expanded')) {
+            chartWrapper.classList.remove('expanded');
+            setTimeout(() => {
+                if (chartWrapper && !chartWrapper.classList.contains('expanded')) {
+                    destroyActiveChart();
+                }
+            }, 500);
+        } else {
+            destroyActiveChart();
         }
+
         if (typeof closeScheduleUI === 'function') closeScheduleUI();
 
         const schedBtn = document.getElementById('schedule-button');
@@ -2220,6 +2187,93 @@
         if (fingerprintEl) fingerprintEl.textContent = '-';
     }
 
+    /**
+     * Resets only the Loan Details section (and its dependent summary/schedule)
+     * without closing or wiping the Early Settlement or Self-Sufficient sections.
+     */
+    function resetLoanDetails(silent = false) {
+        Object.values(formInputs).forEach(i => {
+            if (i) i.value = '';
+        });
+
+        const today = new Date();
+        const ty = today.getFullYear();
+        const tm = String(today.getMonth() + 1).padStart(2, '0');
+        const td = String(today.getDate()).padStart(2, '0');
+        const todayISO = `${ty}-${tm}-${td}`;
+        if (dateInputs.startNative) {
+            dateInputs.startNative.value = todayISO;
+            dateInputs.startNative.dispatchEvent(new Event('change'));
+        }
+        if (dateInputs.firstDisplay) {
+            dateInputs.firstDisplay.classList.remove('text-red-500');
+        }
+
+        const advToggle = document.getElementById('advanced-toggle');
+        if (advToggle) {
+            advToggle.checked = false;
+            advToggle.dispatchEvent(new Event('change'));
+        }
+
+        updateSummaryView(false);
+
+        // Reset Collaterals state properly via CollateralManager
+        if (typeof CollateralManager !== 'undefined' && CollateralManager.reset) {
+            CollateralManager.reset();
+        }
+
+        // Reset Loan Type to unsecured and Admin Fees to 3%
+        setLoanType('unsecured', { skipRecalc: true, skipConversion: true });
+
+        // Reset stamp rate
+        const stampRateInput = document.getElementById('stamp-rate');
+        if (stampRateInput) stampRateInput.value = '0.2';
+
+        // Reset radio button state
+        AppState.activeKey = 'installment';
+        const defaultRadio = document.querySelector('input[name="calc-target"][value="installment"]');
+        if (defaultRadio) defaultRadio.checked = true;
+        if (typeof updateInputState === 'function') updateInputState(inputGroups, formInputs, errorLabels, AppState.activeKey, AppState.lang);
+
+        Object.values(errorLabels).forEach(e => {
+            if (e) e.classList.add('hidden');
+        });
+        Object.values(inputGroups).forEach(g => {
+            if (g) g.classList.remove('error-state');
+        });
+
+        const wAmount = document.getElementById('warning-loan-amount');
+        const wRate = document.getElementById('warning-loan-rate');
+        if (wAmount) wAmount.classList.add('hidden');
+        if (wRate) wRate.classList.add('hidden');
+
+        clearMainCalculationResults();
+
+        // Sync Early Settlement constraints with cleared schedule (without collapsing ES section)
+        if (typeof syncEarlySettlementConstraints === 'function') {
+            syncEarlySettlementConstraints();
+        }
+        const esResults = document.getElementById('settlement-results');
+        if (esResults) {
+            esResults.classList.add('opacity-0', 'max-h-0');
+            esResults.classList.remove('opacity-100', 'max-h-96');
+        }
+
+        if (!silent) {
+            showToast(t(AppState.lang, 'toastSectionReset'), 'info');
+        }
+    }
+
+    /**
+     * Global reset: resets Loan Details, Self-Sufficient Mode, and Early Settlement Simulator.
+     */
+    function resetApp() {
+        resetLoanDetails(true);
+        if (typeof resetSelfSufficient === 'function') resetSelfSufficient(false);
+        if (typeof resetEarlySettlement === 'function') resetEarlySettlement(false);
+        showToast(t(AppState.lang, 'toastAllReset'), 'info');
+    }
+
     // --- Modal Logic ---
     function setupModalListeners() {
         // History Modal & Storage Management (Delegated to js/history.js)
@@ -2237,11 +2291,13 @@
                     formInputs.period.value = item.values.period;
                     formInputs.installment.value = item.values.installment;
 
-                    // Restore frequency BEFORE dates (affects date logic)
+                    // Restore frequency BEFORE dates (affects date logic) without converting already-saved period
                     const freqSel = document.getElementById('installment-freq');
                     if (freqSel) {
+                        freqSel._skipPeriodConversion = true;
                         freqSel.value = item.values.freq || '1';
                         freqSel.dispatchEvent(new Event('change'));
+                        freqSel._skipPeriodConversion = false;
                     }
                     if (item.values.startDate && dateInputs.startNative) {
                         dateInputs.startNative.value = item.values.startDate;
@@ -2278,13 +2334,24 @@
 
                     // Restore Loan Type & Collaterals
                     if (item.values && item.values.loanType) {
-                        setLoanType(item.values.loanType);
+                        if (item.values.collateralAccrualBasis && typeof CollateralManager !== 'undefined' && CollateralManager.setAccrualBasis) {
+                            CollateralManager.setAccrualBasis(item.values.collateralAccrualBasis);
+                        }
                         if (item.values.collaterals && Array.isArray(item.values.collaterals) && typeof CollateralManager !== 'undefined') {
                             CollateralManager.setRaw(item.values.collaterals);
                         }
+                        setLoanType(item.values.loanType, { skipRecalc: true, skipConversion: true });
                     }
 
                     appCalculate();
+
+                    // Restore Self-Sufficient Mode & Early Settlement states if present
+                    if (typeof setSelfSufficientState === 'function') {
+                        setSelfSufficientState(item.values ? item.values.selfSufficient : null);
+                    }
+                    if (typeof setEarlySettlementState === 'function') {
+                        setEarlySettlementState(item.values ? item.values.earlySettlement : null);
+                    }
                 },
                 onSave: () => {
                     if (!AppState.lastRes.P) return;
@@ -2303,10 +2370,13 @@
                                 startDate: dateInputs.startNative?.value || '',
                                 loanType: AppState.loanType,
                                 collaterals: typeof CollateralManager !== 'undefined' ? CollateralManager.getRaw() : [],
+                                collateralAccrualBasis: typeof CollateralManager !== 'undefined' && CollateralManager.getAccrualBasis ? CollateralManager.getAccrualBasis() : 'monthly',
                                 isAdvanced: isAdvanced,
                                 firstInstDate: dateInputs.firstNative?.value || '',
                                 adminFees: document.getElementById('admin-fees')?.value || '',
-                                stampRate: document.getElementById('stamp-rate')?.value || ''
+                                stampRate: document.getElementById('stamp-rate')?.value || '',
+                                earlySettlement: typeof getEarlySettlementState === 'function' ? getEarlySettlementState() : null,
+                                selfSufficient: typeof getSelfSufficientState === 'function' ? getSelfSufficientState() : null
                             },
                             res: AppState.lastRes
                         };

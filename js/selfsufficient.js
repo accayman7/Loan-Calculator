@@ -411,6 +411,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                     </div>
                 </div>
             </div>
+            <p id="ss-cd-redemption-error-${cd.id}" class="text-[11px] font-medium text-red-500 dark:text-red-400 hidden pt-0.5 leading-snug" role="alert"></p>
 
             <!-- Row 2: Date Fields with Dedicated Field Labels -->
             <div class="pt-2 border-t border-green-100/80 dark:border-green-900/40 grid grid-cols-12 gap-2 items-end">
@@ -456,6 +457,41 @@ function renderSsCd1List(newIdToAnimate = null) {
         if (amountInput) amountInput.value = cd.amount || '';
         if (redemptionInput) redemptionInput.value = cd.redemption || '';
         if (rateInput) rateInput.value = cd.rate || '';
+
+        const validateSsCdRedemption = () => {
+            const a = safeParseFloat(amountInput?.value);
+            const red = safeParseFloat(redemptionInput?.value);
+            const grp = redemptionInput?.parentElement;
+            const errEl = row.querySelector(`#ss-cd-redemption-error-${cd.id}`);
+            const msg = t(getSsLang(), 'errorRedemptionExceedsNominal');
+            if (!isNaN(a) && a > 0 && !isNaN(red) && red > a) {
+                if (grp) grp.classList.add('error-state');
+                if (redemptionInput) {
+                    redemptionInput.setAttribute('aria-invalid', 'true');
+                    redemptionInput.setAttribute('aria-describedby', `ss-cd-redemption-error-${cd.id}`);
+                    redemptionInput.title = msg;
+                }
+                if (errEl) {
+                    errEl.textContent = msg;
+                    errEl.classList.remove('hidden');
+                }
+                return false;
+            } else {
+                if (grp) grp.classList.remove('error-state');
+                if (redemptionInput) {
+                    redemptionInput.removeAttribute('aria-invalid');
+                    redemptionInput.removeAttribute('aria-describedby');
+                    redemptionInput.title = t(getSsLang(), 'collateralRedemptionLabel');
+                }
+                if (errEl) {
+                    errEl.textContent = '';
+                    errEl.classList.add('hidden');
+                }
+                return true;
+            }
+        };
+
+        validateSsCdRedemption();
 
         const adjustAmountFontSize = (input) => {
             if (!input) return;
@@ -504,6 +540,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                 if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
                 adjustAmountFontSize(e.target);
                 cd.amount = e.target.value;
+                validateSsCdRedemption();
                 const p = parseInt(document.getElementById('ss-loan-period')?.value) || 36;
                 updateTenorAdvisoryAndMatchButton(p);
             });
@@ -515,6 +552,7 @@ function renderSsCd1List(newIdToAnimate = null) {
                 if (typeof formatCurrencyInput === 'function') formatCurrencyInput(e.target);
                 adjustAmountFontSize(e.target);
                 cd.redemption = e.target.value;
+                validateSsCdRedemption();
             });
         }
 
@@ -780,6 +818,18 @@ function initSelfSufficient(appState, dateInputs, formInputs, animateToggleBounc
         ssCalcBtn.addEventListener('click', () => {
             if (typeof haptic !== 'undefined') haptic('light');
             updateSelfSufficient(true);
+        });
+    }
+
+    // --- Section Reset button ---
+    const ssResetBtn = document.getElementById('self-sufficient-reset-btn');
+    if (ssResetBtn) {
+        ssResetBtn.addEventListener('click', () => {
+            if (typeof haptic !== 'undefined') haptic('medium');
+            resetSelfSufficient(true);
+            if (typeof showToast === 'function') {
+                showToast(t(getSsLang(), 'toastSectionReset'), 'info');
+            }
         });
     }
 
@@ -1083,6 +1133,37 @@ function updateSelfSufficient(showError = false) {
     // Update tenor advisory and match button for current period
     updateTenorAdvisoryAndMatchButton(loanPeriod);
 
+    // 0. Block calculation if any CD1 has Redemption Value > Nominal Value
+    const hasRedemptionError = ssCd1List.some(c => {
+        const nom = safeParseFloat(c.amount) || 0;
+        const red = safeParseFloat(c.redemption) || 0;
+        return nom > 0 && red > nom;
+    });
+
+    if (hasRedemptionError) {
+        _ssLastSolution = null;
+        _ssLastInputs = null;
+        if (ssResults) {
+            ssResults.classList.add('opacity-0');
+            ssResults.classList.remove('opacity-100');
+            ssResults.style.maxHeight = '0';
+        }
+        if (showError) {
+            if (ssError) {
+                ssError.textContent = t(getSsLang(), 'errorRedemptionExceedsNominal');
+                ssError.classList.remove('hidden');
+            }
+            if (typeof haptic !== 'undefined') haptic('error');
+            document.querySelectorAll('#ss-cd1-list .error-state').forEach(el => {
+                const grp = el.closest('.input-group') || el;
+                grp.classList.remove('animate-shake');
+                void grp.offsetWidth;
+                grp.classList.add('animate-shake');
+            });
+        }
+        return;
+    }
+
     // 1. Validate CD1 collaterals
     const validCd1s = ssCd1List
         .map(c => ({
@@ -1301,9 +1382,9 @@ function updateSelfSufficient(showError = false) {
 
 /**
  * Reset self-sufficient fields and UI to default state.
- * Called from resetApp in app.js.
+ * Called from resetApp in app.js or from the section reset button.
  */
-function resetSelfSufficient() {
+function resetSelfSufficient(keepExpanded = false) {
     const ssTd2RateInput = document.getElementById('td2-rate');
     const ssLoanRateInput = document.getElementById('ss-loan-rate');
     const ssLoanPeriodInput = document.getElementById('ss-loan-period');
@@ -1361,14 +1442,27 @@ function resetSelfSufficient() {
     const advisoryBox = document.getElementById('ss-tenor-advisory');
     if (advisoryBox) advisoryBox.classList.add('hidden');
 
-    document.getElementById('self-sufficient-toggle').checked = false;
-    document.getElementById('self-sufficient-toggle').dispatchEvent(new Event('change'));
+    const ssResults = document.getElementById('self-sufficient-results');
+    if (ssResults) {
+        ssResults.classList.add('opacity-0');
+        ssResults.classList.remove('opacity-100');
+        ssResults.style.maxHeight = '0';
+    }
+    const ssError = document.getElementById('error-self-sufficient');
+    if (ssError) ssError.classList.add('hidden');
+
+    const ssToggle = document.getElementById('self-sufficient-toggle');
+    if (!keepExpanded && ssToggle && ssToggle.checked) {
+        ssToggle.checked = false;
+        ssToggle.dispatchEvent(new Event('change'));
+    }
 
     ['ss-gross-loan-display', 'ss-td2-display', 'ss-monthly-interest-display',
         'ss-installment-display', 'ss-monthly-surplus-display', 'ss-total-stamp-display',
         'ss-admin-fees-display', 'ss-total-tds-display', 'ss-simple-alt-display',
         'ss-net-benefit-display', 'ss-effective-rate-display',
-        'ss-first-inst-buffer-display', 'ss-net-leftover-display'].forEach(id => {
+        'ss-first-inst-buffer-display', 'ss-net-leftover-display',
+        'ss-cd-interest-before-m1-display'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = '-';
         });
@@ -1901,6 +1995,89 @@ function printSelfSufficientOffer() {
     }
 }
 
+function getSelfSufficientState() {
+    const toggle = document.getElementById('self-sufficient-toggle');
+    return {
+        enabled: !!(toggle && toggle.checked),
+        cd1List: ssCd1List.map(c => ({ ...c })),
+        td2Rate: document.getElementById('td2-rate')?.value || '',
+        cd2DateISO: document.getElementById('ss-cd2-interest-date-native')?.value || '',
+        bookingDateISO: document.getElementById('ss-booking-date-native')?.value || '',
+        loanRate: document.getElementById('ss-loan-rate')?.value || '',
+        loanPeriod: document.getElementById('ss-loan-period')?.value || '36',
+        adminFees: document.getElementById('ss-admin-fees')?.value || '1',
+        stampRate: document.getElementById('ss-stamp-rate')?.value || '0.2'
+    };
+}
+
+function setSelfSufficientState(state) {
+    if (!state) {
+        resetSelfSufficient(false);
+        return;
+    }
+    const toggle = document.getElementById('self-sufficient-toggle');
+    if (Array.isArray(state.cd1List) && state.cd1List.length > 0) {
+        ssCd1List = state.cd1List.map((c, idx) => ({
+            id: idx + 1,
+            amount: c.amount != null ? String(c.amount) : '',
+            redemption: c.redemption != null ? String(c.redemption) : '',
+            rate: c.rate != null ? String(c.rate) : '',
+            dateISO: c.dateISO || '',
+            maturityISO: c.maturityISO || ''
+        }));
+        nextSsCd1Id = ssCd1List.length + 1;
+    }
+
+    const td2RateEl = document.getElementById('td2-rate');
+    const loanRateEl = document.getElementById('ss-loan-rate');
+    const loanPeriodEl = document.getElementById('ss-loan-period');
+    const adminFeesEl = document.getElementById('ss-admin-fees');
+    const stampRateEl = document.getElementById('ss-stamp-rate');
+
+    if (td2RateEl) {
+        td2RateEl.value = state.td2Rate || '';
+        ssTd2RateManuallyEdited = !!state.td2Rate;
+    }
+    if (loanRateEl) {
+        loanRateEl.value = state.loanRate || '';
+        ssLoanRateManuallyEdited = !!state.loanRate;
+    }
+    if (loanPeriodEl) loanPeriodEl.value = state.loanPeriod || '36';
+    if (adminFeesEl) adminFeesEl.value = state.adminFees || '1';
+    if (stampRateEl) stampRateEl.value = state.stampRate || '0.2';
+
+    if (state.bookingDateISO) {
+        const bd = _ssParseNativeDate(state.bookingDateISO);
+        if (bd) {
+            _ssSeedCdDateField(bd, document.getElementById('ss-booking-date-native'), document.getElementById('ss-booking-date-display'));
+            ssUpdateFirstInstDateDisplay(bd);
+        }
+    }
+    if (state.cd2DateISO) {
+        const cd2d = _ssParseNativeDate(state.cd2DateISO);
+        if (cd2d) {
+            _ssSeedCdDateField(cd2d, document.getElementById('ss-cd2-interest-date-native'), document.getElementById('ss-cd2-interest-date-display'));
+        }
+    }
+
+    renderSsCd1List();
+    updateTenorAdvisoryAndMatchButton(parseInt(state.loanPeriod) || 36);
+
+    if (toggle) {
+        const shouldCheck = !!state.enabled;
+        if (toggle.checked !== shouldCheck) {
+            toggle.checked = shouldCheck;
+            toggle.dispatchEvent(new Event('change'));
+        }
+    }
+    if (state.enabled) {
+        updateSelfSufficient(false);
+    } else {
+        document.getElementById('ss-result-box')?.classList.add('hidden');
+        document.getElementById('ss-error-box')?.classList.add('hidden');
+    }
+}
+
 // Expose globals for external module coordination
 window.initSelfSufficient = initSelfSufficient;
 window.renderSsCd1List = renderSsCd1List;
@@ -1914,6 +2091,8 @@ window.copySelfSufficientOffer = copySelfSufficientOffer;
 window.generateSelfSufficientHtml = generateSelfSufficientHtml;
 window.printSelfSufficientOffer = printSelfSufficientOffer;
 window.resetSelfSufficient = resetSelfSufficient;
+window.getSelfSufficientState = getSelfSufficientState;
+window.setSelfSufficientState = setSelfSufficientState;
 
 window.SelfSufficientManager = {
     init: initSelfSufficient,
@@ -1922,6 +2101,8 @@ window.SelfSufficientManager = {
     reset: resetSelfSufficient,
     renderCd1List: renderSsCd1List,
     copyOffer: copySelfSufficientOffer,
-    printOffer: printSelfSufficientOffer
+    printOffer: printSelfSufficientOffer,
+    getState: getSelfSufficientState,
+    setState: setSelfSufficientState
 };
 })();
